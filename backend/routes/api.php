@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AttendanceAdminController;
 use App\Http\Controllers\Auth\AdminSessionController;
 use App\Http\Controllers\Kiosk\AttendanceClockController;
 use App\Http\Controllers\Kiosk\KioskAuthController;
@@ -15,6 +16,8 @@ Route::post('/admin/login', [AdminSessionController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/logout', [AdminSessionController::class, 'logout']);
     Route::get('/admin/me', [AdminSessionController::class, 'me']);
+    Route::patch('/admin/attendance/{record}/adjust', [AttendanceAdminController::class, 'adjust']);
+    Route::post('/admin/attendance/{record}/approve', [AttendanceAdminController::class, 'approve']);
 });
 
 Route::get('/kiosk/staff', [KioskAuthController::class, 'staff']);
