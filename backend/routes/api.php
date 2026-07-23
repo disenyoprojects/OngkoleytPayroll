@@ -32,6 +32,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/thirteenth-month/compute-all', [ThirteenthMonthController::class, 'computeAll']);
     Route::post('/admin/thirteenth-month/{employee}/compute', [ThirteenthMonthController::class, 'compute']);
     Route::post('/admin/thirteenth-month/{employee}/recompute', [ThirteenthMonthController::class, 'recompute']);
+    Route::post('/admin/thirteenth-month/{employee}/adjust', [ThirteenthMonthController::class, 'adjust']);
+    Route::post('/admin/thirteenth-month/{employee}/lock', [ThirteenthMonthController::class, 'lock']);
+    Route::post('/admin/thirteenth-month/{employee}/unlock', [ThirteenthMonthController::class, 'unlock']);
+    Route::post('/admin/thirteenth-month/{employee}/release', [ThirteenthMonthController::class, 'release']);
 });
 
 Route::get('/kiosk/staff', [KioskAuthController::class, 'staff']);

@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ThirteenthMonthRecord extends Model {
+    use HasFactory;
+
     protected $fillable = [
         'employee_id', 'payroll_year', 'computed_amount', 'manual_adjustment',
         'status', 'released_on', 'payment_method',

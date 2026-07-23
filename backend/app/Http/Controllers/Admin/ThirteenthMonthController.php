@@ -83,6 +83,68 @@ class ThirteenthMonthController extends Controller {
         return response()->json(['message' => 'Recomputed.']);
     }
 
+    public function adjust(Request $request, Employee $employee) {
+        $year = (int) $request->query('year', now()->year);
+        $data = $request->validate(['amount' => ['required', 'numeric'], 'reason' => ['required', 'string', 'min:5']]);
+
+        $record = ThirteenthMonthRecord::where('employee_id', $employee->id)->where('payroll_year', $year)->firstOrFail();
+        $oldAmount = $record->adjusted_amount;
+        $record->update(['manual_adjustment' => $record->manual_adjustment + $data['amount']]);
+
+        AuditLog::create([
+            'type' => '13th_month', 'employee_id' => $employee->id, 'performed_by' => $request->user()->id,
+            'action' => 'manual_adjustment', 'old_amount' => $oldAmount, 'new_amount' => $record->adjusted_amount,
+            'reason' => $data['reason'],
+        ]);
+
+        return response()->json(['message' => 'Adjustment applied.']);
+    }
+
+    public function lock(Request $request, Employee $employee) {
+        $year = (int) $request->query('year', now()->year);
+        $record = ThirteenthMonthRecord::where('employee_id', $employee->id)->where('payroll_year', $year)->firstOrFail();
+        $record->update(['status' => 'locked']);
+
+        AuditLog::create([
+            'type' => '13th_month', 'employee_id' => $employee->id, 'performed_by' => $request->user()->id,
+            'action' => 'lock', 'old_amount' => $record->adjusted_amount, 'new_amount' => $record->adjusted_amount,
+            'reason' => 'Record locked after release',
+        ]);
+
+        return response()->json(['message' => 'Locked.']);
+    }
+
+    public function unlock(Request $request, Employee $employee) {
+        $year = (int) $request->query('year', now()->year);
+        $data = $request->validate(['reason' => ['required', 'string', 'min:5']]);
+
+        $record = ThirteenthMonthRecord::where('employee_id', $employee->id)->where('payroll_year', $year)->firstOrFail();
+        $record->update(['status' => $record->released_on ? 'released' : 'computed']);
+
+        AuditLog::create([
+            'type' => '13th_month', 'employee_id' => $employee->id, 'performed_by' => $request->user()->id,
+            'action' => 'unlock', 'old_amount' => $record->adjusted_amount, 'new_amount' => $record->adjusted_amount,
+            'reason' => $data['reason'],
+        ]);
+
+        return response()->json(['message' => 'Unlocked.']);
+    }
+
+    public function release(Request $request, Employee $employee) {
+        $year = (int) $request->query('year', now()->year);
+        $settings = PayrollSetting::current();
+        $record = ThirteenthMonthRecord::where('employee_id', $employee->id)->where('payroll_year', $year)->firstOrFail();
+        $record->update(['status' => 'released', 'released_on' => $settings->release_date, 'payment_method' => 'Bank Transfer']);
+
+        AuditLog::create([
+            'type' => '13th_month', 'employee_id' => $employee->id, 'performed_by' => $request->user()->id,
+            'action' => 'release', 'old_amount' => $record->adjusted_amount, 'new_amount' => $record->adjusted_amount,
+            'reason' => 'Released via Bank Transfer',
+        ]);
+
+        return response()->json(['message' => 'Released.']);
+    }
+
     private function computeOne(Employee $employee, int $year, int $adminId, string $action): void {
         $settings = PayrollSetting::current();
         $amount = $this->calculator->computedAmount($employee, $settings, $year);
