@@ -1,0 +1,10 @@
+.claude/
+.worktrees/
+.superpowers/
+node_modules/
+vendor/
+backend/.env
+frontend/.env.local
+backend/storage/*.key
+*.log
+.DS_Store
