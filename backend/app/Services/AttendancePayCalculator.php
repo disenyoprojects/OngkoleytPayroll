@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\PayrollSetting;
 
 class AttendancePayCalculator {
-    public function compute(?string $clockIn, ?string $clockOut, PayrollSetting $settings): ?array {
+    public function compute(?string $clockIn, ?string $clockOut, PayrollSetting $settings, ?float $dailyRateOverride = null): ?array {
         if (! $clockIn || ! $clockOut) {
             return null;
         }
@@ -17,7 +17,8 @@ class AttendancePayCalculator {
         }
 
         $totalHours = ($end - $start) / 60.0;
-        $hourlyRate = (float) $settings->daily_basic_rate / 8;
+        $dailyRate = $dailyRateOverride ?? (float) $settings->daily_basic_rate;
+        $hourlyRate = $dailyRate / 8;
         $regularHours = (float) min($totalHours, 8);
         $otHours = (float) max(0, $totalHours - 8);
 

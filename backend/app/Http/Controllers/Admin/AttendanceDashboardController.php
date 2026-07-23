@@ -17,7 +17,8 @@ class AttendanceDashboardController extends Controller {
             ->get();
 
         $rows = $records->map(function (AttendanceRecord $record) use ($settings) {
-            $pay = $this->calculator->compute($record->clock_in, $record->clock_out, $settings);
+            $rate = $record->employee->daily_basic_rate === null ? null : (float) $record->employee->daily_basic_rate;
+            $pay = $this->calculator->compute($record->clock_in, $record->clock_out, $settings, $rate);
             return [
                 'record' => $record,
                 'employee' => $record->employee,

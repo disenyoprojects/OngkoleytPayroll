@@ -27,7 +27,8 @@ class ThirteenthMonthCalculator {
                     ->get();
 
                 foreach ($records as $record) {
-                    $pay = $this->payCalculator->compute($record->clock_in, $record->clock_out, $settings);
+                    $rate = $employee->daily_basic_rate === null ? null : (float) $employee->daily_basic_rate;
+                    $pay = $this->payCalculator->compute($record->clock_in, $record->clock_out, $settings, $rate);
                     if ($pay === null) {
                         continue;
                     }
