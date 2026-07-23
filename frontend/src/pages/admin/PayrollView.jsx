@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
-import { formatPHP, formatHoursLabel, formatTime12 } from "../../theme";
+import { formatPHP, formatTime12 } from "../../theme";
 import { Button, StatCard, tabBtnStyle } from "../../components/ui";
 
 export default function PayrollView() {
@@ -8,8 +8,13 @@ export default function PayrollView() {
   const [data, setData] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
+    setData(null);
     const endpoint = range === "daily" ? "/api/admin/payroll/daily" : "/api/admin/payroll/weekly";
-    apiClient.get(endpoint).then((res) => setData(res.data));
+    apiClient.get(endpoint).then((res) => {
+      if (!cancelled) setData(res.data);
+    });
+    return () => { cancelled = true; };
   }, [range]);
 
   function download(kind) {
