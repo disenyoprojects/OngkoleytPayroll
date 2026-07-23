@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AdminSessionController;
+use App\Http\Controllers\Kiosk\AttendanceClockController;
 use App\Http\Controllers\Kiosk\KioskAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -18,3 +19,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::get('/kiosk/staff', [KioskAuthController::class, 'staff']);
 Route::post('/kiosk/verify-pin', [KioskAuthController::class, 'verifyPin']);
+
+Route::middleware('kiosk.token')->group(function () {
+    Route::post('/kiosk/clock-in', [AttendanceClockController::class, 'clockIn']);
+    Route::post('/kiosk/clock-out', [AttendanceClockController::class, 'clockOut']);
+    Route::get('/kiosk/today', [AttendanceClockController::class, 'today']);
+});
