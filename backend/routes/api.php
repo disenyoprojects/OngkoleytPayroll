@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\PayrollController;
 use App\Http\Controllers\Admin\PayrollExportController;
 use App\Http\Controllers\Admin\PayrollPdfController;
 use App\Http\Controllers\Admin\ThirteenthMonthController;
+use App\Http\Controllers\Admin\ThirteenthMonthPayslipController;
 use App\Http\Controllers\Auth\AdminSessionController;
 use App\Http\Controllers\Kiosk\AttendanceClockController;
 use App\Http\Controllers\Kiosk\KioskAuthController;
@@ -36,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/thirteenth-month/{employee}/lock', [ThirteenthMonthController::class, 'lock']);
     Route::post('/admin/thirteenth-month/{employee}/unlock', [ThirteenthMonthController::class, 'unlock']);
     Route::post('/admin/thirteenth-month/{employee}/release', [ThirteenthMonthController::class, 'release']);
+    Route::get('/admin/thirteenth-month/{employee}/payslip', [ThirteenthMonthPayslipController::class, 'show']);
 });
 
 Route::get('/kiosk/staff', [KioskAuthController::class, 'staff']);
