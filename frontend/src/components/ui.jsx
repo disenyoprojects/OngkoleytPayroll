@@ -1,0 +1,49 @@
+import { COLOR, FONT_DISPLAY } from "../theme";
+
+export function Button({ children, onClick, variant = "primary", disabled, small }) {
+  const base = { fontWeight: 600, fontSize: small ? 12 : 13, padding: small ? "5px 10px" : "9px 18px", borderRadius: 7, border: "1px solid transparent", cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.45 : 1 };
+  const variants = {
+    primary: { background: COLOR.espresso, color: COLOR.cream },
+    gold: { background: COLOR.gold, color: COLOR.espresso },
+    outline: { background: "white", color: COLOR.espresso, border: `1px solid ${COLOR.line}` },
+    ghost: { background: "transparent", color: COLOR.inkSoft },
+    danger: { background: "transparent", color: COLOR.rust, border: `1px solid ${COLOR.rust}` },
+  };
+  return <button style={{ ...base, ...variants[variant] }} onClick={disabled ? undefined : onClick} disabled={disabled}>{children}</button>;
+}
+
+export function Pill({ children, tone = "neutral" }) {
+  const tones = {
+    neutral: { bg: COLOR.parchment, fg: COLOR.ink },
+    approved: { bg: COLOR.greenSoft, fg: COLOR.green },
+    pending: { bg: COLOR.amberSoft, fg: COLOR.amber },
+    computed: { bg: "#DCE7F5", fg: "#2C5384" },
+    released: { bg: COLOR.greenSoft, fg: COLOR.green },
+    locked: { bg: COLOR.rustSoft, fg: COLOR.rust },
+  };
+  const t = tones[tone] || tones.neutral;
+  return <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600, textTransform: "uppercase", background: t.bg, color: t.fg }}>{children}</span>;
+}
+
+export function StatCard({ label, value }) {
+  return (
+    <div style={{ background: "white", border: `1px solid ${COLOR.line}`, borderRadius: 10, padding: "16px 20px", flex: "1 1 180px" }}>
+      <div style={{ fontSize: 11, textTransform: "uppercase", color: COLOR.inkSoft, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 700 }}>{value}</div>
+    </div>
+  );
+}
+
+export function ModalShell({ children, onClose, width = 460 }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(46,33,24,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }} onClick={onClose}>
+      <div style={{ background: "white", borderRadius: 12, width, maxWidth: "90vw", maxHeight: "88vh", overflow: "auto", padding: 24 }} onClick={(e) => e.stopPropagation()}>{children}</div>
+    </div>
+  );
+}
+
+export const inputStyle = { width: "100%", padding: "9px 10px", border: `1px solid ${COLOR.line}`, borderRadius: 6, fontSize: 13 };
+
+export function tabBtnStyle(active) {
+  return { padding: "8px 16px", borderRadius: 8, border: `1px solid ${active ? COLOR.espresso : COLOR.line}`, background: active ? COLOR.espresso : "white", color: active ? COLOR.cream : COLOR.ink, fontSize: 13, fontWeight: 600, cursor: "pointer" };
+}
