@@ -18,7 +18,7 @@ class AdminSessionControllerTest extends TestCase {
         ]);
 
         $response->assertOk();
-        $this->assertAuthenticatedAs($admin);
+        $this->assertNotEmpty($response->json('token'));
     }
 
     public function test_admin_login_fails_with_wrong_password(): void {
@@ -30,7 +30,6 @@ class AdminSessionControllerTest extends TestCase {
         ]);
 
         $response->assertStatus(422);
-        $this->assertGuest();
     }
 
     public function test_me_endpoint_requires_authentication(): void {
@@ -39,8 +38,10 @@ class AdminSessionControllerTest extends TestCase {
 
     public function test_me_endpoint_returns_the_authenticated_admin(): void {
         $admin = User::factory()->create();
+        $token = $admin->createToken('admin-session')->plainTextToken;
 
-        $this->actingAs($admin)->getJson('/api/admin/me')
+        $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson('/api/admin/me')
             ->assertOk()
             ->assertJsonPath('email', $admin->email);
     }

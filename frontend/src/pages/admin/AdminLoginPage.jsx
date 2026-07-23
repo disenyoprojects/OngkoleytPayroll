@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { apiClient, ensureCsrf } from "../../api/client";
+import { apiClient, setAdminToken } from "../../api/client";
 import { COLOR, FONT_DISPLAY } from "../../theme";
 import { Button, inputStyle } from "../../components/ui";
 
@@ -12,8 +12,8 @@ export default function AdminLoginPage({ onLoggedIn }) {
     e.preventDefault();
     setError(null);
     try {
-      await ensureCsrf();
-      await apiClient.post("/api/admin/login", { email, password });
+      const response = await apiClient.post("/api/admin/login", { email, password });
+      setAdminToken(response.data.token);
       onLoggedIn();
     } catch {
       setError("Invalid email or password.");

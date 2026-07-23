@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiClient } from "../../api/client";
+import { apiClient, clearAdminToken, getAdminToken } from "../../api/client";
 import { tabBtnStyle } from "../../components/ui";
 import AdminLoginPage from "./AdminLoginPage";
 import AttendanceView from "./AttendanceView";
@@ -21,18 +21,33 @@ export default function AdminApp() {
   const [tab, setTab] = useState("attendance");
 
   useEffect(() => {
-    apiClient.get("/api/admin/me").then((res) => setAdmin(res.data)).catch(() => setAdmin(null));
+    if (!getAdminToken()) {
+      setAdmin(null);
+      return;
+    }
+    apiClient.get("/api/admin/me").then((res) => setAdmin(res.data)).catch(() => {
+      clearAdminToken();
+      setAdmin(null);
+    });
   }, []);
 
   if (admin === undefined) return <div style={{ padding: 32 }}>Loading...</div>;
   if (admin === null) return <AdminLoginPage onLoggedIn={() => apiClient.get("/api/admin/me").then((res) => setAdmin(res.data))} />;
 
+  function logout() {
+    apiClient.post("/api/admin/logout").finally(() => {
+      clearAdminToken();
+      setAdmin(null);
+    });
+  }
+
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 32px" }}>
-      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
         {TABS.map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)} style={tabBtnStyle(tab === key)}>{label}</button>
         ))}
+        <button onClick={logout} style={{ ...tabBtnStyle(false), marginLeft: "auto" }}>Log Out</button>
       </div>
       {tab === "attendance" && <AttendanceView />}
       {tab === "payroll" && <PayrollView />}
