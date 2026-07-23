@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Hash;
 
 class Employee extends Model {
+    use HasFactory;
+
     protected $fillable = [
         'employee_code', 'full_name', 'short_name', 'role', 'branch_id',
         'employment_type', 'hire_date', 'resignation_date', 'pin_hash',
