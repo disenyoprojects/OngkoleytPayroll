@@ -5,13 +5,13 @@
 This repo is a monorepo (`backend/`, `frontend/`). Each app has its own `Dockerfile` and `railway.json` so Railway builds them as separate services with no extra buildpack config needed.
 
 1. In Railway: **New Project → Deploy from GitHub repo** → select this repo.
-2. **Add a MySQL database** (Railway plugin, one click) to the project.
+2. **Add a Postgres database** (Railway plugin, one click) to the project.
 3. **Add the backend service**: New Service → same repo → set **Root Directory** to `backend`. Railway will detect `backend/Dockerfile` automatically.
 4. **Add the frontend service**: New Service → same repo → set **Root Directory** to `frontend`. Railway will detect `frontend/Dockerfile` automatically.
 5. Set backend service variables (Settings → Variables):
    - `APP_KEY` — generate locally with `php artisan key:generate --show` and paste the value.
    - `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL` = the backend service's Railway domain (e.g. `https://ongkoleyt-backend.up.railway.app`).
-   - `DB_CONNECTION=mysql`, `DB_HOST=${{MySQL.MYSQLHOST}}`, `DB_PORT=${{MySQL.MYSQLPORT}}`, `DB_DATABASE=${{MySQL.MYSQLDATABASE}}`, `DB_USERNAME=${{MySQL.MYSQLUSER}}`, `DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}` (reference the MySQL plugin's variables — Railway autocompletes these).
+   - `DB_CONNECTION=pgsql`, `DB_HOST=${{Postgres.PGHOST}}`, `DB_PORT=${{Postgres.PGPORT}}`, `DB_DATABASE=${{Postgres.PGDATABASE}}`, `DB_USERNAME=${{Postgres.PGUSER}}`, `DB_PASSWORD=${{Postgres.PGPASSWORD}}` (reference the Postgres plugin's *private* variables — never `DATABASE_PUBLIC_URL`, which routes through the public proxy and incurs egress fees).
    - `SESSION_DOMAIN` and `SANCTUM_STATEFUL_DOMAINS` = the frontend service's Railway domain (no scheme, no trailing slash), e.g. `ongkoleyt-frontend.up.railway.app`.
    - `SESSION_SECURE_COOKIE=true` (Railway domains are HTTPS by default).
    - `CORS_ALLOWED_ORIGINS` = the frontend's full URL, e.g. `https://ongkoleyt-frontend.up.railway.app`.

@@ -1,7 +1,7 @@
 FROM php:8.2-cli-alpine AS build
 
-RUN apk add --no-cache git unzip libzip-dev icu-dev oniguruma-dev libpng-dev \
-    && docker-php-ext-install pdo pdo_mysql zip intl mbstring bcmath gd
+RUN apk add --no-cache git unzip libzip-dev icu-dev oniguruma-dev libpng-dev postgresql-dev \
+    && docker-php-ext-install pdo pdo_pgsql pgsql zip intl mbstring bcmath gd
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

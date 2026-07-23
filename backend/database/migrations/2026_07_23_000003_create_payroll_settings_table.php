@@ -16,8 +16,8 @@ return new class extends Migration {
             $table->date('period_end');
             $table->date('release_date');
             $table->unsignedTinyInteger('minimum_months')->default(1);
-            $table->json('included_earnings')->default(new \Illuminate\Database\Query\Expression("(JSON_ARRAY('BASIC'))"));
-            $table->json('employment_types_included')->default(new \Illuminate\Database\Query\Expression("(JSON_ARRAY('regular','probationary','fixed_term','seasonal'))"));
+            $table->json('included_earnings');
+            $table->json('employment_types_included');
             $table->timestamps();
         });
     }
