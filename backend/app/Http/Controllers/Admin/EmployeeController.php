@@ -90,9 +90,11 @@ class EmployeeController extends Controller {
         ]);
 
         $oldRate = $employee->daily_basic_rate === null ? null : (float) $employee->daily_basic_rate;
-        $newRate = array_key_exists('daily_basic_rate', $data) && $data['daily_basic_rate'] !== null
-            ? (float) $data['daily_basic_rate']
-            : null;
+        if (array_key_exists('daily_basic_rate', $data)) {
+            $newRate = $data['daily_basic_rate'] === null ? null : (float) $data['daily_basic_rate'];
+        } else {
+            $newRate = $oldRate; // key omitted → preserve existing rate; not a change
+        }
         $rateChanged = $oldRate !== $newRate;
 
         if ($rateChanged && empty(trim((string) ($data['reason'] ?? '')))) {
@@ -129,7 +131,7 @@ class EmployeeController extends Controller {
                     $newRate === null ? 'global' : number_format($newRate, 2)),
                 'old_amount' => $oldRate,
                 'new_amount' => $newRate,
-                'reason' => $data['reason'],
+                'reason' => trim($data['reason']),
             ]);
         }
 

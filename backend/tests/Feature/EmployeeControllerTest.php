@@ -188,4 +188,24 @@ class EmployeeControllerTest extends TestCase {
 
         $this->assertTrue($employee->fresh()->verifyPin('1234'));
     }
+
+    public function test_update_omitting_daily_rate_key_preserves_existing_rate(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => 500]);
+
+        $this->actingAs($admin)->putJson("/api/admin/employees/{$employee->id}", [
+            'employee_code' => $employee->employee_code,
+            'full_name' => $employee->full_name,
+            'short_name' => $employee->short_name,
+            'role' => 'Updated Role',
+            'branch_id' => $employee->branch_id,
+            'employment_type' => $employee->employment_type,
+            'hire_date' => $employee->hire_date->toDateString(),
+            // daily_basic_rate intentionally omitted
+        ])->assertOk();
+
+        $this->assertSame('500.00', $employee->fresh()->daily_basic_rate);
+        $this->assertSame('Updated Role', $employee->fresh()->role);
+        $this->assertSame(0, AuditLog::where('employee_id', $employee->id)->where('action', 'rate_override_changed')->count());
+    }
 }
