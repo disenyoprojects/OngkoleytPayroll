@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Employee;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class EmployeeController extends Controller {
@@ -45,33 +46,35 @@ class EmployeeController extends Controller {
             ], 422);
         }
 
-        $employee = new Employee([
-            'employee_code' => $data['employee_code'],
-            'full_name' => $data['full_name'],
-            'short_name' => $data['short_name'],
-            'role' => $data['role'],
-            'branch_id' => $data['branch_id'],
-            'employment_type' => $data['employment_type'],
-            'hire_date' => $data['hire_date'],
-            'resignation_date' => $data['resignation_date'] ?? null,
-            'daily_basic_rate' => $data['daily_basic_rate'] ?? null,
-        ]);
-        $employee->pin = $data['pin'];
-        $employee->save();
-
-        if (($data['daily_basic_rate'] ?? null) !== null) {
-            AuditLog::create([
-                'type' => 'employee',
-                'employee_id' => $employee->id,
-                'performed_by' => $request->user()->id,
-                'action' => 'rate_override_set',
-                'detail' => "Daily basic rate set to {$data['daily_basic_rate']} on create",
-                'new_amount' => $data['daily_basic_rate'],
-                'reason' => $data['reason'],
+        return DB::transaction(function () use ($request, $data) {
+            $employee = new Employee([
+                'employee_code' => $data['employee_code'],
+                'full_name' => $data['full_name'],
+                'short_name' => $data['short_name'],
+                'role' => $data['role'],
+                'branch_id' => $data['branch_id'],
+                'employment_type' => $data['employment_type'],
+                'hire_date' => $data['hire_date'],
+                'resignation_date' => $data['resignation_date'] ?? null,
+                'daily_basic_rate' => $data['daily_basic_rate'] ?? null,
             ]);
-        }
+            $employee->pin = $data['pin'];
+            $employee->save();
 
-        return response()->json($employee->load('branch'), 201);
+            if (($data['daily_basic_rate'] ?? null) !== null) {
+                AuditLog::create([
+                    'type' => 'employee',
+                    'employee_id' => $employee->id,
+                    'performed_by' => $request->user()->id,
+                    'action' => 'rate_override_set',
+                    'detail' => "Daily basic rate set to {$data['daily_basic_rate']} on create",
+                    'new_amount' => $data['daily_basic_rate'],
+                    'reason' => trim($data['reason']),
+                ]);
+            }
+
+            return response()->json($employee->load('branch'), 201);
+        });
     }
 
     public function update(Request $request, Employee $employee) {
@@ -104,38 +107,40 @@ class EmployeeController extends Controller {
             ], 422);
         }
 
-        $employee->fill([
-            'employee_code' => $data['employee_code'],
-            'full_name' => $data['full_name'],
-            'short_name' => $data['short_name'],
-            'role' => $data['role'],
-            'branch_id' => $data['branch_id'],
-            'employment_type' => $data['employment_type'],
-            'hire_date' => $data['hire_date'],
-            'resignation_date' => $data['resignation_date'] ?? null,
-            'daily_basic_rate' => $newRate,
-        ]);
-        if (! empty($data['pin'])) {
-            $employee->pin = $data['pin'];
-        }
-        $employee->save();
-
-        if ($rateChanged) {
-            AuditLog::create([
-                'type' => 'employee',
-                'employee_id' => $employee->id,
-                'performed_by' => $request->user()->id,
-                'action' => 'rate_override_changed',
-                'detail' => sprintf('Daily basic rate changed from %s to %s',
-                    $oldRate === null ? 'global' : number_format($oldRate, 2),
-                    $newRate === null ? 'global' : number_format($newRate, 2)),
-                'old_amount' => $oldRate,
-                'new_amount' => $newRate,
-                'reason' => trim($data['reason']),
+        return DB::transaction(function () use ($request, $employee, $data, $oldRate, $newRate, $rateChanged) {
+            $employee->fill([
+                'employee_code' => $data['employee_code'],
+                'full_name' => $data['full_name'],
+                'short_name' => $data['short_name'],
+                'role' => $data['role'],
+                'branch_id' => $data['branch_id'],
+                'employment_type' => $data['employment_type'],
+                'hire_date' => $data['hire_date'],
+                'resignation_date' => $data['resignation_date'] ?? null,
+                'daily_basic_rate' => $newRate,
             ]);
-        }
+            if (! empty($data['pin'])) {
+                $employee->pin = $data['pin'];
+            }
+            $employee->save();
 
-        return response()->json($employee->load('branch'));
+            if ($rateChanged) {
+                AuditLog::create([
+                    'type' => 'employee',
+                    'employee_id' => $employee->id,
+                    'performed_by' => $request->user()->id,
+                    'action' => 'rate_override_changed',
+                    'detail' => sprintf('Daily basic rate changed from %s to %s',
+                        $oldRate === null ? 'global' : number_format($oldRate, 2),
+                        $newRate === null ? 'global' : number_format($newRate, 2)),
+                    'old_amount' => $oldRate,
+                    'new_amount' => $newRate,
+                    'reason' => trim($data['reason']),
+                ]);
+            }
+
+            return response()->json($employee->load('branch'));
+        });
     }
 
     public function destroy(Request $request, Employee $employee) {
@@ -149,16 +154,18 @@ class EmployeeController extends Controller {
             ], 422);
         }
 
-        AuditLog::create([
-            'type' => 'employee',
-            'employee_id' => $employee->id,
-            'performed_by' => $request->user()->id,
-            'action' => 'deleted',
-            'detail' => "Deleted employee {$employee->employee_code} ({$employee->full_name})",
-        ]);
+        return DB::transaction(function () use ($request, $employee) {
+            AuditLog::create([
+                'type' => 'employee',
+                'employee_id' => $employee->id,
+                'performed_by' => $request->user()->id,
+                'action' => 'deleted',
+                'detail' => "Deleted employee {$employee->employee_code} ({$employee->full_name})",
+            ]);
 
-        $employee->delete();
+            $employee->delete();
 
-        return response()->json(['message' => 'Employee deleted.']);
+            return response()->json(['message' => 'Employee deleted.']);
+        });
     }
 }
