@@ -38,7 +38,7 @@ class EmployeeController extends Controller {
         ]);
 
         if (array_key_exists('daily_basic_rate', $data) && $data['daily_basic_rate'] !== null
-            && empty($data['reason'])) {
+            && empty(trim((string) ($data['reason'] ?? '')))) {
             return response()->json([
                 'message' => 'A reason is required when setting a daily basic rate.',
                 'errors' => ['reason' => ['A reason is required when setting a daily basic rate.']],

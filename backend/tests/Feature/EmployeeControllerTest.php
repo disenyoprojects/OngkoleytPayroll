@@ -73,6 +73,16 @@ class EmployeeControllerTest extends TestCase {
         ]))->assertStatus(422);
     }
 
+    public function test_create_with_daily_rate_and_whitespace_reason_is_rejected(): void {
+        $admin = User::factory()->create();
+        $branch = Branch::factory()->create();
+
+        $this->actingAs($admin)->postJson('/api/admin/employees', $this->payload($branch, [
+            'daily_basic_rate' => 620,
+            'reason' => '   ',
+        ]))->assertStatus(422);
+    }
+
     public function test_create_with_daily_rate_and_reason_writes_audit_log(): void {
         $admin = User::factory()->create();
         $branch = Branch::factory()->create();
