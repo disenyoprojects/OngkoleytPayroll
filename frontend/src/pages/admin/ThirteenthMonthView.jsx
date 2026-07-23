@@ -50,8 +50,8 @@ export default function ThirteenthMonthView() {
               <td><Pill tone={r.status}>{r.status}</Pill></td>
               <td>
                 {r.status === "pending" && <Button small variant="gold" onClick={() => act(r.employee.id, "compute")}>Compute</Button>}
-                {r.status !== "pending" && r.status !== "locked" && <Button small variant="outline" onClick={() => act(r.employee.id, "recompute")}>Recompute</Button>}
-                {r.status !== "pending" && r.status !== "locked" && <Button small variant="outline" onClick={() => setAdjustRow(r)}>Adjust</Button>}
+                {r.status === "computed" && <Button small variant="outline" onClick={() => act(r.employee.id, "recompute")}>Recompute</Button>}
+                {r.status === "computed" && <Button small variant="outline" onClick={() => setAdjustRow(r)}>Adjust</Button>}
                 {r.status === "computed" && <Button small variant="primary" onClick={() => act(r.employee.id, "release")}>Release</Button>}
                 {(r.status === "computed" || r.status === "released") && <Button small variant="danger" onClick={() => act(r.employee.id, "lock")}>Lock</Button>}
                 {r.status === "locked" && <Button small variant="outline" onClick={() => setUnlockRow(r)}>Unlock</Button>}
