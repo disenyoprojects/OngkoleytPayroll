@@ -50,4 +50,58 @@ class ThirteenthMonthLifecycleTest extends TestCase {
         ])->assertOk();
         $this->assertSame('released', $record->fresh()->status);
     }
+
+    private function releasedRecord(): array {
+        $employee = Employee::factory()->for(Branch::factory())->create();
+        $record = ThirteenthMonthRecord::factory()->for($employee)->create([
+            'payroll_year' => 2026, 'computed_amount' => 5000, 'status' => 'released', 'released_on' => '2026-12-24',
+        ]);
+        return [$employee, $record];
+    }
+
+    private function lockedRecord(): array {
+        $employee = Employee::factory()->for(Branch::factory())->create();
+        $record = ThirteenthMonthRecord::factory()->for($employee)->create([
+            'payroll_year' => 2026, 'computed_amount' => 5000, 'status' => 'locked', 'released_on' => '2026-12-24',
+        ]);
+        return [$employee, $record];
+    }
+
+    public function test_recompute_is_rejected_on_a_released_record(): void {
+        $admin = User::factory()->create();
+        [$employee, $record] = $this->releasedRecord();
+
+        $response = $this->actingAs($admin)->postJson("/api/admin/thirteenth-month/{$employee->id}/recompute?year=2026");
+
+        $response->assertStatus(422);
+        $fresh = $record->fresh();
+        $this->assertSame('released', $fresh->status);
+        $this->assertSame(5000.0, (float) $fresh->computed_amount);
+    }
+
+    public function test_adjust_is_rejected_on_a_released_record(): void {
+        $admin = User::factory()->create();
+        [$employee, $record] = $this->releasedRecord();
+
+        $response = $this->actingAs($admin)->postJson("/api/admin/thirteenth-month/{$employee->id}/adjust?year=2026", [
+            'amount' => 500, 'reason' => 'Attempted correction after release',
+        ]);
+
+        $response->assertStatus(422);
+        $fresh = $record->fresh();
+        $this->assertSame('released', $fresh->status);
+        $this->assertSame(0.0, (float) $fresh->manual_adjustment);
+    }
+
+    public function test_recompute_is_rejected_on_a_locked_record(): void {
+        $admin = User::factory()->create();
+        [$employee, $record] = $this->lockedRecord();
+
+        $response = $this->actingAs($admin)->postJson("/api/admin/thirteenth-month/{$employee->id}/recompute?year=2026");
+
+        $response->assertStatus(422);
+        $fresh = $record->fresh();
+        $this->assertSame('locked', $fresh->status);
+        $this->assertSame(5000.0, (float) $fresh->computed_amount);
+    }
 }

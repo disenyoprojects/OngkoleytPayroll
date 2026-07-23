@@ -9,9 +9,18 @@ use App\Models\PayrollSetting;
 use App\Models\ThirteenthMonthRecord;
 use App\Services\ThirteenthMonthCalculator;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ThirteenthMonthController extends Controller {
     public function __construct(private ThirteenthMonthCalculator $calculator) {}
+
+    private function guardNotLockedOrReleased(ThirteenthMonthRecord $record): void {
+        if (in_array($record->status, ['locked', 'released'], true)) {
+            throw ValidationException::withMessages([
+                'status' => ['This record is locked or released and cannot be recomputed or adjusted. Unlock it first.'],
+            ]);
+        }
+    }
 
     public function index(Request $request) {
         $year = (int) $request->query('year', now()->year);
@@ -43,6 +52,10 @@ class ThirteenthMonthController extends Controller {
 
     public function compute(Request $request, Employee $employee) {
         $year = (int) $request->query('year', now()->year);
+        $existing = ThirteenthMonthRecord::where('employee_id', $employee->id)->where('payroll_year', $year)->first();
+        if ($existing) {
+            $this->guardNotLockedOrReleased($existing);
+        }
         $this->computeOne($employee, $year, $request->user()->id, 'compute');
 
         return response()->json(['message' => 'Computed.']);
@@ -78,6 +91,8 @@ class ThirteenthMonthController extends Controller {
 
     public function recompute(Request $request, Employee $employee) {
         $year = (int) $request->query('year', now()->year);
+        $record = ThirteenthMonthRecord::where('employee_id', $employee->id)->where('payroll_year', $year)->firstOrFail();
+        $this->guardNotLockedOrReleased($record);
         $this->computeOne($employee, $year, $request->user()->id, 'recompute');
 
         return response()->json(['message' => 'Recomputed.']);
@@ -88,6 +103,7 @@ class ThirteenthMonthController extends Controller {
         $data = $request->validate(['amount' => ['required', 'numeric'], 'reason' => ['required', 'string', 'min:5']]);
 
         $record = ThirteenthMonthRecord::where('employee_id', $employee->id)->where('payroll_year', $year)->firstOrFail();
+        $this->guardNotLockedOrReleased($record);
         $oldAmount = $record->adjusted_amount;
         $record->update(['manual_adjustment' => $record->manual_adjustment + $data['amount']]);
 
@@ -134,6 +150,11 @@ class ThirteenthMonthController extends Controller {
         $year = (int) $request->query('year', now()->year);
         $settings = PayrollSetting::current();
         $record = ThirteenthMonthRecord::where('employee_id', $employee->id)->where('payroll_year', $year)->firstOrFail();
+        if ($record->status !== 'computed') {
+            throw ValidationException::withMessages([
+                'status' => ['Only computed records can be released.'],
+            ]);
+        }
         $record->update(['status' => 'released', 'released_on' => $settings->release_date, 'payment_method' => 'Bank Transfer']);
 
         AuditLog::create([
