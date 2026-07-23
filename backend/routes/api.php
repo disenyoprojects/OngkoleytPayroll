@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AttendanceAdminController;
 use App\Http\Controllers\Admin\AttendanceDashboardController;
 use App\Http\Controllers\Admin\PayrollController;
+use App\Http\Controllers\Admin\PayrollExportController;
 use App\Http\Controllers\Auth\AdminSessionController;
 use App\Http\Controllers\Kiosk\AttendanceClockController;
 use App\Http\Controllers\Kiosk\KioskAuthController;
@@ -23,6 +24,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/attendance/today', [AttendanceDashboardController::class, 'today']);
     Route::get('/admin/payroll/daily', [PayrollController::class, 'daily']);
     Route::get('/admin/payroll/weekly', [PayrollController::class, 'weekly']);
+    Route::get('/admin/payroll/export', [PayrollExportController::class, 'export']);
 });
 
 Route::get('/kiosk/staff', [KioskAuthController::class, 'staff']);
