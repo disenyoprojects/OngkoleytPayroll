@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AttendanceAdminController;
+use App\Http\Controllers\Admin\AttendanceDashboardController;
 use App\Http\Controllers\Auth\AdminSessionController;
 use App\Http\Controllers\Kiosk\AttendanceClockController;
 use App\Http\Controllers\Kiosk\KioskAuthController;
@@ -18,6 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/me', [AdminSessionController::class, 'me']);
     Route::patch('/admin/attendance/{record}/adjust', [AttendanceAdminController::class, 'adjust']);
     Route::post('/admin/attendance/{record}/approve', [AttendanceAdminController::class, 'approve']);
+    Route::get('/admin/attendance/today', [AttendanceDashboardController::class, 'today']);
 });
 
 Route::get('/kiosk/staff', [KioskAuthController::class, 'staff']);
