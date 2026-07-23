@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AttendanceRecord;
 use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Employee;
@@ -207,5 +208,27 @@ class EmployeeControllerTest extends TestCase {
         $this->assertSame('500.00', $employee->fresh()->daily_basic_rate);
         $this->assertSame('Updated Role', $employee->fresh()->role);
         $this->assertSame(0, AuditLog::where('employee_id', $employee->id)->where('action', 'rate_override_changed')->count());
+    }
+
+    public function test_delete_succeeds_when_employee_has_no_history(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create();
+
+        $this->actingAs($admin)->deleteJson("/api/admin/employees/{$employee->id}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('employees', ['id' => $employee->id]);
+        $this->assertSame(1, AuditLog::where('type', 'employee')->where('action', 'deleted')->count());
+    }
+
+    public function test_delete_is_refused_when_employee_has_attendance(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create();
+        AttendanceRecord::factory()->for($employee)->create();
+
+        $this->actingAs($admin)->deleteJson("/api/admin/employees/{$employee->id}")
+            ->assertStatus(422);
+
+        $this->assertDatabaseHas('employees', ['id' => $employee->id]);
     }
 }

@@ -137,4 +137,28 @@ class EmployeeController extends Controller {
 
         return response()->json($employee->load('branch'));
     }
+
+    public function destroy(Request $request, Employee $employee) {
+        $hasHistory = $employee->attendanceRecords()->exists()
+            || $employee->earnings()->exists()
+            || $employee->thirteenthMonthRecords()->exists();
+
+        if ($hasHistory) {
+            return response()->json([
+                'message' => 'This employee has attendance or payroll history and cannot be deleted. Set a resignation date instead.',
+            ], 422);
+        }
+
+        AuditLog::create([
+            'type' => 'employee',
+            'employee_id' => $employee->id,
+            'performed_by' => $request->user()->id,
+            'action' => 'deleted',
+            'detail' => "Deleted employee {$employee->employee_code} ({$employee->full_name})",
+        ]);
+
+        $employee->delete();
+
+        return response()->json(['message' => 'Employee deleted.']);
+    }
 }
