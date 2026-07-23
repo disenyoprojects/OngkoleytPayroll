@@ -25,7 +25,7 @@ class AttendancePayCalculator {
         $nightEnd = 24 * 60 + 6 * 60;
         $overlapStart = max($start, $nightStart);
         $overlapEnd = min($end, $nightEnd);
-        $nightDiffHours = max(0, ($overlapEnd - $overlapStart) / 60);
+        $nightDiffHours = max(0, ($overlapEnd - $overlapStart) / 60.0);
 
         $basic = round($regularHours * $hourlyRate, 2);
         $ot = round($otHours * $hourlyRate * (float) $settings->overtime_multiplier, 2);
