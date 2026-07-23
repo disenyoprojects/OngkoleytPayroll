@@ -231,4 +231,33 @@ class EmployeeControllerTest extends TestCase {
 
         $this->assertDatabaseHas('employees', ['id' => $employee->id]);
     }
+
+    public function test_deleting_employee_with_prior_audit_row_preserves_it_with_null_employee_id(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => 500]);
+
+        // Generate a prior audit row via a rate change (no attendance/earnings/13th-month history created)
+        $this->actingAs($admin)->putJson("/api/admin/employees/{$employee->id}", [
+            'employee_code' => $employee->employee_code,
+            'full_name' => $employee->full_name,
+            'short_name' => $employee->short_name,
+            'role' => $employee->role,
+            'branch_id' => $employee->branch_id,
+            'employment_type' => $employee->employment_type,
+            'hire_date' => $employee->hire_date->toDateString(),
+            'daily_basic_rate' => 700,
+            'reason' => 'Promotion',
+        ])->assertOk();
+
+        $priorLog = AuditLog::where('employee_id', $employee->id)
+            ->where('action', 'rate_override_changed')
+            ->firstOrFail();
+
+        // No history exists, so the delete is allowed
+        $this->actingAs($admin)->deleteJson("/api/admin/employees/{$employee->id}")->assertOk();
+
+        $this->assertDatabaseMissing('employees', ['id' => $employee->id]);
+        $priorLog->refresh();
+        $this->assertNull($priorLog->employee_id);
+    }
 }
