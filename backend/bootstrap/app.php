@@ -12,6 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Enables Sanctum's SPA authentication: adds the session/cookie
+        // middleware to the api stack so stateful (cookie-based) requests
+        // from the configured frontend domains can log in via session,
+        // rather than requiring bearer tokens.
+        $middleware->statefulApi();
+
         // This is an API-only backend (no server-rendered "login" route), so
         // unauthenticated requests must never try to redirect to one.
         $middleware->redirectGuestsTo(fn () => null);
