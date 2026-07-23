@@ -73,4 +73,66 @@ class EmployeeController extends Controller {
 
         return response()->json($employee->load('branch'), 201);
     }
+
+    public function update(Request $request, Employee $employee) {
+        $data = $request->validate([
+            'employee_code' => ['required', 'string', Rule::unique('employees', 'employee_code')->ignore($employee->id)],
+            'full_name' => ['required', 'string'],
+            'short_name' => ['required', 'string'],
+            'role' => ['required', 'string'],
+            'branch_id' => ['required', 'exists:branches,id'],
+            'employment_type' => ['required', Rule::in(['regular', 'probationary', 'fixed_term', 'seasonal'])],
+            'hire_date' => ['required', 'date'],
+            'resignation_date' => ['nullable', 'date'],
+            'pin' => ['nullable', 'string', 'size:4'],
+            'daily_basic_rate' => ['nullable', 'numeric', 'min:0'],
+            'reason' => ['nullable', 'string'],
+        ]);
+
+        $oldRate = $employee->daily_basic_rate === null ? null : (float) $employee->daily_basic_rate;
+        $newRate = array_key_exists('daily_basic_rate', $data) && $data['daily_basic_rate'] !== null
+            ? (float) $data['daily_basic_rate']
+            : null;
+        $rateChanged = $oldRate !== $newRate;
+
+        if ($rateChanged && empty(trim((string) ($data['reason'] ?? '')))) {
+            return response()->json([
+                'message' => 'A reason is required when changing the daily basic rate.',
+                'errors' => ['reason' => ['A reason is required when changing the daily basic rate.']],
+            ], 422);
+        }
+
+        $employee->fill([
+            'employee_code' => $data['employee_code'],
+            'full_name' => $data['full_name'],
+            'short_name' => $data['short_name'],
+            'role' => $data['role'],
+            'branch_id' => $data['branch_id'],
+            'employment_type' => $data['employment_type'],
+            'hire_date' => $data['hire_date'],
+            'resignation_date' => $data['resignation_date'] ?? null,
+            'daily_basic_rate' => $newRate,
+        ]);
+        if (! empty($data['pin'])) {
+            $employee->pin = $data['pin'];
+        }
+        $employee->save();
+
+        if ($rateChanged) {
+            AuditLog::create([
+                'type' => 'employee',
+                'employee_id' => $employee->id,
+                'performed_by' => $request->user()->id,
+                'action' => 'rate_override_changed',
+                'detail' => sprintf('Daily basic rate changed from %s to %s',
+                    $oldRate === null ? 'global' : number_format($oldRate, 2),
+                    $newRate === null ? 'global' : number_format($newRate, 2)),
+                'old_amount' => $oldRate,
+                'new_amount' => $newRate,
+                'reason' => $data['reason'],
+            ]);
+        }
+
+        return response()->json($employee->load('branch'));
+    }
 }

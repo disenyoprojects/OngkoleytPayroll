@@ -48,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/employees', [EmployeeController::class, 'index']);
     Route::get('/admin/branches', [EmployeeController::class, 'branches']);
     Route::post('/admin/employees', [EmployeeController::class, 'store']);
+    Route::put('/admin/employees/{employee}', [EmployeeController::class, 'update']);
 });
 
 Route::get('/kiosk/staff', [KioskAuthController::class, 'staff']);
