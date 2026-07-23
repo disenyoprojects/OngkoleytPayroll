@@ -28,6 +28,7 @@ New `App\Http\Controllers\Admin\EmployeeController`, registered under the existi
   - `pin` optional; blank/omitted means keep the existing PIN.
   - `reason` is required **only when `daily_basic_rate` changes** (set, changed to a different value, or cleared back to null). Editing any other field (name, role, branch, employment type, dates) never requires a reason.
   - When `daily_basic_rate` changes, write an `audit_logs` row capturing `old_amount`, `new_amount`, and `reason`.
+- `DELETE /admin/employees/{employee}` — hard-delete, allowed **only when the employee has no history**: no `attendance_records`, no `employee_earnings`, and no `thirteenth_month_records`. If any exist, respond `422` with a message directing the admin to set a resignation date instead. This covers deleting an employee added by mistake; genuine offboarding (including resignations) is done by setting `resignation_date` via the edit form, which preserves all payroll history. A successful delete writes an `audit_logs` row (`type: employee`, `action: deleted`).
 
 ## Pay calculation integration
 
@@ -51,7 +52,9 @@ All existing call sites pass `$record->employee->daily_basic_rate` as the 4th ar
 
 New `frontend/src/pages/admin/EmployeesView.jsx`, added as a 6th tab in `AdminApp.jsx` (`Attendance | Payroll | 13th Month | Settings | Audit Log | Employees`), matching the existing plain-inline-style / `Button` & `inputStyle` conventions used in `SettingsView.jsx` (no modals anywhere else in this app, so this screen won't introduce one either).
 
-- A table: employee code, full name, branch, employment type, daily rate (renders "— (global)" when null), an Edit action per row.
+- A table: employee code, full name, branch, employment type, daily rate (renders "— (global)" when null), resignation status, and Edit + Delete actions per row.
+- A "Hide resigned" toggle (checkbox) above the table filters out employees whose `resignation_date` is set and in the past, so the active roster stays uncluttered. Default: on. Resigned employees remain fully in the system — this is display-only.
+- The Delete action asks for confirmation; if the API refuses (employee has history), the returned message is shown, steering the admin to set a resignation date instead.
 - "+ Add Employee" button toggles the same form component in "create" mode, blank.
 - Form fields: employee code, full name, short name, role, branch (`<select>` populated from `GET /admin/branches`), employment type (`<select>` of the 4 fixed values), hire date, resignation date (optional), PIN (labelled "leave blank to keep current" when editing), daily basic rate (optional, labelled "blank = use global rate").
 - A `Reason` input appears (and is required) only when the daily rate field's current value differs from the value the form was loaded with — mirrors the conditional-reason-box pattern already used for attendance adjustments elsewhere in the admin UI.
@@ -64,10 +67,12 @@ New `frontend/src/pages/admin/EmployeesView.jsx`, added as a 6th tab in `AdminAp
   - update that changes `daily_basic_rate` requires `reason` and writes an audit log row (with correct `old_amount`/`new_amount`)
   - update that does **not** touch `daily_basic_rate` succeeds without a `reason`
   - update with a blank `pin` keeps the existing PIN working (`verifyPin` still passes with the old PIN)
+  - delete succeeds for an employee with no history and removes the row
+  - delete is refused (`422`) for an employee that has an attendance record (or earning / 13th-month record), and the employee is NOT deleted
 - Unit test for `AttendancePayCalculator::compute()`: asserts the override is used when given, and falls back to the settings' global rate when `null`.
 
 ## Out of scope (YAGNI)
 
-- No hard delete of employees — offboarding is already handled by setting `resignation_date` via the edit form.
+- No hard delete of employees who have any history — those are offboarded by setting `resignation_date` via the edit form (delete is reserved for records created by mistake).
 - No employee-level overrides for overtime/night-diff multipliers — only the daily basic rate is per-employee for now.
 - No pagination/search on the employee list at this roster size.
