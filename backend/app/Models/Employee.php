@@ -11,12 +11,13 @@ class Employee extends Model {
 
     protected $fillable = [
         'employee_code', 'full_name', 'short_name', 'role', 'branch_id',
-        'employment_type', 'hire_date', 'resignation_date', 'pin_hash',
+        'employment_type', 'daily_basic_rate', 'hire_date', 'resignation_date', 'pin_hash',
     ];
     protected $hidden = ['pin_hash'];
     protected $casts = [
         'hire_date' => 'date',
         'resignation_date' => 'date',
+        'daily_basic_rate' => 'decimal:2',
     ];
 
     public function branch() {

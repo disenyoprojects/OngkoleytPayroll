@@ -7,6 +7,7 @@ import PayrollView from "./PayrollView";
 import ThirteenthMonthView from "./ThirteenthMonthView";
 import SettingsView from "./SettingsView";
 import AuditLogView from "./AuditLogView";
+import EmployeesView from "./EmployeesView";
 
 const TABS = [
   ["attendance", "Attendance"],
@@ -14,6 +15,7 @@ const TABS = [
   ["thirteenth-month", "13th Month"],
   ["settings", "Settings"],
   ["audit", "Audit Log"],
+  ["employees", "Employees"],
 ];
 
 export default function AdminApp() {
@@ -54,6 +56,7 @@ export default function AdminApp() {
       {tab === "thirteenth-month" && <ThirteenthMonthView />}
       {tab === "settings" && <SettingsView />}
       {tab === "audit" && <AuditLogView />}
+      {tab === "employees" && <EmployeesView />}
     </div>
   );
 }

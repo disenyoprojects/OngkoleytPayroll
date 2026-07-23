@@ -24,13 +24,14 @@ class StaffDashboardController extends Controller {
         $weekStart = now()->startOfWeek();
 
         $todayRecord = AttendanceRecord::where('employee_id', $employee->id)->where('work_date', $today)->first();
-        $todayPay = $todayRecord ? $this->payCalculator->compute($todayRecord->clock_in, $todayRecord->clock_out, $settings) : null;
+        $rate = $employee->daily_basic_rate === null ? null : (float) $employee->daily_basic_rate;
+        $todayPay = $todayRecord ? $this->payCalculator->compute($todayRecord->clock_in, $todayRecord->clock_out, $settings, $rate) : null;
 
         $weekRecords = AttendanceRecord::where('employee_id', $employee->id)
             ->whereBetween('work_date', [$weekStart->toDateString(), $weekStart->copy()->addDays(6)->toDateString()])
             ->whereNotNull('clock_out')
             ->get();
-        $weekPays = $weekRecords->map(fn (AttendanceRecord $r) => $this->payCalculator->compute($r->clock_in, $r->clock_out, $settings));
+        $weekPays = $weekRecords->map(fn (AttendanceRecord $r) => $this->payCalculator->compute($r->clock_in, $r->clock_out, $settings, $rate));
 
         $eligible = $this->thirteenthMonthCalculator->isEligible($employee, $settings, now()->year);
         $thirteenthMonth = $eligible ? [
