@@ -29,7 +29,7 @@ export default function KioskClockPage() {
       const { data } = await apiClient.post("/api/kiosk/verify-pin", { employee_id: selected.id, pin });
       const todayRes = await apiClient.get("/api/kiosk/today", { headers: { Authorization: `Bearer ${data.token}` } });
       const record = todayRes.data;
-      const action = !record || record.clock_out ? "clock-in" : "clock-out";
+      const action = !record?.clock_in || record.clock_out ? "clock-in" : "clock-out";
       await apiClient.post(`/api/kiosk/${action}`, {}, { headers: { Authorization: `Bearer ${data.token}` } });
       showToast(`${selected.short_name} clocked ${action === "clock-in" ? "in" : "out"}.`);
       setSelected(null);
