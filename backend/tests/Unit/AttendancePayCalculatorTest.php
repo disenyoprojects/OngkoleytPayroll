@@ -26,6 +26,7 @@ class AttendancePayCalculatorTest extends TestCase {
         $this->assertSame(9.0, $result['total_hours']);
         $this->assertSame(8.0, $result['regular_hours']);
         $this->assertSame(1.0, $result['ot_hours']);
+        $this->assertIsFloat($result['night_diff_hours']);
         $hourlyRate = 505 / 8;
         $this->assertEqualsWithDelta(round($hourlyRate * 8, 2), $result['basic'], 0.01);
         $this->assertEqualsWithDelta(round($hourlyRate * 1 * 1.25, 2), $result['ot'], 0.01);
