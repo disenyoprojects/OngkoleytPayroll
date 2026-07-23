@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\PayrollSetting;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class PayrollSettingController extends Controller {
     public function show() {
@@ -22,9 +23,9 @@ class PayrollSettingController extends Controller {
             'release_date' => ['required', 'date'],
             'minimum_months' => ['required', 'integer', 'min:0', 'max:12'],
             'included_earnings' => ['required', 'array'],
-            'included_earnings.*' => ['string'],
+            'included_earnings.*' => ['string', Rule::in(['BASIC', 'OVERTIME', 'NIGHT_DIFF', 'HOLIDAY_PREMIUM', 'ALLOWANCE', 'BONUS', 'INCENTIVE', 'COMMISSION', 'LEAVE_CONVERSION'])],
             'employment_types_included' => ['required', 'array'],
-            'employment_types_included.*' => ['string'],
+            'employment_types_included.*' => ['string', Rule::in(['regular', 'probationary', 'fixed_term', 'seasonal'])],
         ]);
 
         $settings = PayrollSetting::current();
