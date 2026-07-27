@@ -44,6 +44,13 @@ export function ModalShell({ children, onClose, width = 460 }) {
 
 export const inputStyle = { width: "100%", padding: "9px 10px", border: `1px solid ${COLOR.line}`, borderRadius: 6, fontSize: 13 };
 
+// Shared table styling for the admin data tables (card look, aligned headers,
+// row dividers). Wrap a <table style={tableStyle}> inside <div style={tableWrap}>.
+export const tableWrap = { background: "white", border: `1px solid ${COLOR.line}`, borderRadius: 10, overflow: "hidden" };
+export const tableStyle = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
+export const thStyle = { textAlign: "left", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", color: COLOR.inkSoft, fontWeight: 700, padding: "11px 14px", background: COLOR.cream, borderBottom: `1px solid ${COLOR.line}`, whiteSpace: "nowrap" };
+export const tdStyle = { padding: "11px 14px", borderBottom: `1px solid ${COLOR.line}`, color: COLOR.ink, verticalAlign: "middle" };
+
 export function tabBtnStyle(active) {
   return { padding: "8px 16px", borderRadius: 8, border: `1px solid ${active ? COLOR.espresso : COLOR.line}`, background: active ? COLOR.espresso : "white", color: active ? COLOR.cream : COLOR.ink, fontSize: 13, fontWeight: 600, cursor: "pointer" };
 }

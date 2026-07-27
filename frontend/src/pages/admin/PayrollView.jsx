@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
-import { formatPHP, formatTime12 } from "../../theme";
-import { Button, StatCard, tabBtnStyle } from "../../components/ui";
+import { formatPHP, formatTime12, FONT_DISPLAY } from "../../theme";
+import { Button, StatCard, tabBtnStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 
 export default function PayrollView() {
   const [range, setRange] = useState("daily");
@@ -26,7 +26,7 @@ export default function PayrollView() {
 
   return (
     <div>
-      <h1>Payroll</h1>
+      <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, marginBottom: 18 }}>Payroll</h1>
       <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
         <StatCard label={`Total ${range === "daily" ? "Today" : "This Week"}`} value={formatPHP(data.total)} />
       </div>
@@ -40,34 +40,67 @@ export default function PayrollView() {
           <Button variant="outline" onClick={() => download("pdf")}>⬇ PDF</Button>
         </div>
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        {range === "daily" ? (
-          <>
-            <thead><tr><th>Staff</th><th>Role</th><th>Branch</th><th>Clock In</th><th>Clock Out</th><th>Total Pay</th></tr></thead>
-            <tbody>
-              {data.rows.map((r) => (
-                <tr key={r.record.id}>
-                  <td>{r.employee.short_name}</td><td>{r.employee.role}</td><td>{r.employee.branch.name}</td>
-                  <td>{formatTime12(r.record.clock_in)}</td><td>{formatTime12(r.record.clock_out)}</td>
-                  <td>{formatPHP(r.pay.total)}</td>
+      <div style={tableWrap}>
+        <table style={tableStyle}>
+          {range === "daily" ? (
+            <>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Staff</th>
+                  <th style={thStyle}>Role</th>
+                  <th style={thStyle}>Branch</th>
+                  <th style={thStyle}>Clock In</th>
+                  <th style={thStyle}>Clock Out</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Total Pay</th>
                 </tr>
-              ))}
-            </tbody>
-          </>
-        ) : (
-          <>
-            <thead><tr><th>Staff</th><th>Role</th><th>Branch</th><th>Days Worked</th><th>Total Hours</th><th>Total Pay</th></tr></thead>
-            <tbody>
-              {data.rows.map((r) => (
-                <tr key={r.employee_id}>
-                  <td>{r.employee.short_name}</td><td>{r.employee.role}</td><td>{r.employee.branch.name}</td>
-                  <td>{r.days_worked}</td><td>{r.total_hours}h</td><td>{formatPHP(r.total)}</td>
+              </thead>
+              <tbody>
+                {data.rows.length === 0 && (
+                  <tr><td style={{ ...tdStyle, textAlign: "center", color: "#7A6A57" }} colSpan={6}>No payroll for this period.</td></tr>
+                )}
+                {data.rows.map((r) => (
+                  <tr key={r.record.id}>
+                    <td style={{ ...tdStyle, fontWeight: 600 }}>{r.employee.short_name}</td>
+                    <td style={tdStyle}>{r.employee.role}</td>
+                    <td style={tdStyle}>{r.employee.branch.name}</td>
+                    <td style={tdStyle}>{formatTime12(r.record.clock_in)}</td>
+                    <td style={tdStyle}>{formatTime12(r.record.clock_out)}</td>
+                    <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>{formatPHP(r.pay.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </>
+          ) : (
+            <>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Staff</th>
+                  <th style={thStyle}>Role</th>
+                  <th style={thStyle}>Branch</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Days Worked</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Total Hours</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Total Pay</th>
                 </tr>
-              ))}
-            </tbody>
-          </>
-        )}
-      </table>
+              </thead>
+              <tbody>
+                {data.rows.length === 0 && (
+                  <tr><td style={{ ...tdStyle, textAlign: "center", color: "#7A6A57" }} colSpan={6}>No payroll for this period.</td></tr>
+                )}
+                {data.rows.map((r) => (
+                  <tr key={r.employee_id}>
+                    <td style={{ ...tdStyle, fontWeight: 600 }}>{r.employee.short_name}</td>
+                    <td style={tdStyle}>{r.employee.role}</td>
+                    <td style={tdStyle}>{r.employee.branch.name}</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>{r.days_worked}</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>{r.total_hours}h</td>
+                    <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>{formatPHP(r.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </>
+          )}
+        </table>
+      </div>
     </div>
   );
 }
