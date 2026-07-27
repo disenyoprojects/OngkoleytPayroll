@@ -16,7 +16,16 @@ class AttendancePayCalculator {
             $end += 24 * 60;
         }
 
-        $totalHours = ($end - $start) / 60.0;
+        $spanHours = ($end - $start) / 60.0;
+
+        // Deduct the unpaid break from worked hours before splitting into
+        // regular/OT. Only deduct when the shift is longer than the break
+        // itself (a shift shorter than the break isn't docked). Night
+        // differential is still based on actual clock time in the night
+        // window, matching the payroll worksheet.
+        $breakHours = (float) ($settings->unpaid_break_hours ?? 0);
+        $totalHours = $spanHours > $breakHours ? $spanHours - $breakHours : $spanHours;
+
         $dailyRate = $dailyRateOverride ?? (float) $settings->daily_basic_rate;
         $hourlyRate = $dailyRate / 8;
         $regularHours = (float) min($totalHours, 8);
