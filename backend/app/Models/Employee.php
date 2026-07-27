@@ -12,8 +12,8 @@ class Employee extends Model {
 
     protected $fillable = [
         'employee_code', 'full_name', 'short_name', 'role', 'branch_id',
-        'employment_type', 'daily_basic_rate', 'hire_date', 'resignation_date',
-        'separation_type', 'separation_reason', 'pin_hash',
+        'employment_type', 'shift_start', 'shift_end', 'daily_basic_rate', 'hire_date',
+        'resignation_date', 'separation_type', 'separation_reason', 'pin_hash',
     ];
     protected $hidden = ['pin_hash'];
     protected $casts = [

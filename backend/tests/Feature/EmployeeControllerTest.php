@@ -65,6 +65,49 @@ class EmployeeControllerTest extends TestCase {
             ->assertStatus(422);
     }
 
+    public function test_create_persists_shift_times_and_defaults(): void {
+        $admin = User::factory()->create();
+        $branch = Branch::factory()->create();
+
+        // Explicit shift.
+        $this->actingAs($admin)->postJson('/api/admin/employees', $this->payload($branch, [
+            'employee_code' => 'ONG-5002',
+            'shift_start' => '13:00',
+            'shift_end' => '22:00',
+        ]))->assertCreated();
+        $emp = Employee::where('employee_code', 'ONG-5002')->firstOrFail();
+        $this->assertSame('13:00:00', $emp->shift_start);
+        $this->assertSame('22:00:00', $emp->shift_end);
+
+        // Omitted shift falls back to the 08:00-17:00 default.
+        $this->actingAs($admin)->postJson('/api/admin/employees', $this->payload($branch, [
+            'employee_code' => 'ONG-5003',
+        ]))->assertCreated();
+        $def = Employee::where('employee_code', 'ONG-5003')->firstOrFail();
+        $this->assertSame('08:00:00', $def->shift_start);
+        $this->assertSame('17:00:00', $def->shift_end);
+    }
+
+    public function test_update_changes_shift_times(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create();
+
+        $this->actingAs($admin)->putJson("/api/admin/employees/{$employee->id}", [
+            'employee_code' => $employee->employee_code,
+            'full_name' => $employee->full_name,
+            'short_name' => $employee->short_name,
+            'role' => $employee->role,
+            'branch_id' => $employee->branch_id,
+            'employment_type' => $employee->employment_type,
+            'hire_date' => $employee->hire_date->toDateString(),
+            'shift_start' => '09:30',
+            'shift_end' => '18:30',
+        ])->assertOk();
+
+        $this->assertSame('09:30:00', $employee->fresh()->shift_start);
+        $this->assertSame('18:30:00', $employee->fresh()->shift_end);
+    }
+
     public function test_create_with_daily_rate_needs_no_reason_and_still_audits(): void {
         $admin = User::factory()->create();
         $branch = Branch::factory()->create();

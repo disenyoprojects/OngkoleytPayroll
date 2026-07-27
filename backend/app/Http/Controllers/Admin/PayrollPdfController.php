@@ -27,7 +27,9 @@ class PayrollPdfController extends Controller {
                 $record->clock_in,
                 $record->clock_out,
                 $settings,
-                $record->employee->daily_basic_rate === null ? null : (float) $record->employee->daily_basic_rate
+                $record->employee->daily_basic_rate === null ? null : (float) $record->employee->daily_basic_rate,
+                $record->employee->shift_start,
+                $record->employee->shift_end
             ),
         ]);
 
