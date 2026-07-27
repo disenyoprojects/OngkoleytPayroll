@@ -21,15 +21,16 @@ class AttendancePayCalculatorTest extends TestCase {
     }
 
     public function test_computes_a_standard_eight_hour_shift(): void {
+        // 08:00-17:00 is a 9h span; less the 1h unpaid break = 8h worked, no OT.
         $result = (new AttendancePayCalculator())->compute('08:00', '17:00', $this->settings());
 
-        $this->assertSame(9.0, $result['total_hours']);
+        $this->assertSame(8.0, $result['total_hours']);
         $this->assertSame(8.0, $result['regular_hours']);
-        $this->assertSame(1.0, $result['ot_hours']);
+        $this->assertSame(0.0, $result['ot_hours']);
         $this->assertIsFloat($result['night_diff_hours']);
         $hourlyRate = 505 / 8;
         $this->assertEqualsWithDelta(round($hourlyRate * 8, 2), $result['basic'], 0.01);
-        $this->assertEqualsWithDelta(round($hourlyRate * 1 * 1.25, 2), $result['ot'], 0.01);
+        $this->assertSame(0.0, $result['ot']);
     }
 
     public function test_computes_night_differential_for_hours_between_10pm_and_6am(): void {
@@ -42,8 +43,9 @@ class AttendancePayCalculatorTest extends TestCase {
     }
 
     public function test_handles_a_shift_that_crosses_midnight(): void {
+        // 22:00-02:00 is a 4h span; less the 1h unpaid break = 3h worked.
         $result = (new AttendancePayCalculator())->compute('22:00', '02:00', $this->settings());
 
-        $this->assertSame(4.0, $result['total_hours']);
+        $this->assertSame(3.0, $result['total_hours']);
     }
 }
