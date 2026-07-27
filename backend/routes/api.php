@@ -46,10 +46,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/admin/settings', [PayrollSettingController::class, 'update']);
     Route::get('/admin/audit-log', [AuditLogController::class, 'index']);
     Route::get('/admin/employees', [EmployeeController::class, 'index']);
+    Route::get('/admin/employees/separated', [EmployeeController::class, 'separated']);
     Route::get('/admin/branches', [EmployeeController::class, 'branches']);
     Route::post('/admin/employees', [EmployeeController::class, 'store']);
     Route::put('/admin/employees/{employee}', [EmployeeController::class, 'update']);
-    Route::delete('/admin/employees/{employee}', [EmployeeController::class, 'destroy']);
+    Route::post('/admin/employees/{employee}/separate', [EmployeeController::class, 'separate']);
+    Route::post('/admin/employees/{id}/restore', [EmployeeController::class, 'restore']);
 });
 
 Route::get('/kiosk/staff', [KioskAuthController::class, 'staff']);
