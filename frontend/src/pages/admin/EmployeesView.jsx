@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
-import { Button, inputStyle } from "../../components/ui";
+import { Button, inputStyle, ModalShell } from "../../components/ui";
 import { formatPHP } from "../../theme";
 
 const EMPLOYMENT_TYPES = ["regular", "probationary", "fixed_term", "seasonal"];
@@ -136,7 +136,7 @@ export default function EmployeesView() {
       </table>
 
       {editing && (
-        <div style={{ background: "white", border: "1px solid #E7DCC6", borderRadius: 10, padding: 20, marginTop: 16, maxWidth: 520 }}>
+        <ModalShell width={520} onClose={() => setEditing(null)}>
           <h3 style={{ marginTop: 0 }}>{editing.id ? "Edit Employee" : "Add Employee"}</h3>
           {[
             ["employee_code", "Employee Code", "text"],
@@ -181,7 +181,7 @@ export default function EmployeesView() {
           {error && <div style={{ color: "#C1521F", fontSize: 12, marginBottom: 12 }}>{error}</div>}
           <Button variant="gold" onClick={save}>Save</Button>{" "}
           <Button onClick={() => setEditing(null)}>Cancel</Button>
-        </div>
+        </ModalShell>
       )}
     </div>
   );
