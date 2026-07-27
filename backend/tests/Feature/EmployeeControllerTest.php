@@ -65,23 +65,15 @@ class EmployeeControllerTest extends TestCase {
             ->assertStatus(422);
     }
 
-    public function test_create_with_daily_rate_requires_reason(): void {
+    public function test_create_with_daily_rate_needs_no_reason_and_still_audits(): void {
         $admin = User::factory()->create();
         $branch = Branch::factory()->create();
 
         $this->actingAs($admin)->postJson('/api/admin/employees', $this->payload($branch, [
             'daily_basic_rate' => 620,
-        ]))->assertStatus(422);
-    }
+        ]))->assertCreated();
 
-    public function test_create_with_daily_rate_and_whitespace_reason_is_rejected(): void {
-        $admin = User::factory()->create();
-        $branch = Branch::factory()->create();
-
-        $this->actingAs($admin)->postJson('/api/admin/employees', $this->payload($branch, [
-            'daily_basic_rate' => 620,
-            'reason' => '   ',
-        ]))->assertStatus(422);
+        $this->assertSame(1, AuditLog::where('type', 'employee')->where('action', 'rate_override_set')->count());
     }
 
     public function test_create_with_daily_rate_and_reason_writes_audit_log(): void {
@@ -117,7 +109,7 @@ class EmployeeControllerTest extends TestCase {
         $this->assertSame('Head Barista', $employee->fresh()->role);
     }
 
-    public function test_update_changing_rate_requires_reason(): void {
+    public function test_update_changing_rate_needs_no_reason_and_still_audits(): void {
         $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => null]);
 
@@ -130,24 +122,10 @@ class EmployeeControllerTest extends TestCase {
             'employment_type' => $employee->employment_type,
             'hire_date' => $employee->hire_date->toDateString(),
             'daily_basic_rate' => 700,
-        ])->assertStatus(422);
-    }
+        ])->assertOk();
 
-    public function test_update_changing_rate_with_whitespace_reason_is_rejected(): void {
-        $admin = User::factory()->create();
-        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => 500]);
-
-        $this->actingAs($admin)->putJson("/api/admin/employees/{$employee->id}", [
-            'employee_code' => $employee->employee_code,
-            'full_name' => $employee->full_name,
-            'short_name' => $employee->short_name,
-            'role' => $employee->role,
-            'branch_id' => $employee->branch_id,
-            'employment_type' => $employee->employment_type,
-            'hire_date' => $employee->hire_date->toDateString(),
-            'daily_basic_rate' => 700,
-            'reason' => '   ',
-        ])->assertStatus(422);
+        $this->assertSame('700.00', $employee->fresh()->daily_basic_rate);
+        $this->assertSame(1, AuditLog::where('employee_id', $employee->id)->where('action', 'rate_override_changed')->count());
     }
 
     public function test_update_changing_rate_with_reason_writes_audit_log(): void {
