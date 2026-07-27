@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
-import { Button, inputStyle, ModalShell } from "../../components/ui";
+import { Button, inputStyle, ModalShell, Pill } from "../../components/ui";
 import { formatPHP } from "../../theme";
 
 const EMPLOYMENT_TYPES = ["regular", "probationary", "fixed_term", "seasonal"];
@@ -11,26 +11,41 @@ const BLANK = {
   resignation_date: "", pin: "", daily_basic_rate: "",
 };
 
-function isResigned(emp) {
-  return emp.resignation_date && new Date(emp.resignation_date) < new Date();
+function today() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 export default function EmployeesView() {
+  const [view, setView] = useState("active"); // "active" | "separated"
   const [employees, setEmployees] = useState([]);
+  const [separated, setSeparated] = useState([]);
+  const [sepFilter, setSepFilter] = useState("all"); // all | proper | improper
   const [branches, setBranches] = useState([]);
-  const [hideResigned, setHideResigned] = useState(true);
-  const [editing, setEditing] = useState(null); // null = closed; {} = form state
+  const [editing, setEditing] = useState(null); // add/edit form state
   const [originalRate, setOriginalRate] = useState("");
   const [error, setError] = useState(null);
+  const [removing, setRemoving] = useState(null); // employee being separated
+  const [sepForm, setSepForm] = useState({ separation_type: "proper", resignation_date: "", reason: "" });
+  const [sepError, setSepError] = useState(null);
 
-  function load() {
+  function loadActive() {
     apiClient.get("/api/admin/employees").then((res) => setEmployees(res.data));
   }
 
+  function loadSeparated(filter = sepFilter) {
+    const q = filter === "all" ? "" : `?type=${filter}`;
+    apiClient.get(`/api/admin/employees/separated${q}`).then((res) => setSeparated(res.data));
+  }
+
   useEffect(() => {
-    load();
+    loadActive();
     apiClient.get("/api/admin/branches").then((res) => setBranches(res.data));
   }, []);
+
+  useEffect(() => {
+    if (view === "separated") loadSeparated();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, sepFilter]);
 
   function openAdd() {
     setError(null);
@@ -77,63 +92,132 @@ export default function EmployeesView() {
         await apiClient.post("/api/admin/employees", payload);
       }
       setEditing(null);
-      load();
+      loadActive();
     } catch (err) {
       setError(err.response?.data?.message || "Could not save employee.");
     }
   }
 
-  async function remove(emp) {
-    if (!window.confirm(`Delete ${emp.short_name}? This cannot be undone.`)) return;
+  function openRemove(emp) {
+    setSepError(null);
+    setSepForm({ separation_type: "proper", resignation_date: today(), reason: "" });
+    setRemoving(emp);
+  }
+
+  async function submitRemove() {
+    setSepError(null);
     try {
-      await apiClient.delete(`/api/admin/employees/${emp.id}`);
-      load();
+      await apiClient.post(`/api/admin/employees/${removing.id}/separate`, sepForm);
+      setRemoving(null);
+      loadActive();
     } catch (err) {
-      window.alert(err.response?.data?.message || "Could not delete employee.");
+      setSepError(err.response?.data?.message || "Could not remove employee.");
     }
   }
 
-  const visible = hideResigned ? employees.filter((e) => !isResigned(e)) : employees;
+  async function restore(emp) {
+    try {
+      await apiClient.post(`/api/admin/employees/${emp.id}/restore`);
+      loadSeparated();
+      loadActive();
+    } catch (err) {
+      window.alert(err.response?.data?.message || "Could not restore employee.");
+    }
+  }
+
+  const switchStyle = (active) => ({
+    padding: "6px 14px", borderRadius: 7, border: "1px solid #E7DCC6",
+    background: active ? "#2E2118" : "white", color: active ? "#FAF6EC" : "#221A13",
+    fontSize: 13, fontWeight: 600, cursor: "pointer",
+  });
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
-        <Button variant="gold" onClick={openAdd}>+ Add Employee</Button>
-        <label style={{ fontSize: 13, display: "flex", gap: 6, alignItems: "center" }}>
-          <input type="checkbox" checked={hideResigned} onChange={(e) => setHideResigned(e.target.checked)} />
-          Hide resigned
-        </label>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        <button style={switchStyle(view === "active")} onClick={() => setView("active")}>Active</button>
+        <button style={switchStyle(view === "separated")} onClick={() => setView("separated")}>Separated</button>
+        {view === "active" && (
+          <Button variant="gold" onClick={openAdd}>+ Add Employee</Button>
+        )}
       </div>
 
-      <table style={{ width: "100%", borderCollapse: "collapse", background: "white", border: "1px solid #E7DCC6", borderRadius: 10 }}>
-        <thead>
-          <tr style={{ textAlign: "left", fontSize: 12, color: "#7A6A57" }}>
-            <th style={{ padding: 10 }}>Code</th>
-            <th style={{ padding: 10 }}>Name</th>
-            <th style={{ padding: 10 }}>Branch</th>
-            <th style={{ padding: 10 }}>Type</th>
-            <th style={{ padding: 10 }}>Daily Rate</th>
-            <th style={{ padding: 10 }}>Status</th>
-            <th style={{ padding: 10 }}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {visible.map((emp) => (
-            <tr key={emp.id} style={{ borderTop: "1px solid #E7DCC6", fontSize: 13 }}>
-              <td style={{ padding: 10 }}>{emp.employee_code}</td>
-              <td style={{ padding: 10 }}>{emp.full_name}</td>
-              <td style={{ padding: 10 }}>{emp.branch?.name}</td>
-              <td style={{ padding: 10 }}>{emp.employment_type.replace("_", " ")}</td>
-              <td style={{ padding: 10 }}>{emp.daily_basic_rate == null ? "— (global)" : formatPHP(emp.daily_basic_rate)}</td>
-              <td style={{ padding: 10 }}>{isResigned(emp) ? "Resigned" : "Active"}</td>
-              <td style={{ padding: 10, textAlign: "right", whiteSpace: "nowrap" }}>
-                <Button small onClick={() => openEdit(emp)}>Edit</Button>{" "}
-                <Button small variant="danger" onClick={() => remove(emp)}>Delete</Button>
-              </td>
+      {view === "active" && (
+        <table style={{ width: "100%", borderCollapse: "collapse", background: "white", border: "1px solid #E7DCC6", borderRadius: 10 }}>
+          <thead>
+            <tr style={{ textAlign: "left", fontSize: 12, color: "#7A6A57" }}>
+              <th style={{ padding: 10 }}>Code</th>
+              <th style={{ padding: 10 }}>Name</th>
+              <th style={{ padding: 10 }}>Branch</th>
+              <th style={{ padding: 10 }}>Type</th>
+              <th style={{ padding: 10 }}>Daily Rate</th>
+              <th style={{ padding: 10 }}></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {employees.map((emp) => (
+              <tr key={emp.id} style={{ borderTop: "1px solid #E7DCC6", fontSize: 13 }}>
+                <td style={{ padding: 10 }}>{emp.employee_code}</td>
+                <td style={{ padding: 10 }}>{emp.full_name}</td>
+                <td style={{ padding: 10 }}>{emp.branch?.name}</td>
+                <td style={{ padding: 10 }}>{emp.employment_type.replace("_", " ")}</td>
+                <td style={{ padding: 10 }}>{emp.daily_basic_rate == null ? "— (global)" : formatPHP(emp.daily_basic_rate)}</td>
+                <td style={{ padding: 10, textAlign: "right", whiteSpace: "nowrap" }}>
+                  <Button small onClick={() => openEdit(emp)}>Edit</Button>{" "}
+                  <Button small variant="danger" onClick={() => openRemove(emp)}>Remove</Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {view === "separated" && (
+        <div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12, fontSize: 13, alignItems: "center" }}>
+            <span style={{ color: "#7A6A57" }}>Filter:</span>
+            {["all", "proper", "improper"].map((f) => (
+              <button key={f} style={switchStyle(sepFilter === f)} onClick={() => setSepFilter(f)}>
+                {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+          <table style={{ width: "100%", borderCollapse: "collapse", background: "white", border: "1px solid #E7DCC6", borderRadius: 10 }}>
+            <thead>
+              <tr style={{ textAlign: "left", fontSize: 12, color: "#7A6A57" }}>
+                <th style={{ padding: 10 }}>Code</th>
+                <th style={{ padding: 10 }}>Name</th>
+                <th style={{ padding: 10 }}>Branch</th>
+                <th style={{ padding: 10 }}>Resignation</th>
+                <th style={{ padding: 10 }}>Removed On</th>
+                <th style={{ padding: 10 }}>Reason</th>
+                <th style={{ padding: 10 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {separated.length === 0 && (
+                <tr><td colSpan={7} style={{ padding: 14, fontSize: 13, color: "#7A6A57" }}>No separated employees.</td></tr>
+              )}
+              {separated.map((emp) => (
+                <tr key={emp.id} style={{ borderTop: "1px solid #E7DCC6", fontSize: 13 }}>
+                  <td style={{ padding: 10 }}>{emp.employee_code}</td>
+                  <td style={{ padding: 10 }}>{emp.full_name}</td>
+                  <td style={{ padding: 10 }}>{emp.branch?.name}</td>
+                  <td style={{ padding: 10 }}>
+                    <Pill tone={emp.separation_type === "proper" ? "approved" : "locked"}>
+                      {emp.separation_type}
+                    </Pill>
+                  </td>
+                  <td style={{ padding: 10 }}>{emp.deleted_at ? String(emp.deleted_at).slice(0, 10) : "—"}</td>
+                  <td style={{ padding: 10 }}>{emp.separation_reason}</td>
+                  <td style={{ padding: 10, textAlign: "right" }}>
+                    <Button small onClick={() => restore(emp)}>Restore</Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {editing && (
         <ModalShell width={520} onClose={() => setEditing(null)}>
@@ -181,6 +265,33 @@ export default function EmployeesView() {
           {error && <div style={{ color: "#C1521F", fontSize: 12, marginBottom: 12 }}>{error}</div>}
           <Button variant="gold" onClick={save}>Save</Button>{" "}
           <Button onClick={() => setEditing(null)}>Cancel</Button>
+        </ModalShell>
+      )}
+
+      {removing && (
+        <ModalShell width={460} onClose={() => setRemoving(null)}>
+          <h3 style={{ marginTop: 0 }}>Remove {removing.short_name}</h3>
+          <p style={{ fontSize: 13, color: "#7A6A57", marginTop: 0 }}>
+            This moves the employee to Separated. Their records are kept and they can be restored later.
+          </p>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, marginBottom: 4 }}>Resignation Type</div>
+            <select value={sepForm.separation_type} onChange={(e) => setSepForm((f) => ({ ...f, separation_type: e.target.value }))} style={inputStyle}>
+              <option value="proper">Proper (gave notice / formal)</option>
+              <option value="improper">Improper (AWOL / no notice)</option>
+            </select>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, marginBottom: 4 }}>Resignation Date</div>
+            <input type="date" value={sepForm.resignation_date} onChange={(e) => setSepForm((f) => ({ ...f, resignation_date: e.target.value }))} style={inputStyle} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, marginBottom: 4 }}>Reason (required)</div>
+            <input type="text" value={sepForm.reason} onChange={(e) => setSepForm((f) => ({ ...f, reason: e.target.value }))} style={inputStyle} />
+          </div>
+          {sepError && <div style={{ color: "#C1521F", fontSize: 12, marginBottom: 12 }}>{sepError}</div>}
+          <Button variant="danger" onClick={submitRemove}>Remove Employee</Button>{" "}
+          <Button onClick={() => setRemoving(null)}>Cancel</Button>
         </ModalShell>
       )}
     </div>

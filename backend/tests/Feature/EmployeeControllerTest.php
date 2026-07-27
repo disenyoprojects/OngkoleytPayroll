@@ -210,54 +210,95 @@ class EmployeeControllerTest extends TestCase {
         $this->assertSame(0, AuditLog::where('employee_id', $employee->id)->where('action', 'rate_override_changed')->count());
     }
 
-    public function test_delete_succeeds_when_employee_has_no_history(): void {
-        $admin = User::factory()->create();
-        $employee = Employee::factory()->for(Branch::factory())->create();
-
-        $this->actingAs($admin)->deleteJson("/api/admin/employees/{$employee->id}")
-            ->assertOk();
-
-        $this->assertDatabaseMissing('employees', ['id' => $employee->id]);
-        $this->assertSame(1, AuditLog::where('type', 'employee')->where('action', 'deleted')->count());
-    }
-
-    public function test_delete_is_refused_when_employee_has_attendance(): void {
+    public function test_separate_archives_employee_and_sets_type_reason_and_audit(): void {
         $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create();
         AttendanceRecord::factory()->for($employee)->create();
 
-        $this->actingAs($admin)->deleteJson("/api/admin/employees/{$employee->id}")
-            ->assertStatus(422);
-
-        $this->assertDatabaseHas('employees', ['id' => $employee->id]);
-    }
-
-    public function test_deleting_employee_with_prior_audit_row_preserves_it_with_null_employee_id(): void {
-        $admin = User::factory()->create();
-        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => 500]);
-
-        // Generate a prior audit row via a rate change (no attendance/earnings/13th-month history created)
-        $this->actingAs($admin)->putJson("/api/admin/employees/{$employee->id}", [
-            'employee_code' => $employee->employee_code,
-            'full_name' => $employee->full_name,
-            'short_name' => $employee->short_name,
-            'role' => $employee->role,
-            'branch_id' => $employee->branch_id,
-            'employment_type' => $employee->employment_type,
-            'hire_date' => $employee->hire_date->toDateString(),
-            'daily_basic_rate' => 700,
-            'reason' => 'Promotion',
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/separate", [
+            'separation_type' => 'improper',
+            'reason' => 'Abandoned post',
         ])->assertOk();
 
-        $priorLog = AuditLog::where('employee_id', $employee->id)
-            ->where('action', 'rate_override_changed')
-            ->firstOrFail();
+        $fresh = Employee::withTrashed()->find($employee->id);
+        $this->assertNotNull($fresh->deleted_at);
+        $this->assertSame('improper', $fresh->separation_type);
+        $this->assertSame('Abandoned post', $fresh->separation_reason);
+        $this->assertNotNull($fresh->resignation_date);
+        $this->assertSame(1, AuditLog::where('type', 'employee')->where('action', 'separated')->count());
+    }
 
-        // No history exists, so the delete is allowed
-        $this->actingAs($admin)->deleteJson("/api/admin/employees/{$employee->id}")->assertOk();
+    public function test_separate_requires_reason_and_valid_type(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create();
 
-        $this->assertDatabaseMissing('employees', ['id' => $employee->id]);
-        $priorLog->refresh();
-        $this->assertNull($priorLog->employee_id);
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/separate", [
+            'separation_type' => 'improper',
+            'reason' => '   ',
+        ])->assertStatus(422);
+
+        $other = Employee::factory()->for(Branch::factory())->create();
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$other->id}/separate", [
+            'separation_type' => 'quit',
+            'reason' => 'x',
+        ])->assertStatus(422);
+    }
+
+    public function test_active_index_excludes_separated_and_separated_list_includes_it(): void {
+        $admin = User::factory()->create();
+        $active = Employee::factory()->for(Branch::factory())->create(['short_name' => 'ActiveOne']);
+        $gone = Employee::factory()->for(Branch::factory())->create(['short_name' => 'GoneOne']);
+
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$gone->id}/separate", [
+            'separation_type' => 'proper',
+            'reason' => 'Formal resignation',
+        ])->assertOk();
+
+        $indexIds = collect($this->actingAs($admin)->getJson('/api/admin/employees')->json())->pluck('id');
+        $this->assertTrue($indexIds->contains($active->id));
+        $this->assertFalse($indexIds->contains($gone->id));
+
+        $separatedIds = collect($this->actingAs($admin)->getJson('/api/admin/employees/separated')->json())->pluck('id');
+        $this->assertTrue($separatedIds->contains($gone->id));
+        $this->assertFalse($separatedIds->contains($active->id));
+    }
+
+    public function test_separated_list_filters_by_type(): void {
+        $admin = User::factory()->create();
+        $proper = Employee::factory()->for(Branch::factory())->create();
+        $improper = Employee::factory()->for(Branch::factory())->create();
+
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$proper->id}/separate", [
+            'separation_type' => 'proper', 'reason' => 'notice given',
+        ])->assertOk();
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$improper->id}/separate", [
+            'separation_type' => 'improper', 'reason' => 'awol',
+        ])->assertOk();
+
+        $improperIds = collect($this->actingAs($admin)->getJson('/api/admin/employees/separated?type=improper')->json())->pluck('id');
+        $this->assertTrue($improperIds->contains($improper->id));
+        $this->assertFalse($improperIds->contains($proper->id));
+    }
+
+    public function test_restore_reactivates_employee_and_clears_separation_fields(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create();
+
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/separate", [
+            'separation_type' => 'improper', 'reason' => 'awol',
+        ])->assertOk();
+
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/restore")
+            ->assertOk();
+
+        $fresh = Employee::withTrashed()->find($employee->id);
+        $this->assertNull($fresh->deleted_at);
+        $this->assertNull($fresh->separation_type);
+        $this->assertNull($fresh->separation_reason);
+        $this->assertNull($fresh->resignation_date);
+        $this->assertSame(1, AuditLog::where('type', 'employee')->where('action', 'restored')->count());
+
+        $indexIds = collect($this->actingAs($admin)->getJson('/api/admin/employees')->json())->pluck('id');
+        $this->assertTrue($indexIds->contains($employee->id));
     }
 }

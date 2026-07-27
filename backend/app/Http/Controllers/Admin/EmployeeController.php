@@ -143,29 +143,76 @@ class EmployeeController extends Controller {
         });
     }
 
-    public function destroy(Request $request, Employee $employee) {
-        $hasHistory = $employee->attendanceRecords()->exists()
-            || $employee->earnings()->exists()
-            || $employee->thirteenthMonthRecords()->exists();
+    public function separated(Request $request) {
+        $query = Employee::onlyTrashed()->with('branch')->orderBy('short_name');
 
-        if ($hasHistory) {
+        $type = $request->query('type');
+        if (in_array($type, ['proper', 'improper'], true)) {
+            $query->where('separation_type', $type);
+        }
+
+        return response()->json($query->get());
+    }
+
+    public function separate(Request $request, Employee $employee) {
+        $data = $request->validate([
+            'separation_type' => ['required', Rule::in(['proper', 'improper'])],
+            'reason' => ['required', 'string'],
+            'resignation_date' => ['nullable', 'date'],
+        ]);
+
+        if (empty(trim($data['reason']))) {
             return response()->json([
-                'message' => 'This employee has attendance or payroll history and cannot be deleted. Set a resignation date instead.',
+                'message' => 'A reason is required to remove an employee.',
+                'errors' => ['reason' => ['A reason is required to remove an employee.']],
             ], 422);
         }
 
-        return DB::transaction(function () use ($request, $employee) {
+        return DB::transaction(function () use ($request, $employee, $data) {
+            $employee->fill([
+                'separation_type' => $data['separation_type'],
+                'separation_reason' => trim($data['reason']),
+                'resignation_date' => $data['resignation_date'] ?? now()->toDateString(),
+            ]);
+            $employee->save();
+
             AuditLog::create([
                 'type' => 'employee',
                 'employee_id' => $employee->id,
                 'performed_by' => $request->user()->id,
-                'action' => 'deleted',
-                'detail' => "Deleted employee {$employee->employee_code} ({$employee->full_name})",
+                'action' => 'separated',
+                'detail' => sprintf('Separated %s (%s) as %s resignation',
+                    $employee->full_name, $employee->employee_code, $data['separation_type']),
+                'reason' => trim($data['reason']),
             ]);
 
             $employee->delete();
 
-            return response()->json(['message' => 'Employee deleted.']);
+            return response()->json(['message' => 'Employee separated.']);
+        });
+    }
+
+    public function restore(Request $request, int $id) {
+        $employee = Employee::onlyTrashed()->findOrFail($id);
+
+        return DB::transaction(function () use ($request, $employee) {
+            $employee->restore();
+            $employee->fill([
+                'separation_type' => null,
+                'separation_reason' => null,
+                'resignation_date' => null,
+            ]);
+            $employee->save();
+
+            AuditLog::create([
+                'type' => 'employee',
+                'employee_id' => $employee->id,
+                'performed_by' => $request->user()->id,
+                'action' => 'restored',
+                'detail' => "Restored employee {$employee->employee_code} ({$employee->full_name})",
+            ]);
+
+            return response()->json($employee->load('branch'));
         });
     }
 }

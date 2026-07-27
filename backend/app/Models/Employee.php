@@ -4,14 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Hash;
 
 class Employee extends Model {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'employee_code', 'full_name', 'short_name', 'role', 'branch_id',
-        'employment_type', 'daily_basic_rate', 'hire_date', 'resignation_date', 'pin_hash',
+        'employment_type', 'daily_basic_rate', 'hire_date', 'resignation_date',
+        'separation_type', 'separation_reason', 'pin_hash',
     ];
     protected $hidden = ['pin_hash'];
     protected $casts = [
