@@ -22,7 +22,6 @@ export default function EmployeesView() {
   const [sepFilter, setSepFilter] = useState("all"); // all | proper | improper
   const [branches, setBranches] = useState([]);
   const [editing, setEditing] = useState(null); // add/edit form state
-  const [originalRate, setOriginalRate] = useState("");
   const [error, setError] = useState(null);
   const [removing, setRemoving] = useState(null); // employee being separated
   const [sepForm, setSepForm] = useState({ separation_type: "proper", resignation_date: "", reason: "" });
@@ -49,14 +48,12 @@ export default function EmployeesView() {
 
   function openAdd() {
     setError(null);
-    setOriginalRate("");
     setEditing({ ...BLANK, id: null });
   }
 
   function openEdit(emp) {
     setError(null);
     const rate = emp.daily_basic_rate == null ? "" : String(emp.daily_basic_rate);
-    setOriginalRate(rate);
     setEditing({
       id: emp.id,
       employee_code: emp.employee_code,
@@ -76,8 +73,6 @@ export default function EmployeesView() {
   function set(field, value) {
     setEditing((e) => ({ ...e, [field]: value }));
   }
-
-  const rateChanged = editing && String(editing.daily_basic_rate) !== String(originalRate);
 
   async function save() {
     setError(null);
@@ -256,12 +251,6 @@ export default function EmployeesView() {
             <div style={{ fontSize: 12, marginBottom: 4 }}>Daily Basic Rate (₱) — blank = use global rate</div>
             <input type="number" step="0.01" value={editing.daily_basic_rate} onChange={(e) => set("daily_basic_rate", e.target.value)} style={inputStyle} />
           </div>
-          {rateChanged && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, marginBottom: 4, color: "#C1521F" }}>Reason (required — the daily rate changed)</div>
-              <input type="text" value={editing.reason || ""} onChange={(e) => set("reason", e.target.value)} style={inputStyle} />
-            </div>
-          )}
           {error && <div style={{ color: "#C1521F", fontSize: 12, marginBottom: 12 }}>{error}</div>}
           <Button variant="gold" onClick={save}>Save</Button>{" "}
           <Button onClick={() => setEditing(null)}>Cancel</Button>

@@ -38,14 +38,6 @@ class EmployeeController extends Controller {
             'reason' => ['nullable', 'string'],
         ]);
 
-        if (array_key_exists('daily_basic_rate', $data) && $data['daily_basic_rate'] !== null
-            && empty(trim((string) ($data['reason'] ?? '')))) {
-            return response()->json([
-                'message' => 'A reason is required when setting a daily basic rate.',
-                'errors' => ['reason' => ['A reason is required when setting a daily basic rate.']],
-            ], 422);
-        }
-
         return DB::transaction(function () use ($request, $data) {
             $employee = new Employee([
                 'employee_code' => $data['employee_code'],
@@ -69,7 +61,7 @@ class EmployeeController extends Controller {
                     'action' => 'rate_override_set',
                     'detail' => "Daily basic rate set to {$data['daily_basic_rate']} on create",
                     'new_amount' => $data['daily_basic_rate'],
-                    'reason' => trim($data['reason']),
+                    'reason' => isset($data['reason']) ? trim($data['reason']) : null,
                 ]);
             }
 
@@ -100,13 +92,6 @@ class EmployeeController extends Controller {
         }
         $rateChanged = $oldRate !== $newRate;
 
-        if ($rateChanged && empty(trim((string) ($data['reason'] ?? '')))) {
-            return response()->json([
-                'message' => 'A reason is required when changing the daily basic rate.',
-                'errors' => ['reason' => ['A reason is required when changing the daily basic rate.']],
-            ], 422);
-        }
-
         return DB::transaction(function () use ($request, $employee, $data, $oldRate, $newRate, $rateChanged) {
             $employee->fill([
                 'employee_code' => $data['employee_code'],
@@ -135,7 +120,7 @@ class EmployeeController extends Controller {
                         $newRate === null ? 'global' : number_format($newRate, 2)),
                     'old_amount' => $oldRate,
                     'new_amount' => $newRate,
-                    'reason' => trim($data['reason']),
+                    'reason' => isset($data['reason']) ? trim($data['reason']) : null,
                 ]);
             }
 
