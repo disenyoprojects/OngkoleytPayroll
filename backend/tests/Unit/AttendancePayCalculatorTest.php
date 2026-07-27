@@ -43,8 +43,9 @@ class AttendancePayCalculatorTest extends TestCase {
     }
 
     public function test_handles_a_shift_that_crosses_midnight(): void {
-        // 22:00-02:00 is a 4h span; less the 1h unpaid break = 3h worked.
-        $result = (new AttendancePayCalculator())->compute('22:00', '02:00', $this->settings());
+        // Night shift 22:00-06:00. Clock 22:00-02:00 = 4h in-shift; less the 1h
+        // unpaid break = 3h regular, no OT (before shift_end).
+        $result = (new AttendancePayCalculator())->compute('22:00', '02:00', $this->settings(), null, '22:00', '06:00');
 
         $this->assertSame(3.0, $result['total_hours']);
     }

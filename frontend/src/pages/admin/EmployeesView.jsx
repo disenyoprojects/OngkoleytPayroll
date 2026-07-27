@@ -8,7 +8,8 @@ const EMPLOYMENT_TYPES = ["regular", "probationary", "fixed_term", "seasonal"];
 const BLANK = {
   employee_code: "", full_name: "", short_name: "", role: "",
   branch_id: "", employment_type: "regular", hire_date: "",
-  resignation_date: "", pin: "", daily_basic_rate: "",
+  resignation_date: "", shift_start: "08:00", shift_end: "17:00",
+  pin: "", daily_basic_rate: "",
 };
 
 function today() {
@@ -64,6 +65,8 @@ export default function EmployeesView() {
       employment_type: emp.employment_type,
       hire_date: emp.hire_date ? String(emp.hire_date).slice(0, 10) : "",
       resignation_date: emp.resignation_date ? String(emp.resignation_date).slice(0, 10) : "",
+      shift_start: emp.shift_start ? String(emp.shift_start).slice(0, 5) : "08:00",
+      shift_end: emp.shift_end ? String(emp.shift_end).slice(0, 5) : "17:00",
       pin: "",
       daily_basic_rate: rate,
       reason: "",
@@ -242,6 +245,16 @@ export default function EmployeesView() {
             <select value={editing.employment_type} onChange={(e) => set("employment_type", e.target.value)} style={inputStyle}>
               {EMPLOYMENT_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
             </select>
+          </div>
+          <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, marginBottom: 4 }}>Shift Start</div>
+              <input type="time" value={editing.shift_start} onChange={(e) => set("shift_start", e.target.value)} style={inputStyle} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, marginBottom: 4 }}>Shift End</div>
+              <input type="time" value={editing.shift_end} onChange={(e) => set("shift_end", e.target.value)} style={inputStyle} />
+            </div>
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 12, marginBottom: 4 }}>PIN {editing.id ? "(leave blank to keep current)" : "(4 digits)"}</div>

@@ -33,6 +33,8 @@ class EmployeeController extends Controller {
             'employment_type' => ['required', Rule::in(['regular', 'probationary', 'fixed_term', 'seasonal'])],
             'hire_date' => ['required', 'date'],
             'resignation_date' => ['nullable', 'date'],
+            'shift_start' => ['nullable', 'date_format:H:i'],
+            'shift_end' => ['nullable', 'date_format:H:i'],
             'pin' => ['required', 'string', 'size:4'],
             'daily_basic_rate' => ['nullable', 'numeric', 'min:0'],
             'reason' => ['nullable', 'string'],
@@ -48,6 +50,8 @@ class EmployeeController extends Controller {
                 'employment_type' => $data['employment_type'],
                 'hire_date' => $data['hire_date'],
                 'resignation_date' => $data['resignation_date'] ?? null,
+                'shift_start' => $data['shift_start'] ?? '08:00',
+                'shift_end' => $data['shift_end'] ?? '17:00',
                 'daily_basic_rate' => $data['daily_basic_rate'] ?? null,
             ]);
             $employee->pin = $data['pin'];
@@ -79,6 +83,8 @@ class EmployeeController extends Controller {
             'employment_type' => ['required', Rule::in(['regular', 'probationary', 'fixed_term', 'seasonal'])],
             'hire_date' => ['required', 'date'],
             'resignation_date' => ['nullable', 'date'],
+            'shift_start' => ['nullable', 'date_format:H:i'],
+            'shift_end' => ['nullable', 'date_format:H:i'],
             'pin' => ['nullable', 'string', 'size:4'],
             'daily_basic_rate' => ['nullable', 'numeric', 'min:0'],
             'reason' => ['nullable', 'string'],
@@ -102,6 +108,8 @@ class EmployeeController extends Controller {
                 'employment_type' => $data['employment_type'],
                 'hire_date' => $data['hire_date'],
                 'resignation_date' => $data['resignation_date'] ?? null,
+                'shift_start' => $data['shift_start'] ?? $employee->shift_start,
+                'shift_end' => $data['shift_end'] ?? $employee->shift_end,
                 'daily_basic_rate' => $newRate,
             ]);
             if (! empty($data['pin'])) {
