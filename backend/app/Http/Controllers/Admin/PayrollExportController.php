@@ -27,8 +27,7 @@ class PayrollExportController extends Controller {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['Staff', 'Role', 'Branch', 'Clock In', 'Clock Out', 'Basic', 'OT', 'Night Diff', 'Total Pay', 'Status']);
             foreach ($records as $record) {
-                $rate = $record->employee->daily_basic_rate === null ? null : (float) $record->employee->daily_basic_rate;
-                $pay = $this->calculator->compute($record->clock_in, $record->clock_out, $settings, $rate, $record->employee->shift_start, $record->employee->shift_end);
+                $pay = $this->calculator->computeForRecord($record, $settings);
                 fputcsv($handle, [
                     $record->employee->short_name,
                     $record->employee->role,

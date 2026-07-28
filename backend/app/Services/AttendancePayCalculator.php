@@ -9,6 +9,29 @@ class AttendancePayCalculator {
     private const DEFAULT_SHIFT_END = '17:00';
     private const NO_PAY_ABSENCES = ['absent', 'awol', 'travel', 'leave', 'sick_leave'];
 
+    public function computeForRecord(\App\Models\AttendanceRecord $record, PayrollSetting $settings): ?array {
+        $employee = $record->employee;
+        $rate = $employee?->daily_basic_rate === null ? null : (float) $employee->daily_basic_rate;
+        $shiftStart = $record->shift_start ?: ($employee?->shift_start);
+        $shiftEnd = $record->shift_end ?: ($employee?->shift_end);
+
+        return $this->compute(
+            $record->clock_in,
+            $record->clock_out,
+            $settings,
+            $rate,
+            $shiftStart,
+            $shiftEnd,
+            [
+                'holiday_type' => $record->holiday_type,
+                'is_rest_day' => (bool) $record->is_rest_day,
+                'absence_type' => $record->absence_type,
+                'break_out' => $record->break_out,
+                'break_in' => $record->break_in,
+            ],
+        );
+    }
+
     public function compute(
         ?string $clockIn,
         ?string $clockOut,

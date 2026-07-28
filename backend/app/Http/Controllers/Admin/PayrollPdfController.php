@@ -23,14 +23,7 @@ class PayrollPdfController extends Controller {
 
         $rows = $records->map(fn (AttendanceRecord $record) => [
             'employee' => $record->employee,
-            'pay' => $this->calculator->compute(
-                $record->clock_in,
-                $record->clock_out,
-                $settings,
-                $record->employee->daily_basic_rate === null ? null : (float) $record->employee->daily_basic_rate,
-                $record->employee->shift_start,
-                $record->employee->shift_end
-            ),
+            'pay' => $this->calculator->computeForRecord($record, $settings),
         ]);
 
         $pdf = Pdf::loadView('pdf.payroll', [
