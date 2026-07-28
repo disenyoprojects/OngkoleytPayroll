@@ -23,6 +23,8 @@ class AttendanceClockController extends Controller {
             'work_date' => $today,
             'clock_in' => now()->format('H:i:s'),
             'status' => 'pending',
+            'shift_start' => $employee->shift_start,
+            'shift_end' => $employee->shift_end,
         ]);
 
         return response()->json($record);

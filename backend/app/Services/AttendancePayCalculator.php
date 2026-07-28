@@ -50,7 +50,6 @@ class AttendancePayCalculator {
         $absenceType = $day['absence_type'] ?? null;
         $premiumLabel = DoleRates::label($holidayType, $isRestDay);
         $regularMult = DoleRates::regularMultiplier($holidayType, $isRestDay);
-        $otFactor = DoleRates::overtimeFactor($holidayType, $isRestDay);
 
         // No-pay absence statuses short-circuit to a zeroed result.
         if (in_array($absenceType, self::NO_PAY_ABSENCES, true)) {
@@ -101,8 +100,12 @@ class AttendancePayCalculator {
 
         // Regular pay at the day's premium multiplier.
         $basic = round($regularHours * $hourlyRate * $regularMult, 2);
-        // OT: ordinary is hourly*ot_multiplier; premium days multiply by the OT factor.
-        $ot = round($otHours * $hourlyRate * (float) $settings->overtime_multiplier * $otFactor, 2);
+        // OT: ordinary is hourly*ot_multiplier; premium days are 130% of the premium hourly rate.
+        $isPremiumDay = $holidayType !== null || $isRestDay;
+        $otRate = $isPremiumDay
+            ? $hourlyRate * $regularMult * 1.30
+            : $hourlyRate * (float) $settings->overtime_multiplier;
+        $ot = round($otHours * $otRate, 2);
         // Night diff: +nd_multiplier of the applicable premium hourly rate.
         $nightDiff = round($nightDiffHours * $hourlyRate * $regularMult * (float) $settings->night_diff_multiplier, 2);
         $total = round($basic + $ot + $nightDiff, 2);

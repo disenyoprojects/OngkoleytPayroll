@@ -18,21 +18,6 @@ class DoleRates {
         return $isRestDay ? 1.30 : 1.00;
     }
 
-    /**
-     * Extra factor applied to the ordinary OT rate for the day's nature.
-     * Ordinary 1.00 (OT already 1.25), rest/special 1.30, regular holiday 2.00,
-     * regular holiday+rest 2.60. (DOLE OT-on-premium-day is 30% of the premium hourly.)
-     */
-    public static function overtimeFactor(?string $holidayType, bool $isRestDay): float {
-        if ($holidayType === 'regular') {
-            return $isRestDay ? 2.60 : 2.00;
-        }
-        if ($holidayType === 'special') {
-            return $isRestDay ? 1.50 : 1.30;
-        }
-        return $isRestDay ? 1.30 : 1.00;
-    }
-
     public static function label(?string $holidayType, bool $isRestDay): string {
         $parts = [];
         if ($holidayType === 'regular') { $parts[] = 'Regular Holiday'; }

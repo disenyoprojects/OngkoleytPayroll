@@ -72,6 +72,16 @@ class DolePremiumCalculatorTest extends TestCase {
         $this->assertSame(252.50, $pay['basic']);
     }
 
+    public function test_overtime_on_special_holiday_is_130_percent_of_premium_hourly(): void {
+        // Shift 09:00-18:00 (9h window, 8h after 1h break); clock 09:00-20:00 special holiday.
+        // Regular = 8 * 63.125 * 1.30 = 656.50
+        // OT = 2h (18:00-20:00) * 63.125 * 1.30 * 1.30 = 2 * 63.125 * 1.69 = 213.3625 -> 213.36
+        $pay = (new AttendancePayCalculator())
+            ->compute('09:00', '20:00', $this->settings(), null, '09:00', '18:00', ['holiday_type' => 'special']);
+        $this->assertSame(656.50, $pay['basic']);
+        $this->assertSame(213.36, $pay['ot']);
+    }
+
     public function test_night_diff_stacks_on_special_holiday_rate(): void {
         // Shift 14:00-23:00 (9h window, 8h after break); clock 14:00-23:00 special holiday.
         // Night hours 22:00-23:00 = 1h. Night pay = 1 * 63.125 * 1.30 * 0.10 = 8.21.
