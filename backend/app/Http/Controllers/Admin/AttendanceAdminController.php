@@ -34,11 +34,11 @@ class AttendanceAdminController extends Controller {
             'details' => $data['details'] ?? null,
             'shift_start' => $data['shift_start'] ?? $record->shift_start,
             'shift_end' => $data['shift_end'] ?? $record->shift_end,
-            'holiday_type' => $data['holiday_type'] ?? null,
-            'is_rest_day' => $data['is_rest_day'] ?? false,
-            'absence_type' => $data['absence_type'] ?? null,
-            'break_out' => $data['break_out'] ?? null,
-            'break_in' => $data['break_in'] ?? null,
+            'holiday_type' => array_key_exists('holiday_type', $data) ? $data['holiday_type'] : $record->holiday_type,
+            'is_rest_day' => array_key_exists('is_rest_day', $data) ? (bool) $data['is_rest_day'] : $record->is_rest_day,
+            'absence_type' => array_key_exists('absence_type', $data) ? $data['absence_type'] : $record->absence_type,
+            'break_out' => array_key_exists('break_out', $data) ? $data['break_out'] : $record->break_out,
+            'break_in' => array_key_exists('break_in', $data) ? $data['break_in'] : $record->break_in,
         ]);
 
         AuditLog::create([
