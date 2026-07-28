@@ -32,11 +32,13 @@ class ThirteenthMonthCalculator {
                     if ($pay === null) {
                         continue;
                     }
+                    // 13th-month base uses the un-premiumed wage (PD 851: basic
+                    // salary only) — holiday/rest premiums and night diff excluded.
                     if (in_array('BASIC', $included, true)) {
-                        $basicPay += (float) $pay['basic'];
+                        $basicPay += (float) $pay['base_wage'];
                     }
                     if (in_array('OVERTIME', $included, true)) {
-                        $otPay += (float) $pay['ot'];
+                        $otPay += (float) $pay['base_ot'];
                     }
                 }
             }
