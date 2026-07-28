@@ -110,6 +110,12 @@ class AttendancePayCalculator {
         $nightDiff = round($nightDiffHours * $hourlyRate * $regularMult * (float) $settings->night_diff_multiplier, 2);
         $total = round($basic + $ot + $nightDiff, 2);
 
+        // Un-premiumed base figures for the 13th-month base (PD 851): basic
+        // salary only — the ordinary-rate wage, excluding holiday/rest premiums,
+        // OT premium stacking, and night differential.
+        $baseWage = round($regularHours * $hourlyRate, 2);
+        $baseOt = round($otHours * $hourlyRate * (float) $settings->overtime_multiplier, 2);
+
         return [
             'total_hours' => round($regularHours + $otHours, 4),
             'regular_hours' => $regularHours,
@@ -118,6 +124,8 @@ class AttendancePayCalculator {
             'basic' => $basic,
             'ot' => $ot,
             'night_diff' => $nightDiff,
+            'base_wage' => $baseWage,
+            'base_ot' => $baseOt,
             'total' => $total,
             'premium_label' => $premiumLabel,
             'premium_multiplier' => $regularMult,
@@ -127,7 +135,8 @@ class AttendancePayCalculator {
     private function zeroed(string $label, float $mult): array {
         return [
             'total_hours' => 0.0, 'regular_hours' => 0.0, 'ot_hours' => 0.0, 'night_diff_hours' => 0.0,
-            'basic' => 0.0, 'ot' => 0.0, 'night_diff' => 0.0, 'total' => 0.0,
+            'basic' => 0.0, 'ot' => 0.0, 'night_diff' => 0.0,
+            'base_wage' => 0.0, 'base_ot' => 0.0, 'total' => 0.0,
             'premium_label' => $label, 'premium_multiplier' => $mult,
         ];
     }

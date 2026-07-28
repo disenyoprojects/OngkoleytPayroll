@@ -32,6 +32,27 @@ class ThirteenthMonthCalculatorTest extends TestCase {
         $this->assertSame(0.0, $february['basic_pay']);
     }
 
+    public function test_thirteenth_month_base_excludes_holiday_premium(): void {
+        $settings = PayrollSetting::current(); // daily 505, BASIC only
+        $employee = Employee::factory()->for(Branch::factory())->create([
+            'hire_date' => '2026-01-01', 'resignation_date' => null,
+            'shift_start' => '08:00:00', 'shift_end' => '17:00:00', 'daily_basic_rate' => null,
+        ]);
+        // One special-holiday day worked, 08:00-17:00 (8h after the 1h break).
+        // Actual pay that day is 8*63.125*1.30 = 656.50, but the 13th-month base
+        // must use only the un-premiumed base wage: 8*63.125 = 505.00.
+        AttendanceRecord::factory()->for($employee)->create([
+            'work_date' => '2026-04-09', 'clock_in' => '08:00:00', 'clock_out' => '17:00:00',
+            'shift_start' => '08:00:00', 'shift_end' => '17:00:00', 'holiday_type' => 'special',
+        ]);
+
+        $breakdown = (new ThirteenthMonthCalculator())->monthlyBreakdown($employee, $settings, 2026);
+        $april = collect($breakdown)->firstWhere('month', 4);
+
+        $this->assertSame(505.0, $april['basic_pay']);
+        $this->assertSame(505.0, $april['month_total_included']);
+    }
+
     public function test_other_earnings_are_only_included_when_settings_include_the_code(): void {
         $settings = PayrollSetting::current();
         $settings->update(['included_earnings' => ['BASIC', 'BONUS']]);
