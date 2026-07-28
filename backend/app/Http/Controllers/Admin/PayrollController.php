@@ -21,8 +21,7 @@ class PayrollController extends Controller {
             ->whereNotNull('clock_out')
             ->get()
             ->map(function (AttendanceRecord $record) use ($settings) {
-                $rate = $record->employee->daily_basic_rate === null ? null : (float) $record->employee->daily_basic_rate;
-                $pay = $this->calculator->compute($record->clock_in, $record->clock_out, $settings, $rate, $record->employee->shift_start, $record->employee->shift_end);
+                $pay = $this->calculator->computeForRecord($record, $settings);
                 return [
                     'employee_id' => $record->employee_id,
                     'employee' => $record->employee,
@@ -49,9 +48,7 @@ class PayrollController extends Controller {
             ->groupBy('employee_id');
 
         $rows = $records->map(function ($employeeRecords) use ($settings) {
-            $employeeForShift = $employeeRecords->first()->employee;
-            $rate = $employeeForShift->daily_basic_rate === null ? null : (float) $employeeForShift->daily_basic_rate;
-            $pays = $employeeRecords->map(fn (AttendanceRecord $r) => $this->calculator->compute($r->clock_in, $r->clock_out, $settings, $rate, $employeeForShift->shift_start, $employeeForShift->shift_end));
+            $pays = $employeeRecords->map(fn (AttendanceRecord $r) => $this->calculator->computeForRecord($r, $settings));
             return [
                 'employee_id' => $employeeRecords->first()->employee_id,
                 'employee' => $employeeRecords->first()->employee,

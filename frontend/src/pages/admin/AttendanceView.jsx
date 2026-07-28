@@ -53,7 +53,12 @@ export default function AttendanceView() {
                 <td style={tdStyle}>{row.employee.branch.name}</td>
                 <td style={tdStyle}>{formatTime12(row.record.clock_in)}</td>
                 <td style={tdStyle}>{row.record.clock_out ? formatTime12(row.record.clock_out) : "—"}</td>
-                <td style={tdStyle}><Pill tone={row.record.status === "approved" ? "approved" : "pending"}>{row.record.status}</Pill></td>
+                <td style={tdStyle}>
+                  <Pill tone={row.record.status === "approved" ? "approved" : "pending"}>{row.record.status}</Pill>
+                  {row.pay?.premium_label && row.pay.premium_label !== "Ordinary" && (
+                    <span style={{ marginLeft: 6, fontSize: 11, color: "#9A6B12" }}>{row.pay.premium_label}</span>
+                  )}
+                </td>
                 <td style={{ ...tdStyle, textAlign: "right", whiteSpace: "nowrap" }}>
                   <Button small variant="outline" onClick={() => setAdjustRow(row)}>Edit Times</Button>{" "}
                   {row.record.status === "pending" && <Button small variant="gold" onClick={() => approve(row.record.id)}>Approve</Button>}

@@ -10,9 +10,20 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
   const [clockOut, setClockOut] = useState((row.record.clock_out || "17:00").slice(0, 5));
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
+  const [shiftStart, setShiftStart] = useState((row.record.shift_start || "08:00").slice(0, 5));
+  const [shiftEnd, setShiftEnd] = useState((row.record.shift_end || "17:00").slice(0, 5));
+  const [holidayType, setHolidayType] = useState(row.record.holiday_type || "");
+  const [isRestDay, setIsRestDay] = useState(!!row.record.is_rest_day);
+  const [absenceType, setAbsenceType] = useState(row.record.absence_type || "");
 
   async function save() {
-    await apiClient.patch(`/api/admin/attendance/${row.record.id}/adjust`, { clock_in: clockIn, clock_out: clockOut, reason, details });
+    await apiClient.patch(`/api/admin/attendance/${row.record.id}/adjust`, {
+      clock_in: clockIn, clock_out: clockOut, reason, details,
+      shift_start: shiftStart, shift_end: shiftEnd,
+      holiday_type: holidayType || null,
+      is_rest_day: isRestDay,
+      absence_type: absenceType || null,
+    });
     onSaved();
   }
 
@@ -32,6 +43,42 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
           <input type="time" value={clockOut} onChange={(e) => setClockOut(e.target.value)} style={inputStyle} />
         </div>
       </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 12, marginBottom: 4 }}>Shift Start</div>
+          <input type="time" value={shiftStart} onChange={(e) => setShiftStart(e.target.value)} style={inputStyle} />
+        </div>
+        <div>
+          <div style={{ fontSize: 12, marginBottom: 4 }}>Shift End</div>
+          <input type="time" value={shiftEnd} onChange={(e) => setShiftEnd(e.target.value)} style={inputStyle} />
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 12, marginBottom: 4 }}>Holiday</div>
+          <select value={holidayType} onChange={(e) => setHolidayType(e.target.value)} style={inputStyle}>
+            <option value="">None</option>
+            <option value="special">Special (non-working)</option>
+            <option value="regular">Regular holiday</option>
+          </select>
+        </div>
+        <div>
+          <div style={{ fontSize: 12, marginBottom: 4 }}>Status</div>
+          <select value={absenceType} onChange={(e) => setAbsenceType(e.target.value)} style={inputStyle}>
+            <option value="">Worked</option>
+            <option value="half_day">Half day</option>
+            <option value="leave">Leave</option>
+            <option value="sick_leave">Sick leave</option>
+            <option value="absent">Absent</option>
+            <option value="awol">AWOL</option>
+            <option value="travel">Travel</option>
+          </select>
+        </div>
+      </div>
+      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, marginBottom: 14 }}>
+        <input type="checkbox" checked={isRestDay} onChange={(e) => setIsRestDay(e.target.checked)} />
+        Rest day (worked)
+      </label>
       <div style={{ fontSize: 12, marginBottom: 4 }}>Reason for Adjustment *</div>
       <select value={reason} onChange={(e) => setReason(e.target.value)} style={{ ...inputStyle, marginBottom: 14 }}>
         <option value="">Select a reason...</option>
