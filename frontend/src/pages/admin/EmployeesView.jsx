@@ -21,6 +21,7 @@ export default function EmployeesView() {
   const [employees, setEmployees] = useState([]);
   const [separated, setSeparated] = useState([]);
   const [sepFilter, setSepFilter] = useState("all"); // all | proper | improper
+  const [branchFilter, setBranchFilter] = useState(""); // "" = all branches
   const [branches, setBranches] = useState([]);
   const [editing, setEditing] = useState(null); // add/edit form state
   const [error, setError] = useState(null);
@@ -123,6 +124,10 @@ export default function EmployeesView() {
     }
   }
 
+  const activeEmployees = branchFilter
+    ? employees.filter((e) => String(e.branch_id) === String(branchFilter))
+    : employees;
+
   const switchStyle = (active) => ({
     padding: "6px 14px", borderRadius: 7, border: "1px solid #E7DCC6",
     background: active ? "#2E2118" : "white", color: active ? "#FAF6EC" : "#221A13",
@@ -131,11 +136,21 @@ export default function EmployeesView() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         <button style={switchStyle(view === "active")} onClick={() => setView("active")}>Active</button>
         <button style={switchStyle(view === "separated")} onClick={() => setView("separated")}>Separated</button>
         {view === "active" && (
-          <Button variant="gold" onClick={openAdd}>+ Add Employee</Button>
+          <>
+            <Button variant="gold" onClick={openAdd}>+ Add Employee</Button>
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              style={{ ...inputStyle, width: "auto", marginLeft: "auto" }}
+            >
+              <option value="">All branches</option>
+              {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </>
         )}
       </div>
 
@@ -152,7 +167,10 @@ export default function EmployeesView() {
             </tr>
           </thead>
           <tbody>
-            {employees.map((emp) => (
+            {activeEmployees.length === 0 && (
+              <tr><td style={{ padding: 12, fontSize: 13, color: "#7A6A57" }} colSpan={6}>No employees in this branch.</td></tr>
+            )}
+            {activeEmployees.map((emp) => (
               <tr key={emp.id} style={{ borderTop: "1px solid #E7DCC6", fontSize: 13 }}>
                 <td style={{ padding: 10 }}>{emp.employee_code}</td>
                 <td style={{ padding: 10 }}>{emp.full_name}</td>
