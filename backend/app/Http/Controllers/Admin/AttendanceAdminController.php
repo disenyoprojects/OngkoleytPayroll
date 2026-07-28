@@ -14,6 +14,13 @@ class AttendanceAdminController extends Controller {
             'clock_out' => ['required', 'date_format:H:i'],
             'reason' => ['required', 'string'],
             'details' => ['nullable', 'string'],
+            'shift_start' => ['nullable', 'date_format:H:i'],
+            'shift_end' => ['nullable', 'date_format:H:i'],
+            'holiday_type' => ['nullable', 'in:special,regular'],
+            'is_rest_day' => ['nullable', 'boolean'],
+            'absence_type' => ['nullable', 'in:leave,sick_leave,half_day,absent,awol,travel'],
+            'break_out' => ['nullable', 'date_format:H:i'],
+            'break_in' => ['nullable', 'date_format:H:i'],
         ]);
 
         $before = sprintf('%s → %s', $record->clock_in ?? '—', $record->clock_out ?? '—');
@@ -25,6 +32,13 @@ class AttendanceAdminController extends Controller {
             'adjusted' => true,
             'reason' => $data['reason'],
             'details' => $data['details'] ?? null,
+            'shift_start' => $data['shift_start'] ?? $record->shift_start,
+            'shift_end' => $data['shift_end'] ?? $record->shift_end,
+            'holiday_type' => $data['holiday_type'] ?? null,
+            'is_rest_day' => $data['is_rest_day'] ?? false,
+            'absence_type' => $data['absence_type'] ?? null,
+            'break_out' => $data['break_out'] ?? null,
+            'break_in' => $data['break_in'] ?? null,
         ]);
 
         AuditLog::create([

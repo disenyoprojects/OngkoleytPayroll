@@ -59,6 +59,30 @@ class AttendanceAdminControllerTest extends TestCase {
         $this->assertSame('approved', $record->fresh()->status);
     }
 
+    public function test_adjust_persists_day_context_fields(): void {
+        $admin = \App\Models\User::factory()->create();
+        $employee = \App\Models\Employee::factory()->for(\App\Models\Branch::factory())->create();
+        $record = AttendanceRecord::factory()->for($employee)->create([
+            'clock_in' => '09:00:00', 'clock_out' => '18:00:00', 'status' => 'pending',
+        ]);
+
+        $this->actingAs($admin)->patchJson("/api/admin/attendance/{$record->id}/adjust", [
+            'clock_in' => '09:00',
+            'clock_out' => '18:00',
+            'reason' => 'Special holiday shift',
+            'shift_start' => '09:00',
+            'shift_end' => '18:00',
+            'holiday_type' => 'special',
+            'is_rest_day' => true,
+            'absence_type' => null,
+        ])->assertOk();
+
+        $fresh = $record->fresh();
+        $this->assertSame('special', $fresh->holiday_type);
+        $this->assertTrue($fresh->is_rest_day);
+        $this->assertSame('09:00:00', $fresh->shift_start);
+    }
+
     public function test_endpoints_require_admin_authentication(): void {
         $employee = Employee::factory()->for(Branch::factory())->create();
         $record = AttendanceRecord::factory()->for($employee)->create();
