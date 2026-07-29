@@ -66,7 +66,7 @@ export default function PayrollView() {
                     <td style={tdStyle}>{formatTime12(r.record.clock_in)}</td>
                     <td style={tdStyle}>{formatTime12(r.record.clock_out)}</td>
                     <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>
-                      {formatPHP(r.pay.total)}
+                      {formatPHP(r.pay?.total)}
                       {r.pay?.premium_label && r.pay.premium_label !== "Ordinary" && (
                         <div style={{ fontSize: 11, color: "#9A6B12" }}>{r.pay.premium_label}</div>
                       )}
