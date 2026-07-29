@@ -47,4 +47,18 @@ class PayslipControllerTest extends TestCase {
             ->assertOk()
             ->assertJsonCount(1, 'lines');
     }
+
+    public function test_payslip_pdf_returns_a_pdf_document(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => null]);
+        AttendanceRecord::factory()->for($employee)->create([
+            'work_date' => '2026-07-03', 'clock_in' => '08:00:00', 'clock_out' => '17:00:00',
+        ]);
+
+        $response = $this->actingAs($admin)->get("/api/admin/employees/{$employee->id}/payslip/pdf?month=2026-07&period=whole");
+
+        $response->assertOk();
+        $this->assertSame('application/pdf', $response->headers->get('content-type'));
+        $this->assertNotEmpty($response->getContent());
+    }
 }

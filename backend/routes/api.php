@@ -51,6 +51,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/employees/separated', [EmployeeController::class, 'separated']);
     Route::get('/admin/employees/{employee}/attendance', [EmployeeAttendanceController::class, 'index'])->withTrashed();
     Route::get('/admin/employees/{employee}/payslip', [PayslipController::class, 'show'])->withTrashed();
+    Route::get('/admin/employees/{employee}/payslip/pdf', [PayslipController::class, 'pdf'])->withTrashed();
     Route::get('/admin/branches', [EmployeeController::class, 'branches']);
     Route::post('/admin/employees', [EmployeeController::class, 'store']);
     Route::put('/admin/employees/{employee}', [EmployeeController::class, 'update']);

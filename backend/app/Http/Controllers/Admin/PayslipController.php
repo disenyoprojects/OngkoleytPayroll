@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\PayrollSetting;
 use App\Services\AttendancePayCalculator;
 use App\Services\PayslipPeriod;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 class PayslipController extends Controller {
@@ -20,6 +21,18 @@ class PayslipController extends Controller {
         ]);
 
         return response()->json($this->buildPayslip($employee, $data['month'], $data['period']));
+    }
+
+    public function pdf(Request $request, Employee $employee) {
+        $data = $request->validate([
+            'month' => ['required', 'date_format:Y-m'],
+            'period' => ['required', 'in:first,second,whole'],
+        ]);
+
+        $payslip = $this->buildPayslip($employee, $data['month'], $data['period']);
+        $pdf = Pdf::loadView('pdf.payslip', ['payslip' => $payslip]);
+
+        return $pdf->stream("payslip-{$employee->employee_code}-{$data['month']}-{$data['period']}.pdf");
     }
 
     public function buildPayslip(Employee $employee, string $month, string $period): array {
