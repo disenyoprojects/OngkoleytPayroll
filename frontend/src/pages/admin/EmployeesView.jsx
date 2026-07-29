@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
 import { Button, inputStyle, ModalShell, Pill } from "../../components/ui";
 import { formatPHP } from "../../theme";
+import AttendanceLogModal from "../../components/AttendanceLogModal";
 
 const EMPLOYMENT_TYPES = ["regular", "probationary", "fixed_term", "seasonal"];
 
@@ -26,6 +27,7 @@ export default function EmployeesView() {
   const [editing, setEditing] = useState(null); // add/edit form state
   const [error, setError] = useState(null);
   const [removing, setRemoving] = useState(null); // employee being separated
+  const [logEmployee, setLogEmployee] = useState(null); // employee whose attendance log is open
   const [sepForm, setSepForm] = useState({ separation_type: "proper", resignation_date: "", reason: "" });
   const [sepError, setSepError] = useState(null);
 
@@ -178,6 +180,7 @@ export default function EmployeesView() {
                 <td style={{ padding: 10 }}>{emp.employment_type.replace("_", " ")}</td>
                 <td style={{ padding: 10 }}>{emp.daily_basic_rate == null ? "— (global)" : formatPHP(emp.daily_basic_rate)}</td>
                 <td style={{ padding: 10, textAlign: "right", whiteSpace: "nowrap" }}>
+                  <Button small onClick={() => setLogEmployee(emp)}>Log</Button>{" "}
                   <Button small onClick={() => openEdit(emp)}>Edit</Button>{" "}
                   <Button small variant="danger" onClick={() => openRemove(emp)}>Remove</Button>
                 </td>
@@ -226,6 +229,7 @@ export default function EmployeesView() {
                   <td style={{ padding: 10 }}>{emp.deleted_at ? String(emp.deleted_at).slice(0, 10) : "—"}</td>
                   <td style={{ padding: 10 }}>{emp.separation_reason}</td>
                   <td style={{ padding: 10, textAlign: "right" }}>
+                    <Button small onClick={() => setLogEmployee(emp)}>Log</Button>{" "}
                     <Button small onClick={() => restore(emp)}>Restore</Button>
                   </td>
                 </tr>
@@ -234,6 +238,8 @@ export default function EmployeesView() {
           </table>
         </div>
       )}
+
+      {logEmployee && <AttendanceLogModal employee={logEmployee} onClose={() => setLogEmployee(null)} />}
 
       {editing && (
         <ModalShell width={520} onClose={() => setEditing(null)}>
