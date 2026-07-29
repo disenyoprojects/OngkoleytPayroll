@@ -22,8 +22,11 @@ export default function PayslipView() {
 
   useEffect(() => {
     if (!employeeId) { setSlip(null); return; }
+    let cancelled = false;
+    setSlip(null); // clear the previous employee's slip while the new one loads
     apiClient.get(`/api/admin/employees/${employeeId}/payslip?month=${month}&period=${period}`)
-      .then((res) => setSlip(res.data));
+      .then((res) => { if (!cancelled) setSlip(res.data); });
+    return () => { cancelled = true; };
   }, [employeeId, month, period]);
 
   function downloadPdf() {
