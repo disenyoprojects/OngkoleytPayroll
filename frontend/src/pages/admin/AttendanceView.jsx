@@ -1,32 +1,52 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
 import { formatPHP, formatTime12, FONT_DISPLAY } from "../../theme";
-import { Button, Pill, StatCard, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
+import { Button, Pill, StatCard, inputStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 import AdjustAttendanceModal from "../../components/AdjustAttendanceModal";
 
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function shiftDate(ymd, delta) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const next = new Date(y, m - 1, d + delta);
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-${String(next.getDate()).padStart(2, "0")}`;
+}
+
 export default function AttendanceView() {
+  const [date, setDate] = useState(today());
   const [data, setData] = useState(null);
   const [adjustRow, setAdjustRow] = useState(null);
 
   function load() {
-    apiClient.get("/api/admin/attendance/today").then((res) => setData(res.data));
+    apiClient.get(`/api/admin/attendance/today?date=${date}`).then((res) => setData(res.data));
   }
-  useEffect(load, []);
+  useEffect(load, [date]);
 
   async function approve(recordId) {
     await apiClient.post(`/api/admin/attendance/${recordId}/approve`);
     load();
   }
 
-  if (!data) return <div>Loading...</div>;
+  const isToday = date === today();
 
   return (
     <div>
-      <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, marginBottom: 18 }}>Attendance</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
+        <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, margin: 0 }}>Attendance</h1>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Button small onClick={() => setDate((d) => shiftDate(d, -1))}>‹</Button>
+          <input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value || today())} style={{ ...inputStyle, width: "auto" }} />
+          <Button small onClick={() => setDate((d) => shiftDate(d, 1))} disabled={isToday}>›</Button>
+        </div>
+      </div>
+      {!data ? <div>Loading...</div> : <>
       <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
-        <StatCard label="Clocked In Today" value={data.clocked_in} />
+        <StatCard label={isToday ? "Clocked In Today" : "Clocked In"} value={data.clocked_in} />
         <StatCard label="Pending Approval" value={data.pending} />
-        <StatCard label="Total Pay Today" value={formatPHP(data.total_pay_today)} />
+        <StatCard label={isToday ? "Total Pay Today" : "Total Pay"} value={formatPHP(data.total_pay_today)} />
         <StatCard label="Approved" value={data.approved} />
       </div>
       <div style={tableWrap}>
@@ -44,7 +64,7 @@ export default function AttendanceView() {
           </thead>
           <tbody>
             {data.rows.length === 0 && (
-              <tr><td style={{ ...tdStyle, textAlign: "center", color: "#7A6A57" }} colSpan={7}>No one has clocked in today.</td></tr>
+              <tr><td style={{ ...tdStyle, textAlign: "center", color: "#7A6A57" }} colSpan={7}>{isToday ? "No one has clocked in today." : "No one clocked in on this date."}</td></tr>
             )}
             {data.rows.map((row) => (
               <tr key={row.record.id}>
@@ -69,6 +89,7 @@ export default function AttendanceView() {
         </table>
       </div>
       {adjustRow && <AdjustAttendanceModal row={adjustRow} onCancel={() => setAdjustRow(null)} onSaved={() => { setAdjustRow(null); load(); }} />}
+      </>}
     </div>
   );
 }
