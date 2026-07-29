@@ -12,7 +12,7 @@ class AttendanceDashboardController extends Controller {
 
     public function today() {
         $settings = PayrollSetting::current();
-        $records = AttendanceRecord::with('employee.branch')
+        $records = AttendanceRecord::with(['employee' => fn ($q) => $q->withTrashed()->with('branch')])
             ->where('work_date', now()->toDateString())
             ->get();
 

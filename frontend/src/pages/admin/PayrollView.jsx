@@ -60,9 +60,9 @@ export default function PayrollView() {
                 )}
                 {data.rows.map((r) => (
                   <tr key={r.record.id}>
-                    <td style={{ ...tdStyle, fontWeight: 600 }}>{r.employee.short_name}</td>
-                    <td style={tdStyle}>{r.employee.role}</td>
-                    <td style={tdStyle}>{r.employee.branch.name}</td>
+                    <td style={{ ...tdStyle, fontWeight: 600 }}>{r.employee?.short_name ?? "—"}</td>
+                    <td style={tdStyle}>{r.employee?.role ?? "—"}</td>
+                    <td style={tdStyle}>{r.employee?.branch?.name ?? "—"}</td>
                     <td style={tdStyle}>{formatTime12(r.record.clock_in)}</td>
                     <td style={tdStyle}>{formatTime12(r.record.clock_out)}</td>
                     <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>
@@ -93,9 +93,9 @@ export default function PayrollView() {
                 )}
                 {data.rows.map((r) => (
                   <tr key={r.employee_id}>
-                    <td style={{ ...tdStyle, fontWeight: 600 }}>{r.employee.short_name}</td>
-                    <td style={tdStyle}>{r.employee.role}</td>
-                    <td style={tdStyle}>{r.employee.branch.name}</td>
+                    <td style={{ ...tdStyle, fontWeight: 600 }}>{r.employee?.short_name ?? "—"}</td>
+                    <td style={tdStyle}>{r.employee?.role ?? "—"}</td>
+                    <td style={tdStyle}>{r.employee?.branch?.name ?? "—"}</td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>{r.days_worked}</td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>{r.total_hours}h</td>
                     <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>{formatPHP(r.total)}</td>

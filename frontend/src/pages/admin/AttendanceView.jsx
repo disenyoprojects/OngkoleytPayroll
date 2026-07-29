@@ -48,9 +48,9 @@ export default function AttendanceView() {
             )}
             {data.rows.map((row) => (
               <tr key={row.record.id}>
-                <td style={{ ...tdStyle, fontWeight: 600 }}>{row.employee.short_name}</td>
-                <td style={tdStyle}>{row.employee.role}</td>
-                <td style={tdStyle}>{row.employee.branch.name}</td>
+                <td style={{ ...tdStyle, fontWeight: 600 }}>{row.employee?.short_name ?? "—"}</td>
+                <td style={tdStyle}>{row.employee?.role ?? "—"}</td>
+                <td style={tdStyle}>{row.employee?.branch?.name ?? "—"}</td>
                 <td style={tdStyle}>{formatTime12(row.record.clock_in)}</td>
                 <td style={tdStyle}>{row.record.clock_out ? formatTime12(row.record.clock_out) : "—"}</td>
                 <td style={tdStyle}>
