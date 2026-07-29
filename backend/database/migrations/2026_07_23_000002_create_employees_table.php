@@ -16,7 +16,6 @@ return new class extends Migration {
             $table->enum('employment_type', ['regular', 'probationary', 'fixed_term', 'seasonal']);
             $table->date('hire_date');
             $table->date('resignation_date')->nullable();
-            $table->string('pin_hash');
             $table->timestamps();
         });
     }

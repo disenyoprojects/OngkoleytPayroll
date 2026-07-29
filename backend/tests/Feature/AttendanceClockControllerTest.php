@@ -5,24 +5,20 @@ namespace Tests\Feature;
 use App\Models\AttendanceRecord;
 use App\Models\Branch;
 use App\Models\Employee;
-use App\Services\KioskTokenService;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AttendanceClockControllerTest extends TestCase {
     use RefreshDatabase;
 
-    private function tokenFor(Employee $employee): string {
-        return app(KioskTokenService::class)->issue($employee);
-    }
-
     public function test_clock_in_creates_a_pending_record_for_today(): void {
+        $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create();
 
-        $response = $this->withToken($this->tokenFor($employee))
-            ->postJson('/api/kiosk/clock-in');
+        $this->actingAs($admin)->postJson('/api/admin/clock/in', ['employee_id' => $employee->id])
+            ->assertOk();
 
-        $response->assertOk();
         $this->assertDatabaseHas('attendance_records', [
             'employee_id' => $employee->id,
             'status' => 'pending',
@@ -30,37 +26,76 @@ class AttendanceClockControllerTest extends TestCase {
     }
 
     public function test_clock_in_twice_in_a_day_is_rejected(): void {
+        $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create();
-        $token = $this->tokenFor($employee);
 
-        $this->withToken($token)->postJson('/api/kiosk/clock-in')->assertOk();
-        $response = $this->withToken($token)->postJson('/api/kiosk/clock-in');
+        $this->actingAs($admin)->postJson('/api/admin/clock/in', ['employee_id' => $employee->id])->assertOk();
+        $this->actingAs($admin)->postJson('/api/admin/clock/in', ['employee_id' => $employee->id])->assertStatus(422);
 
-        $response->assertStatus(422);
         $this->assertSame(1, AttendanceRecord::where('employee_id', $employee->id)->count());
     }
 
     public function test_clock_out_fills_in_clock_out_time(): void {
+        $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create();
-        $token = $this->tokenFor($employee);
-        $this->withToken($token)->postJson('/api/kiosk/clock-in');
+        $this->actingAs($admin)->postJson('/api/admin/clock/in', ['employee_id' => $employee->id]);
 
-        $response = $this->withToken($token)->postJson('/api/kiosk/clock-out');
+        $this->actingAs($admin)->postJson('/api/admin/clock/out', ['employee_id' => $employee->id])->assertOk();
 
-        $response->assertOk();
         $record = AttendanceRecord::where('employee_id', $employee->id)->firstOrFail();
         $this->assertNotNull($record->clock_out);
     }
 
     public function test_clock_out_without_clocking_in_is_rejected(): void {
+        $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create();
 
-        $response = $this->withToken($this->tokenFor($employee))->postJson('/api/kiosk/clock-out');
-
-        $response->assertStatus(422);
+        $this->actingAs($admin)->postJson('/api/admin/clock/out', ['employee_id' => $employee->id])->assertStatus(422);
     }
 
-    public function test_endpoints_reject_missing_or_invalid_kiosk_token(): void {
-        $this->postJson('/api/kiosk/clock-in')->assertStatus(401);
+    public function test_clock_endpoints_require_authentication(): void {
+        $employee = Employee::factory()->for(Branch::factory())->create();
+
+        $this->postJson('/api/admin/clock/in', ['employee_id' => $employee->id])->assertStatus(401);
+    }
+
+    public function test_clock_in_stamps_employee_shift_on_record(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create([
+            'shift_start' => '14:00:00', 'shift_end' => '23:00:00',
+        ]);
+
+        $this->actingAs($admin)->postJson('/api/admin/clock/in', ['employee_id' => $employee->id])->assertOk();
+
+        $record = AttendanceRecord::where('employee_id', $employee->id)->firstOrFail();
+        $this->assertSame('14:00:00', $record->shift_start);
+        $this->assertSame('23:00:00', $record->shift_end);
+    }
+
+    public function test_clock_out_does_not_overwrite_an_adjusted_shift(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create([
+            'shift_start' => '14:00:00', 'shift_end' => '23:00:00',
+        ]);
+        $this->actingAs($admin)->postJson('/api/admin/clock/in', ['employee_id' => $employee->id])->assertOk();
+
+        $record = AttendanceRecord::where('employee_id', $employee->id)->firstOrFail();
+        $record->update(['shift_start' => '09:00:00', 'shift_end' => '18:00:00']);
+
+        $this->actingAs($admin)->postJson('/api/admin/clock/out', ['employee_id' => $employee->id])->assertOk();
+
+        $record->refresh();
+        $this->assertSame('09:00:00', $record->shift_start);
+        $this->assertSame('18:00:00', $record->shift_end);
+    }
+
+    public function test_status_returns_todays_record(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create();
+        $this->actingAs($admin)->postJson('/api/admin/clock/in', ['employee_id' => $employee->id]);
+
+        $this->actingAs($admin)->getJson("/api/admin/clock/status?employee_id={$employee->id}")
+            ->assertOk()
+            ->assertJsonPath('employee_id', $employee->id);
     }
 }

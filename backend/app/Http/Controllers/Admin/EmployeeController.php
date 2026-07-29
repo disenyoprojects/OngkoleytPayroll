@@ -35,7 +35,6 @@ class EmployeeController extends Controller {
             'resignation_date' => ['nullable', 'date'],
             'shift_start' => ['nullable', 'date_format:H:i'],
             'shift_end' => ['nullable', 'date_format:H:i'],
-            'pin' => ['required', 'string', 'size:4'],
             'daily_basic_rate' => ['nullable', 'numeric', 'min:0'],
             'reason' => ['nullable', 'string'],
         ]);
@@ -54,7 +53,6 @@ class EmployeeController extends Controller {
                 'shift_end' => $data['shift_end'] ?? '17:00',
                 'daily_basic_rate' => $data['daily_basic_rate'] ?? null,
             ]);
-            $employee->pin = $data['pin'];
             $employee->save();
 
             if (($data['daily_basic_rate'] ?? null) !== null) {
@@ -85,7 +83,6 @@ class EmployeeController extends Controller {
             'resignation_date' => ['nullable', 'date'],
             'shift_start' => ['nullable', 'date_format:H:i'],
             'shift_end' => ['nullable', 'date_format:H:i'],
-            'pin' => ['nullable', 'string', 'size:4'],
             'daily_basic_rate' => ['nullable', 'numeric', 'min:0'],
             'reason' => ['nullable', 'string'],
         ]);
@@ -112,9 +109,6 @@ class EmployeeController extends Controller {
                 'shift_end' => $data['shift_end'] ?? $employee->shift_end,
                 'daily_basic_rate' => $newRate,
             ]);
-            if (! empty($data['pin'])) {
-                $employee->pin = $data['pin'];
-            }
             $employee->save();
 
             if ($rateChanged) {

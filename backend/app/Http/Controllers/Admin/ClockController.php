@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Kiosk;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceRecord;
@@ -8,10 +8,29 @@ use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
-class AttendanceClockController extends Controller {
+class ClockController extends Controller {
+    /** Active staff for the clock-in screen. */
+    public function staff() {
+        return response()->json(
+            Employee::with('branch')
+                ->orderBy('short_name')
+                ->get(['id', 'short_name', 'full_name', 'role', 'branch_id'])
+        );
+    }
+
+    /** Today's attendance record for one employee (or null). */
+    public function status(Request $request) {
+        $data = $request->validate(['employee_id' => ['required', 'exists:employees,id']]);
+
+        $record = AttendanceRecord::where('employee_id', $data['employee_id'])
+            ->where('work_date', now()->toDateString())
+            ->first();
+
+        return response()->json($record);
+    }
+
     public function clockIn(Request $request) {
-        /** @var Employee $employee */
-        $employee = $request->attributes->get('kiosk_employee');
+        $employee = $this->resolveEmployee($request);
         $today = now()->toDateString();
 
         if (AttendanceRecord::where('employee_id', $employee->id)->where('work_date', $today)->exists()) {
@@ -31,8 +50,7 @@ class AttendanceClockController extends Controller {
     }
 
     public function clockOut(Request $request) {
-        /** @var Employee $employee */
-        $employee = $request->attributes->get('kiosk_employee');
+        $employee = $this->resolveEmployee($request);
         $today = now()->toDateString();
 
         $record = AttendanceRecord::where('employee_id', $employee->id)->where('work_date', $today)->first();
@@ -46,13 +64,9 @@ class AttendanceClockController extends Controller {
         return response()->json($record);
     }
 
-    public function today(Request $request) {
-        /** @var Employee $employee */
-        $employee = $request->attributes->get('kiosk_employee');
-        $record = AttendanceRecord::where('employee_id', $employee->id)
-            ->where('work_date', now()->toDateString())
-            ->first();
+    private function resolveEmployee(Request $request): Employee {
+        $data = $request->validate(['employee_id' => ['required', 'exists:employees,id']]);
 
-        return response()->json($record);
+        return Employee::findOrFail($data['employee_id']);
     }
 }

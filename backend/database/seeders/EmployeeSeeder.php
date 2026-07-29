@@ -38,7 +38,6 @@ class EmployeeSeeder extends Seeder {
                 'hire_date' => sprintf('%d-%02d-01', $year, $row['hireMonth']),
                 'resignation_date' => $row['lastMonth'] < 12 ? sprintf('%d-%02d-28', $year, $row['lastMonth']) : null,
             ]);
-            $employee->pin = '1234';
             $employee->save();
         }
     }

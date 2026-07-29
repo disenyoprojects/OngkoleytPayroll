@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AttendanceAdminController;
 use App\Http\Controllers\Admin\AttendanceDashboardController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\ClockController;
 use App\Http\Controllers\Admin\EmployeeAttendanceController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\PayrollController;
@@ -13,9 +14,6 @@ use App\Http\Controllers\Admin\PayrollSettingController;
 use App\Http\Controllers\Admin\ThirteenthMonthController;
 use App\Http\Controllers\Admin\ThirteenthMonthPayslipController;
 use App\Http\Controllers\Auth\AdminSessionController;
-use App\Http\Controllers\Kiosk\AttendanceClockController;
-use App\Http\Controllers\Kiosk\KioskAuthController;
-use App\Http\Controllers\Kiosk\StaffDashboardController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -31,6 +29,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/admin/attendance/{record}/adjust', [AttendanceAdminController::class, 'adjust']);
     Route::post('/admin/attendance/{record}/approve', [AttendanceAdminController::class, 'approve']);
     Route::get('/admin/attendance/today', [AttendanceDashboardController::class, 'today']);
+    Route::get('/admin/clock/staff', [ClockController::class, 'staff']);
+    Route::get('/admin/clock/status', [ClockController::class, 'status']);
+    Route::post('/admin/clock/in', [ClockController::class, 'clockIn']);
+    Route::post('/admin/clock/out', [ClockController::class, 'clockOut']);
     Route::get('/admin/payroll/daily', [PayrollController::class, 'daily']);
     Route::get('/admin/payroll/weekly', [PayrollController::class, 'weekly']);
     Route::get('/admin/payroll/export', [PayrollExportController::class, 'export']);
@@ -57,14 +59,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/admin/employees/{employee}', [EmployeeController::class, 'update']);
     Route::post('/admin/employees/{employee}/separate', [EmployeeController::class, 'separate']);
     Route::post('/admin/employees/{id}/restore', [EmployeeController::class, 'restore']);
-});
-
-Route::get('/kiosk/staff', [KioskAuthController::class, 'staff']);
-Route::post('/kiosk/verify-pin', [KioskAuthController::class, 'verifyPin']);
-
-Route::middleware('kiosk.token')->group(function () {
-    Route::post('/kiosk/clock-in', [AttendanceClockController::class, 'clockIn']);
-    Route::post('/kiosk/clock-out', [AttendanceClockController::class, 'clockOut']);
-    Route::get('/kiosk/today', [AttendanceClockController::class, 'today']);
-    Route::get('/kiosk/dashboard', [StaffDashboardController::class, 'show']);
 });

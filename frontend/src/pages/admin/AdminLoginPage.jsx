@@ -22,7 +22,8 @@ export default function AdminLoginPage({ onLoggedIn }) {
 
   return (
     <div style={{ maxWidth: 360, margin: "80px auto", padding: 24 }}>
-      <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, marginBottom: 20 }}>Admin Login</h1>
+      <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, marginBottom: 4 }}>Ongkoleyt</h1>
+      <div style={{ fontSize: 13, color: COLOR.inkSoft, marginBottom: 20 }}>Sign in to continue</div>
       <form onSubmit={submit}>
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 12, color: COLOR.inkSoft, marginBottom: 4 }}>Email</div>

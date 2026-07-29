@@ -10,7 +10,7 @@ const BLANK = {
   employee_code: "", full_name: "", short_name: "", role: "",
   branch_id: "", employment_type: "regular", hire_date: "",
   resignation_date: "", shift_start: "08:00", shift_end: "17:00",
-  pin: "", daily_basic_rate: "",
+  daily_basic_rate: "",
 };
 
 function today() {
@@ -70,7 +70,6 @@ export default function EmployeesView() {
       resignation_date: emp.resignation_date ? String(emp.resignation_date).slice(0, 10) : "",
       shift_start: emp.shift_start ? String(emp.shift_start).slice(0, 5) : "08:00",
       shift_end: emp.shift_end ? String(emp.shift_end).slice(0, 5) : "17:00",
-      pin: "",
       daily_basic_rate: rate,
       reason: "",
     });
@@ -85,7 +84,6 @@ export default function EmployeesView() {
     const payload = { ...editing };
     if (payload.daily_basic_rate === "") payload.daily_basic_rate = null;
     if (payload.resignation_date === "") payload.resignation_date = null;
-    if (!payload.pin) delete payload.pin;
     try {
       if (editing.id) {
         await apiClient.put(`/api/admin/employees/${editing.id}`, payload);
@@ -279,10 +277,6 @@ export default function EmployeesView() {
               <div style={{ fontSize: 12, marginBottom: 4 }}>Shift End</div>
               <input type="time" value={editing.shift_end} onChange={(e) => set("shift_end", e.target.value)} style={inputStyle} />
             </div>
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 12, marginBottom: 4 }}>PIN {editing.id ? "(leave blank to keep current)" : "(4 digits)"}</div>
-            <input type="text" value={editing.pin} onChange={(e) => set("pin", e.target.value)} style={inputStyle} />
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 12, marginBottom: 4 }}>Daily Basic Rate (₱) — blank = use global rate</div>

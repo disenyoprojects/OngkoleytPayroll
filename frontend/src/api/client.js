@@ -9,10 +9,8 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  // Only attach the admin token when the request hasn't already set its own
-  // Authorization header. The kiosk clock flow passes a short-lived kiosk
-  // token per request; overwriting it with the admin token would make the
-  // kiosk.token middleware reject those calls.
+  // Attach the session token unless the request already set its own
+  // Authorization header.
   const token = getAdminToken();
   if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;

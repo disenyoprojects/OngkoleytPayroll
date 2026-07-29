@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Hash;
 
 class Employee extends Model {
     use HasFactory, SoftDeletes;
@@ -13,9 +12,8 @@ class Employee extends Model {
     protected $fillable = [
         'employee_code', 'full_name', 'short_name', 'role', 'branch_id',
         'employment_type', 'shift_start', 'shift_end', 'daily_basic_rate', 'hire_date',
-        'resignation_date', 'separation_type', 'separation_reason', 'pin_hash',
+        'resignation_date', 'separation_type', 'separation_reason',
     ];
-    protected $hidden = ['pin_hash'];
     protected $casts = [
         'hire_date' => 'date',
         'resignation_date' => 'date',
@@ -36,14 +34,6 @@ class Employee extends Model {
 
     public function thirteenthMonthRecords() {
         return $this->hasMany(ThirteenthMonthRecord::class);
-    }
-
-    public function setPinAttribute(string $pin): void {
-        $this->attributes['pin_hash'] = Hash::make($pin);
-    }
-
-    public function verifyPin(string $pin): bool {
-        return Hash::check($pin, $this->pin_hash);
     }
 
     public function isActiveDuring(int $month, int $year): bool {

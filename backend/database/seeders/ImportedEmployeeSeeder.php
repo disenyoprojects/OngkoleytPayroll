@@ -9,7 +9,7 @@ use Illuminate\Database\Seeder;
 /**
  * One-time import of the real store roster (CURRENT-EMPLOYEES).
  * Idempotent: re-running updates existing rows by employee_code rather than
- * duplicating. Demo PIN 1234 for everyone — replace per-employee before use.
+ * duplicating.
  */
 class ImportedEmployeeSeeder extends Seeder {
     // [code, full name, short name, role, branch]
@@ -78,7 +78,6 @@ class ImportedEmployeeSeeder extends Seeder {
                 'hire_date' => now()->toDateString(),
                 'daily_basic_rate' => null,
             ]);
-            $employee->pin = '1234';
             $employee->save();
         }
     }

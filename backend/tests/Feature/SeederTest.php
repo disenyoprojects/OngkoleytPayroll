@@ -17,8 +17,6 @@ class SeederTest extends TestCase {
         $this->assertSame(5, Branch::count());
         $this->assertSame(14, Employee::count());
 
-        $employee = Employee::where('employee_code', 'ONG-1001')->firstOrFail();
-        $this->assertTrue($employee->verifyPin('1234'));
-        $this->assertFalse($employee->verifyPin('9999'));
+        $this->assertDatabaseHas('employees', ['employee_code' => 'ONG-1001']);
     }
 }

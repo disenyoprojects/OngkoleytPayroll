@@ -22,7 +22,6 @@ class EmployeeControllerTest extends TestCase {
             'branch_id' => $branch->id,
             'employment_type' => 'regular',
             'hire_date' => '2026-01-01',
-            'pin' => '1234',
         ], $overrides);
     }
 
@@ -45,15 +44,14 @@ class EmployeeControllerTest extends TestCase {
             ->assertJsonPath('0.name', 'Bonifacio');
     }
 
-    public function test_create_persists_employee_and_hashes_pin(): void {
+    public function test_create_persists_employee(): void {
         $admin = User::factory()->create();
         $branch = Branch::factory()->create();
 
         $response = $this->actingAs($admin)->postJson('/api/admin/employees', $this->payload($branch));
 
         $response->assertCreated();
-        $employee = Employee::where('employee_code', 'ONG-5001')->firstOrFail();
-        $this->assertTrue($employee->verifyPin('1234'));
+        $this->assertDatabaseHas('employees', ['employee_code' => 'ONG-5001', 'full_name' => 'Test Person']);
     }
 
     public function test_create_rejects_duplicate_employee_code(): void {
@@ -191,24 +189,6 @@ class EmployeeControllerTest extends TestCase {
         $log = AuditLog::where('type', 'employee')->where('action', 'rate_override_changed')->firstOrFail();
         $this->assertSame('500.00', $log->old_amount);
         $this->assertSame('700.00', $log->new_amount);
-    }
-
-    public function test_update_with_blank_pin_keeps_existing_pin(): void {
-        $admin = User::factory()->create();
-        $employee = Employee::factory()->for(Branch::factory())->create();
-
-        $this->actingAs($admin)->putJson("/api/admin/employees/{$employee->id}", [
-            'employee_code' => $employee->employee_code,
-            'full_name' => $employee->full_name,
-            'short_name' => $employee->short_name,
-            'role' => $employee->role,
-            'branch_id' => $employee->branch_id,
-            'employment_type' => $employee->employment_type,
-            'hire_date' => $employee->hire_date->toDateString(),
-            'pin' => '',
-        ])->assertOk();
-
-        $this->assertTrue($employee->fresh()->verifyPin('1234'));
     }
 
     public function test_update_omitting_daily_rate_key_preserves_existing_rate(): void {

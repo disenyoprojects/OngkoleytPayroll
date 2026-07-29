@@ -26,7 +26,6 @@ class EmployeeFactory extends Factory
             'employment_type' => fake()->randomElement(['regular', 'probationary', 'fixed_term', 'seasonal']),
             'hire_date' => now()->startOfYear(),
             'resignation_date' => null,
-            'pin_hash' => bcrypt('1234'),
         ];
     }
 }

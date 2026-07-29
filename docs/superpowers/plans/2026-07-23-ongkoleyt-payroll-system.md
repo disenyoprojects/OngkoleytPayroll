@@ -235,6 +235,7 @@ git commit -m "chore: scaffold Vite React frontend with theme tokens and API cli
 ```php
 <?php
 
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;

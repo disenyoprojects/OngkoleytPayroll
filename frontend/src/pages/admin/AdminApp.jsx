@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { apiClient, clearAdminToken, getAdminToken } from "../../api/client";
 import { tabBtnStyle } from "../../components/ui";
 import AdminLoginPage from "./AdminLoginPage";
+import ClockView from "./ClockView";
 import AttendanceView from "./AttendanceView";
 import PayrollView from "./PayrollView";
 import ThirteenthMonthView from "./ThirteenthMonthView";
@@ -10,6 +11,7 @@ import AuditLogView from "./AuditLogView";
 import EmployeesView from "./EmployeesView";
 
 const TABS = [
+  ["clock", "Clock In/Out"],
   ["attendance", "Attendance"],
   ["payroll", "Payroll"],
   ["thirteenth-month", "13th Month"],
@@ -20,7 +22,7 @@ const TABS = [
 
 export default function AdminApp() {
   const [admin, setAdmin] = useState(undefined); // undefined = loading, null = logged out
-  const [tab, setTab] = useState("attendance");
+  const [tab, setTab] = useState("clock");
 
   useEffect(() => {
     if (!getAdminToken()) {
@@ -51,6 +53,7 @@ export default function AdminApp() {
         ))}
         <button onClick={logout} style={{ ...tabBtnStyle(false), marginLeft: "auto" }}>Log Out</button>
       </div>
+      {tab === "clock" && <ClockView />}
       {tab === "attendance" && <AttendanceView />}
       {tab === "payroll" && <PayrollView />}
       {tab === "thirteenth-month" && <ThirteenthMonthView />}
