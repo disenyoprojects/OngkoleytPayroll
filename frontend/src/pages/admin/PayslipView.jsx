@@ -4,7 +4,8 @@ import { formatPHP, formatTime12 } from "../../theme";
 import { Button, inputStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 
 function thisMonth() {
-  return new Date().toISOString().slice(0, 7);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 const PERIODS = [["first", "1–15"], ["second", "16–end"], ["whole", "Whole month"]];
@@ -78,7 +79,7 @@ export default function PayslipView() {
                 {slip.lines.map((l) => (
                   <tr key={l.date}>
                     <td style={tdStyle}>{l.date}</td>
-                    <td style={tdStyle}>{String(l.shift_start).slice(0, 5)}–{String(l.shift_end).slice(0, 5)}</td>
+                    <td style={tdStyle}>{l.shift_start ? String(l.shift_start).slice(0, 5) : "—"}–{l.shift_end ? String(l.shift_end).slice(0, 5) : "—"}</td>
                     <td style={tdStyle}>{l.clock_in ? formatTime12(l.clock_in) : "—"}</td>
                     <td style={tdStyle}>{l.clock_out ? formatTime12(l.clock_out) : "—"}</td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>{l.hours}h</td>

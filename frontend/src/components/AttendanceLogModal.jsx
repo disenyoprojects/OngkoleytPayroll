@@ -4,7 +4,12 @@ import { formatTime12 } from "../theme";
 import { Button, ModalShell, Pill, tableWrap, tableStyle, thStyle, tdStyle } from "./ui";
 
 function thisMonth() {
-  return new Date().toISOString().slice(0, 7);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function ymOf(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export default function AttendanceLogModal({ employee, onClose }) {
@@ -13,13 +18,13 @@ export default function AttendanceLogModal({ employee, onClose }) {
 
   useEffect(() => {
     apiClient.get(`/api/admin/employees/${employee.id}/attendance?month=${month}`)
-      .then((res) => setRecords(res.data.records));
+      .then((res) => setRecords(res.data.records))
+      .catch(() => setRecords([]));
   }, [employee.id, month]);
 
   function shiftMonth(delta) {
     const [y, m] = month.split("-").map(Number);
-    const d = new Date(y, m - 1 + delta, 1);
-    setMonth(d.toISOString().slice(0, 7));
+    setMonth(ymOf(new Date(y, m - 1 + delta, 1)));
   }
 
   return (
@@ -51,7 +56,7 @@ export default function AttendanceLogModal({ employee, onClose }) {
             {records.map((r) => (
               <tr key={r.id}>
                 <td style={tdStyle}>{String(r.work_date).slice(0, 10)}</td>
-                <td style={tdStyle}>{String(r.shift_start).slice(0, 5)}–{String(r.shift_end).slice(0, 5)}</td>
+                <td style={tdStyle}>{r.shift_start ? String(r.shift_start).slice(0, 5) : "—"}–{r.shift_end ? String(r.shift_end).slice(0, 5) : "—"}</td>
                 <td style={tdStyle}>{r.clock_in ? formatTime12(r.clock_in) : "—"}</td>
                 <td style={tdStyle}>{r.clock_out ? formatTime12(r.clock_out) : "—"}</td>
                 <td style={{ ...tdStyle, textAlign: "right" }}>{r.pay ? `${r.pay.total_hours}h` : "—"}</td>

@@ -31,7 +31,7 @@
             @forelse ($payslip['lines'] as $line)
                 <tr>
                     <td>{{ $line['date'] }}</td>
-                    <td>{{ substr($line['shift_start'], 0, 5) }}–{{ substr($line['shift_end'], 0, 5) }}</td>
+                    <td>{{ $line['shift_start'] ? substr($line['shift_start'], 0, 5) : '—' }}–{{ $line['shift_end'] ? substr($line['shift_end'], 0, 5) : '—' }}</td>
                     <td>{{ $line['clock_in'] ? substr($line['clock_in'], 0, 5) : '—' }}</td>
                     <td>{{ $line['clock_out'] ? substr($line['clock_out'], 0, 5) : '—' }}</td>
                     <td class="right">{{ number_format($line['hours'], 2) }}</td>
