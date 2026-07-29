@@ -6,13 +6,16 @@ import { Button, StatCard, tabBtnStyle, tableWrap, tableStyle, thStyle, tdStyle 
 export default function PayrollView() {
   const [range, setRange] = useState("daily");
   const [data, setData] = useState(null);
+  // Track which range the loaded data belongs to, so the daily/weekly table is
+  // never rendered against the other range's data shape during a switch.
+  const [dataRange, setDataRange] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     setData(null);
     const endpoint = range === "daily" ? "/api/admin/payroll/daily" : "/api/admin/payroll/weekly";
     apiClient.get(endpoint).then((res) => {
-      if (!cancelled) setData(res.data);
+      if (!cancelled) { setData(res.data); setDataRange(range); }
     });
     return () => { cancelled = true; };
   }, [range]);
@@ -22,7 +25,7 @@ export default function PayrollView() {
     window.open(url, "_blank");
   }
 
-  if (!data) return <div>Loading...</div>;
+  if (!data || dataRange !== range) return <div>Loading...</div>;
 
   return (
     <div>
@@ -59,12 +62,12 @@ export default function PayrollView() {
                   <tr><td style={{ ...tdStyle, textAlign: "center", color: "#7A6A57" }} colSpan={6}>No payroll for this period.</td></tr>
                 )}
                 {data.rows.map((r) => (
-                  <tr key={r.record.id}>
+                  <tr key={r.record?.id}>
                     <td style={{ ...tdStyle, fontWeight: 600 }}>{r.employee?.short_name ?? "—"}</td>
                     <td style={tdStyle}>{r.employee?.role ?? "—"}</td>
                     <td style={tdStyle}>{r.employee?.branch?.name ?? "—"}</td>
-                    <td style={tdStyle}>{formatTime12(r.record.clock_in)}</td>
-                    <td style={tdStyle}>{formatTime12(r.record.clock_out)}</td>
+                    <td style={tdStyle}>{formatTime12(r.record?.clock_in)}</td>
+                    <td style={tdStyle}>{formatTime12(r.record?.clock_out)}</td>
                     <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>
                       {formatPHP(r.pay?.total)}
                       {r.pay?.premium_label && r.pay.premium_label !== "Ordinary" && (
