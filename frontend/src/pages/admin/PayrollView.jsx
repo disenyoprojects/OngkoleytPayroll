@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
 import { formatPHP, formatTime12, FONT_DISPLAY } from "../../theme";
 import { Button, StatCard, tabBtnStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
+import PayslipView from "./PayslipView";
 
 export default function PayrollView() {
   const [range, setRange] = useState("daily");
@@ -11,6 +12,7 @@ export default function PayrollView() {
   const [dataRange, setDataRange] = useState(null);
 
   useEffect(() => {
+    if (range === "payslip") return;
     let cancelled = false;
     setData(null);
     const endpoint = range === "daily" ? "/api/admin/payroll/daily" : "/api/admin/payroll/weekly";
@@ -25,23 +27,31 @@ export default function PayrollView() {
     window.open(url, "_blank");
   }
 
-  if (!data || dataRange !== range) return <div>Loading...</div>;
-
   return (
     <div>
       <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, marginBottom: 18 }}>Payroll</h1>
-      <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
-        <StatCard label={`Total ${range === "daily" ? "Today" : "This Week"}`} value={formatPHP(data.total)} />
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => setRange("daily")} style={tabBtnStyle(range === "daily")}>Daily</button>
           <button onClick={() => setRange("weekly")} style={tabBtnStyle(range === "weekly")}>Weekly</button>
+          <button onClick={() => setRange("payslip")} style={tabBtnStyle(range === "payslip")}>Payslip</button>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <Button variant="outline" onClick={() => download("export")}>⬇ CSV</Button>
-          <Button variant="outline" onClick={() => download("pdf")}>⬇ PDF</Button>
-        </div>
+        {range !== "payslip" && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button variant="outline" onClick={() => download("export")}>⬇ CSV</Button>
+            <Button variant="outline" onClick={() => download("pdf")}>⬇ PDF</Button>
+          </div>
+        )}
+      </div>
+
+      {range === "payslip" ? (
+        <PayslipView />
+      ) : (!data || dataRange !== range) ? (
+        <div>Loading...</div>
+      ) : (
+      <>
+      <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
+        <StatCard label={`Total ${range === "daily" ? "Today" : "This Week"}`} value={formatPHP(data.total)} />
       </div>
       <div style={tableWrap}>
         <table style={tableStyle}>
@@ -109,6 +119,8 @@ export default function PayrollView() {
           )}
         </table>
       </div>
+      </>
+      )}
     </div>
   );
 }
