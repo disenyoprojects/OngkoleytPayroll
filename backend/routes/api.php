@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\EmployeeAttendanceController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\PayrollController;
+use App\Http\Controllers\Admin\PayslipController;
 use App\Http\Controllers\Admin\PayrollExportController;
 use App\Http\Controllers\Admin\PayrollPdfController;
 use App\Http\Controllers\Admin\PayrollSettingController;
@@ -49,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/employees', [EmployeeController::class, 'index']);
     Route::get('/admin/employees/separated', [EmployeeController::class, 'separated']);
     Route::get('/admin/employees/{employee}/attendance', [EmployeeAttendanceController::class, 'index'])->withTrashed();
+    Route::get('/admin/employees/{employee}/payslip', [PayslipController::class, 'show'])->withTrashed();
     Route::get('/admin/branches', [EmployeeController::class, 'branches']);
     Route::post('/admin/employees', [EmployeeController::class, 'store']);
     Route::put('/admin/employees/{employee}', [EmployeeController::class, 'update']);
