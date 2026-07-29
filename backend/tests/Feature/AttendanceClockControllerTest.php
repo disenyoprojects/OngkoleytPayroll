@@ -89,6 +89,20 @@ class AttendanceClockControllerTest extends TestCase {
         $this->assertSame('18:00:00', $record->shift_end);
     }
 
+    public function test_staff_lists_employees_with_branch(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create(['short_name' => 'Alex']);
+
+        $this->actingAs($admin)->getJson('/api/admin/clock/staff')
+            ->assertOk()
+            ->assertJsonPath('0.short_name', 'Alex')
+            ->assertJsonPath('0.id', $employee->id);
+    }
+
+    public function test_staff_requires_authentication(): void {
+        $this->getJson('/api/admin/clock/staff')->assertStatus(401);
+    }
+
     public function test_status_returns_todays_record(): void {
         $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create();

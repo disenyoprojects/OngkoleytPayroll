@@ -15,7 +15,8 @@ function branchOptionsOf(staff) {
 }
 
 export default function ClockView() {
-  const [staff, setStaff] = useState([]);
+  const [staff, setStaff] = useState(null); // null = loading, [] = loaded empty
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
   const [branchFilter, setBranchFilter] = useState("");
   const [selected, setSelected] = useState(null); // { employee, record }
@@ -23,7 +24,10 @@ export default function ClockView() {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    apiClient.get("/api/admin/clock/staff").then((res) => setStaff(res.data));
+    setLoadError(false);
+    apiClient.get("/api/admin/clock/staff")
+      .then((res) => setStaff(res.data))
+      .catch(() => { setStaff([]); setLoadError(true); });
   }, []);
 
   function showToast(msg) {
@@ -51,8 +55,9 @@ export default function ClockView() {
     }
   }
 
-  const branches = branchOptionsOf(staff);
-  const filtered = staff.filter((s) =>
+  const list = staff ?? [];
+  const branches = branchOptionsOf(list);
+  const filtered = list.filter((s) =>
     s.short_name.toLowerCase().includes(search.toLowerCase()) &&
     (!branchFilter || String(s.branch_id) === String(branchFilter))
   );
@@ -110,6 +115,14 @@ export default function ClockView() {
           </div>
         ))}
       </div>
+      {staff === null && <div style={{ marginTop: 24, color: COLOR.inkSoft, fontSize: 14 }}>Loading staff…</div>}
+      {staff !== null && filtered.length === 0 && (
+        <div style={{ marginTop: 24, color: COLOR.inkSoft, fontSize: 14, textAlign: "center" }}>
+          {loadError ? "Couldn't load staff. Refresh the page and try again."
+            : list.length === 0 ? "No staff yet — add employees in the Employees tab."
+            : "No staff match your search."}
+        </div>
+      )}
       {toast && <div style={{ position: "fixed", bottom: 24, right: 24, background: COLOR.espresso, color: COLOR.cream, padding: "12px 18px", borderRadius: 8, fontSize: 13 }}>{toast}</div>}
     </div>
   );
