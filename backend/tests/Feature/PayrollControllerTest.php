@@ -27,6 +27,24 @@ class PayrollControllerTest extends TestCase {
         $this->assertCount(1, $response->json('rows'));
     }
 
+    public function test_payroll_still_resolves_a_separated_employee(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create(['short_name' => 'Gone']);
+        AttendanceRecord::factory()->for($employee)->create(['work_date' => '2026-07-21', 'clock_in' => '08:00:00', 'clock_out' => '17:00:00']);
+
+        // The employee is later separated (soft-deleted) but still has this week's record.
+        $employee->delete();
+
+        $daily = $this->actingAs($admin)->getJson('/api/admin/payroll/daily?date=2026-07-21');
+        $daily->assertOk();
+        $this->assertCount(1, $daily->json('rows'));
+        $this->assertSame('Gone', $daily->json('rows.0.employee.short_name'));
+
+        $weekly = $this->actingAs($admin)->getJson('/api/admin/payroll/weekly?start=2026-07-20');
+        $weekly->assertOk();
+        $this->assertSame('Gone', $weekly->json('rows.0.employee.short_name'));
+    }
+
     public function test_weekly_payroll_aggregates_seven_days(): void {
         $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create();

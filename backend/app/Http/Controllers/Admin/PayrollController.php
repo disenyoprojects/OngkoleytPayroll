@@ -16,7 +16,7 @@ class PayrollController extends Controller {
         $date = $request->query('date', now()->toDateString());
         $settings = PayrollSetting::current();
 
-        $rows = AttendanceRecord::with('employee.branch')
+        $rows = AttendanceRecord::with(['employee' => fn ($q) => $q->withTrashed()->with('branch')])
             ->where('work_date', $date)
             ->whereNotNull('clock_out')
             ->get()
@@ -41,7 +41,7 @@ class PayrollController extends Controller {
         $end = $start->copy()->addDays(6);
         $settings = PayrollSetting::current();
 
-        $records = AttendanceRecord::with('employee.branch')
+        $records = AttendanceRecord::with(['employee' => fn ($q) => $q->withTrashed()->with('branch')])
             ->whereBetween('work_date', [$start->toDateString(), $end->toDateString()])
             ->whereNotNull('clock_out')
             ->get()

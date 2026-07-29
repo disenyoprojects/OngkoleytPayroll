@@ -18,8 +18,8 @@ class PayrollPdfController extends Controller {
         $settings = PayrollSetting::current();
 
         $records = $range === 'daily'
-            ? AttendanceRecord::with('employee.branch')->where('work_date', $date)->whereNotNull('clock_out')->get()
-            : AttendanceRecord::with('employee.branch')->whereBetween('work_date', [$date, now()->parse($date)->addDays(6)->toDateString()])->whereNotNull('clock_out')->get();
+            ? AttendanceRecord::with(['employee' => fn ($q) => $q->withTrashed()->with('branch')])->where('work_date', $date)->whereNotNull('clock_out')->get()
+            : AttendanceRecord::with(['employee' => fn ($q) => $q->withTrashed()->with('branch')])->whereBetween('work_date', [$date, now()->parse($date)->addDays(6)->toDateString()])->whereNotNull('clock_out')->get();
 
         $rows = $records->map(fn (AttendanceRecord $record) => [
             'employee' => $record->employee,
