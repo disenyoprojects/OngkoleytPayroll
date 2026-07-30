@@ -44,14 +44,33 @@
         </tbody>
     </table>
 
-    <table class="totals" style="width: 260px; margin-left: auto;">
+    @if (count($payslip['adjustments']))
+        <table style="margin-top: 12px;">
+            <thead><tr><th>Adjustment</th><th>Date</th><th>Status</th><th class="right">Amount</th></tr></thead>
+            <tbody>
+                @foreach ($payslip['adjustments'] as $adj)
+                    <tr>
+                        <td>{{ $adj['label'] }}</td>
+                        <td>{{ $adj['date'] }}</td>
+                        <td>{{ $adj['paid'] ? 'Paid (Cash on Hand)' : 'To pay' }}</td>
+                        <td class="right">{{ $adj['amount'] < 0 ? '−' : '' }}₱{{ number_format(abs($adj['amount']), 2) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+
+    <table class="totals" style="width: 300px; margin-left: auto;">
         <tr><td>Basic</td><td class="right">₱{{ number_format($payslip['totals']['basic'], 2) }}</td></tr>
         <tr><td>Overtime</td><td class="right">₱{{ number_format($payslip['totals']['ot'], 2) }}</td></tr>
         <tr><td>Night Differential</td><td class="right">₱{{ number_format($payslip['totals']['night_diff'], 2) }}</td></tr>
         <tr><td>Gross Pay</td><td class="right">₱{{ number_format($payslip['totals']['gross'], 2) }}</td></tr>
         <tr><td>Late Penalty</td><td class="right">−₱{{ number_format($payslip['totals']['late_penalty'], 2) }}</td></tr>
-        <tr class="gross"><td>Net Pay</td><td class="right">₱{{ number_format($payslip['totals']['net'], 2) }}</td></tr>
+        <tr><td>Adjustments</td><td class="right">{{ $payslip['totals']['adjustments'] < 0 ? '−' : '' }}₱{{ number_format(abs($payslip['totals']['adjustments']), 2) }}</td></tr>
+        <tr class="gross"><td>Total Salary</td><td class="right">₱{{ number_format($payslip['totals']['total_salary'], 2) }}</td></tr>
+        <tr><td>Less already paid (Cash on Hand)</td><td class="right">−₱{{ number_format($payslip['totals']['paid'], 2) }}</td></tr>
+        <tr class="gross"><td>Net to Release</td><td class="right">₱{{ number_format($payslip['totals']['net_to_release'], 2) }}</td></tr>
     </table>
-    <p class="muted" style="margin-top: 14px;">Net of late penalties. Excludes statutory deductions (SSS / PhilHealth / Pag-IBIG / tax).</p>
+    <p class="muted" style="margin-top: 14px;">Total salary includes adjustments and is net of late penalties. "Net to Release" excludes amounts already paid in cash. Excludes statutory deductions (SSS / PhilHealth / Pag-IBIG / tax).</p>
 </body>
 </html>

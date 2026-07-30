@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\EmployeeAttendanceController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\PayrollController;
 use App\Http\Controllers\Admin\PayslipController;
+use App\Http\Controllers\Admin\PayrollAdjustmentController;
 use App\Http\Controllers\Admin\PayrollExportController;
 use App\Http\Controllers\Admin\PayrollPdfController;
 use App\Http\Controllers\Admin\PayrollSettingController;
@@ -54,6 +55,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/employees/{employee}/attendance', [EmployeeAttendanceController::class, 'index'])->withTrashed();
     Route::get('/admin/employees/{employee}/payslip', [PayslipController::class, 'show'])->withTrashed();
     Route::get('/admin/employees/{employee}/payslip/pdf', [PayslipController::class, 'pdf'])->withTrashed();
+    Route::get('/admin/employees/{employee}/adjustments', [PayrollAdjustmentController::class, 'index'])->withTrashed();
+    Route::post('/admin/employees/{employee}/adjustments', [PayrollAdjustmentController::class, 'store'])->withTrashed();
+    Route::delete('/admin/adjustments/{adjustment}', [PayrollAdjustmentController::class, 'destroy']);
     Route::get('/admin/branches', [EmployeeController::class, 'branches']);
     Route::post('/admin/employees', [EmployeeController::class, 'store']);
     Route::put('/admin/employees/{employee}', [EmployeeController::class, 'update']);

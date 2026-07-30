@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceRecord;
 use App\Models\Employee;
+use App\Models\PayrollAdjustment;
 use App\Models\PayrollSetting;
 use App\Services\AttendancePayCalculator;
 use App\Services\PayslipPeriod;
@@ -74,6 +75,25 @@ class PayslipController extends Controller {
 
         $gross = round($basic + $ot + $nightDiff, 2);
 
+        // Ad-hoc adjustments (bonuses, allowances, cash advances) dated inside this window.
+        $adjustments = PayrollAdjustment::where('employee_id', $employee->id)
+            ->whereBetween('date', [$window['from'], $window['to']])
+            ->orderBy('date')
+            ->get()
+            ->map(fn (PayrollAdjustment $a) => [
+                'id' => $a->id,
+                'date' => $a->date->format('Y-m-d'),
+                'label' => $a->label,
+                'category' => $a->category,
+                'amount' => (float) $a->amount,
+                'paid' => $a->paid,
+            ])->values();
+
+        $adjustmentsTotal = round($adjustments->sum('amount'), 2);
+        $paidTotal = round($adjustments->where('paid', true)->sum('amount'), 2);
+        $totalSalary = round($gross - $latePenalty + $adjustmentsTotal, 2);
+        $netToRelease = round($totalSalary - $paidTotal, 2);
+
         $rate = $employee->daily_basic_rate === null ? (float) $settings->daily_basic_rate : (float) $employee->daily_basic_rate;
 
         return [
@@ -83,13 +103,17 @@ class PayslipController extends Controller {
             ],
             'period' => $window,
             'lines' => $lines,
+            'adjustments' => $adjustments,
             'totals' => [
                 'basic' => round($basic, 2),
                 'ot' => round($ot, 2),
                 'night_diff' => round($nightDiff, 2),
                 'gross' => $gross,
                 'late_penalty' => round($latePenalty, 2),
-                'net' => round($gross - $latePenalty, 2),
+                'adjustments' => $adjustmentsTotal,
+                'total_salary' => $totalSalary,
+                'paid' => $paidTotal,
+                'net_to_release' => $netToRelease,
             ],
         ];
     }
