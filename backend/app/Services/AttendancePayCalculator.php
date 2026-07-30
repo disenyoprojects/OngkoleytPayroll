@@ -114,6 +114,7 @@ class AttendancePayCalculator {
         // late. It reduces take-home pay but NOT the 13th-month base (a penalty
         // is not a reduction in earned basic salary).
         $isLate = $start > $shiftStartMin;
+        $lateMinutes = $isLate ? (int) round($start - $shiftStartMin) : 0;
         $latePenalty = $isLate ? round((float) ($settings->late_penalty_amount ?? 0), 2) : 0.0;
 
         $total = round($basic + $ot + $nightDiff - $latePenalty, 2);
@@ -135,6 +136,7 @@ class AttendancePayCalculator {
             'base_wage' => $baseWage,
             'base_ot' => $baseOt,
             'late' => $isLate,
+            'late_minutes' => $lateMinutes,
             'late_penalty' => $latePenalty,
             'total' => $total,
             'premium_label' => $premiumLabel,
@@ -147,7 +149,7 @@ class AttendancePayCalculator {
             'total_hours' => 0.0, 'regular_hours' => 0.0, 'ot_hours' => 0.0, 'night_diff_hours' => 0.0,
             'basic' => 0.0, 'ot' => 0.0, 'night_diff' => 0.0,
             'base_wage' => 0.0, 'base_ot' => 0.0,
-            'late' => false, 'late_penalty' => 0.0, 'total' => 0.0,
+            'late' => false, 'late_minutes' => 0, 'late_penalty' => 0.0, 'total' => 0.0,
             'premium_label' => $label, 'premium_multiplier' => $mult,
         ];
     }

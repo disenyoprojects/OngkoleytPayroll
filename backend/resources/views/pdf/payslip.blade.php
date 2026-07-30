@@ -35,7 +35,7 @@
                     <td>{{ $line['clock_in'] ? substr($line['clock_in'], 0, 5) : '—' }}</td>
                     <td>{{ $line['clock_out'] ? substr($line['clock_out'], 0, 5) : '—' }}</td>
                     <td class="right">{{ number_format($line['hours'], 2) }}</td>
-                    <td>{{ $line['premium_label'] }}@if ($line['late']) · Late @endif</td>
+                    <td>{{ $line['premium_label'] }}@if ($line['late']) · Late {{ $line['late_minutes'] }}m @endif</td>
                     <td class="right">₱{{ number_format($line['day_pay'], 2) }}</td>
                 </tr>
             @empty

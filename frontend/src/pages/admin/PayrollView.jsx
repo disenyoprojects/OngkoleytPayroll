@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
-import { formatPHP, formatTime12, FONT_DISPLAY } from "../../theme";
+import { formatPHP, formatTime12, formatLateLabel, FONT_DISPLAY } from "../../theme";
 import { Button, StatCard, tabBtnStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 import PayslipView from "./PayslipView";
 
@@ -84,7 +84,7 @@ export default function PayrollView() {
                         <div style={{ fontSize: 11, color: "#9A6B12" }}>{r.pay.premium_label}</div>
                       )}
                       {r.pay?.late && (
-                        <div style={{ fontSize: 11, color: "#C1521F" }}>Late −{formatPHP(r.pay.late_penalty)}</div>
+                        <div style={{ fontSize: 11, color: "#C1521F" }}>{formatLateLabel(r.pay.late_minutes)} · −{formatPHP(r.pay.late_penalty)}</div>
                       )}
                     </td>
                   </tr>

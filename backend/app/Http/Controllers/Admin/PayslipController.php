@@ -66,6 +66,7 @@ class PayslipController extends Controller {
                 'hours' => $pay['total_hours'],
                 'premium_label' => $pay['premium_label'],
                 'late' => $pay['late'],
+                'late_minutes' => $pay['late_minutes'],
                 'late_penalty' => $pay['late_penalty'],
                 'day_pay' => $pay['total'],
             ];

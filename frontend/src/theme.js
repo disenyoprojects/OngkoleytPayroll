@@ -33,3 +33,10 @@ export function formatHoursLabel(totalHours) {
   const h = Math.floor(totalHours); const m = Math.round((totalHours - h) * 60);
   return `${h}h ${m}m`;
 }
+export function formatLateLabel(minutes) {
+  const mins = Math.round(Number(minutes) || 0);
+  if (mins <= 0) return "";
+  if (mins < 60) return `${mins} min late`;
+  const h = Math.floor(mins / 60); const m = mins % 60;
+  return m === 0 ? `${h}h late` : `${h}h ${m}m late`;
+}

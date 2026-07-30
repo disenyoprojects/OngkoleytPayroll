@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
-import { formatPHP, formatTime12, FONT_DISPLAY } from "../../theme";
+import { formatPHP, formatTime12, formatLateLabel, FONT_DISPLAY } from "../../theme";
 import { Button, Pill, StatCard, inputStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 import AdjustAttendanceModal from "../../components/AdjustAttendanceModal";
 
@@ -79,7 +79,7 @@ export default function AttendanceView() {
                     <span style={{ marginLeft: 6, fontSize: 11, color: "#9A6B12" }}>{row.pay.premium_label}</span>
                   )}
                   {row.pay?.late && (
-                    <span style={{ marginLeft: 6, fontSize: 11, color: "#C1521F" }}>Late −{formatPHP(row.pay.late_penalty)}</span>
+                    <span style={{ marginLeft: 6, fontSize: 11, color: "#C1521F" }}>{formatLateLabel(row.pay.late_minutes)} · −{formatPHP(row.pay.late_penalty)}</span>
                   )}
                 </td>
                 <td style={{ ...tdStyle, textAlign: "right", whiteSpace: "nowrap" }}>
