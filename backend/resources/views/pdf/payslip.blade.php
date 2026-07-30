@@ -35,7 +35,7 @@
                     <td>{{ $line['clock_in'] ? substr($line['clock_in'], 0, 5) : '—' }}</td>
                     <td>{{ $line['clock_out'] ? substr($line['clock_out'], 0, 5) : '—' }}</td>
                     <td class="right">{{ number_format($line['hours'], 2) }}</td>
-                    <td>{{ $line['premium_label'] }}</td>
+                    <td>{{ $line['premium_label'] }}@if ($line['late']) · Late @endif</td>
                     <td class="right">₱{{ number_format($line['day_pay'], 2) }}</td>
                 </tr>
             @empty
@@ -48,8 +48,10 @@
         <tr><td>Basic</td><td class="right">₱{{ number_format($payslip['totals']['basic'], 2) }}</td></tr>
         <tr><td>Overtime</td><td class="right">₱{{ number_format($payslip['totals']['ot'], 2) }}</td></tr>
         <tr><td>Night Differential</td><td class="right">₱{{ number_format($payslip['totals']['night_diff'], 2) }}</td></tr>
-        <tr class="gross"><td>Gross Pay</td><td class="right">₱{{ number_format($payslip['totals']['gross'], 2) }}</td></tr>
+        <tr><td>Gross Pay</td><td class="right">₱{{ number_format($payslip['totals']['gross'], 2) }}</td></tr>
+        <tr><td>Late Penalty</td><td class="right">−₱{{ number_format($payslip['totals']['late_penalty'], 2) }}</td></tr>
+        <tr class="gross"><td>Net Pay</td><td class="right">₱{{ number_format($payslip['totals']['net'], 2) }}</td></tr>
     </table>
-    <p class="muted" style="margin-top: 14px;">Gross pay — excludes statutory deductions (SSS / PhilHealth / Pag-IBIG / tax).</p>
+    <p class="muted" style="margin-top: 14px;">Net of late penalties. Excludes statutory deductions (SSS / PhilHealth / Pag-IBIG / tax).</p>
 </body>
 </html>

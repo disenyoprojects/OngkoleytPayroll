@@ -60,6 +60,10 @@ export default function SettingsView() {
           <div style={{ fontSize: 12, marginBottom: 4 }}>Unpaid Break (hours) — deducted from worked hours</div>
           <input type="number" step="0.25" value={settings.unpaid_break_hours} onChange={(e) => set("unpaid_break_hours", e.target.value)} style={inputStyle} />
         </div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 12, marginBottom: 4 }}>Late Penalty (₱) — flat deduction for any late clock-in</div>
+          <input type="number" step="0.01" value={settings.late_penalty_amount} onChange={(e) => set("late_penalty_amount", e.target.value)} style={inputStyle} />
+        </div>
         <Button variant="gold" onClick={save}>{saved ? "Saved ✓" : "Save Settings"}</Button>
       </div>
 

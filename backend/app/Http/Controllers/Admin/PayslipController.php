@@ -46,7 +46,7 @@ class PayslipController extends Controller {
             ->get();
 
         $lines = [];
-        $basic = $ot = $nightDiff = $gross = 0.0;
+        $basic = $ot = $nightDiff = $latePenalty = 0.0;
         foreach ($records as $record) {
             $record->setRelation('employee', $employee);
             $pay = $this->calculator->computeForRecord($record, $settings);
@@ -56,7 +56,7 @@ class PayslipController extends Controller {
             $basic += (float) $pay['basic'];
             $ot += (float) $pay['ot'];
             $nightDiff += (float) $pay['night_diff'];
-            $gross += (float) $pay['total'];
+            $latePenalty += (float) $pay['late_penalty'];
             $lines[] = [
                 'date' => $record->work_date->format('Y-m-d'),
                 'shift_start' => $record->shift_start,
@@ -65,9 +65,13 @@ class PayslipController extends Controller {
                 'clock_out' => $record->clock_out,
                 'hours' => $pay['total_hours'],
                 'premium_label' => $pay['premium_label'],
+                'late' => $pay['late'],
+                'late_penalty' => $pay['late_penalty'],
                 'day_pay' => $pay['total'],
             ];
         }
+
+        $gross = round($basic + $ot + $nightDiff, 2);
 
         $rate = $employee->daily_basic_rate === null ? (float) $settings->daily_basic_rate : (float) $employee->daily_basic_rate;
 
@@ -82,7 +86,9 @@ class PayslipController extends Controller {
                 'basic' => round($basic, 2),
                 'ot' => round($ot, 2),
                 'night_diff' => round($nightDiff, 2),
-                'gross' => round($gross, 2),
+                'gross' => $gross,
+                'late_penalty' => round($latePenalty, 2),
+                'net' => round($gross - $latePenalty, 2),
             ],
         ];
     }

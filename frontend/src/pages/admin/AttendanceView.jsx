@@ -78,6 +78,9 @@ export default function AttendanceView() {
                   {row.pay?.premium_label && row.pay.premium_label !== "Ordinary" && (
                     <span style={{ marginLeft: 6, fontSize: 11, color: "#9A6B12" }}>{row.pay.premium_label}</span>
                   )}
+                  {row.pay?.late && (
+                    <span style={{ marginLeft: 6, fontSize: 11, color: "#C1521F" }}>Late −{formatPHP(row.pay.late_penalty)}</span>
+                  )}
                 </td>
                 <td style={{ ...tdStyle, textAlign: "right", whiteSpace: "nowrap" }}>
                   <Button small variant="outline" onClick={() => setAdjustRow(row)}>Edit Times</Button>{" "}

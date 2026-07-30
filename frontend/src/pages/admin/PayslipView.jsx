@@ -88,6 +88,9 @@ export default function PayslipView() {
                       {l.premium_label && l.premium_label !== "Ordinary" && (
                         <div style={{ fontSize: 11, color: "#9A6B12" }}>{l.premium_label}</div>
                       )}
+                      {l.late && (
+                        <div style={{ fontSize: 11, color: "#C1521F" }}>Late −{formatPHP(l.late_penalty)}</div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -99,9 +102,11 @@ export default function PayslipView() {
             <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}><span>Basic</span><span>{formatPHP(slip.totals.basic)}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}><span>Overtime</span><span>{formatPHP(slip.totals.ot)}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}><span>Night Differential</span><span>{formatPHP(slip.totals.night_diff)}</span></div>
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontWeight: 700, fontSize: 16, borderTop: "1px solid #E7DCC6" }}><span>Gross Pay</span><span>{formatPHP(slip.totals.gross)}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", borderTop: "1px solid #E7DCC6" }}><span>Gross Pay</span><span>{formatPHP(slip.totals.gross)}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", color: "#C1521F" }}><span>Late Penalty</span><span>−{formatPHP(slip.totals.late_penalty)}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontWeight: 700, fontSize: 16, borderTop: "1px solid #E7DCC6" }}><span>Net Pay</span><span>{formatPHP(slip.totals.net)}</span></div>
           </div>
-          <p style={{ color: "#7A6A57", fontSize: 12, marginTop: 10 }}>Gross pay — excludes statutory deductions (SSS / PhilHealth / Pag-IBIG / tax).</p>
+          <p style={{ color: "#7A6A57", fontSize: 12, marginTop: 10 }}>Net of late penalties. Excludes statutory deductions (SSS / PhilHealth / Pag-IBIG / tax).</p>
         </div>
       )}
     </div>

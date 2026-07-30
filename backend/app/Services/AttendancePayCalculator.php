@@ -108,7 +108,15 @@ class AttendancePayCalculator {
         $ot = round($otHours * $otRate, 2);
         // Night diff: +nd_multiplier of the applicable premium hourly rate.
         $nightDiff = round($nightDiffHours * $hourlyRate * $regularMult * (float) $settings->night_diff_multiplier, 2);
-        $total = round($basic + $ot + $nightDiff, 2);
+
+        // Flat late penalty: any clock-in after the scheduled shift start incurs
+        // a fixed deduction, on top of the unpaid time already lost by starting
+        // late. It reduces take-home pay but NOT the 13th-month base (a penalty
+        // is not a reduction in earned basic salary).
+        $isLate = $start > $shiftStartMin;
+        $latePenalty = $isLate ? round((float) ($settings->late_penalty_amount ?? 0), 2) : 0.0;
+
+        $total = round($basic + $ot + $nightDiff - $latePenalty, 2);
 
         // Un-premiumed base figures for the 13th-month base (PD 851): basic
         // salary only — the ordinary-rate wage, excluding holiday/rest premiums,
@@ -126,6 +134,8 @@ class AttendancePayCalculator {
             'night_diff' => $nightDiff,
             'base_wage' => $baseWage,
             'base_ot' => $baseOt,
+            'late' => $isLate,
+            'late_penalty' => $latePenalty,
             'total' => $total,
             'premium_label' => $premiumLabel,
             'premium_multiplier' => $regularMult,
@@ -136,7 +146,8 @@ class AttendancePayCalculator {
         return [
             'total_hours' => 0.0, 'regular_hours' => 0.0, 'ot_hours' => 0.0, 'night_diff_hours' => 0.0,
             'basic' => 0.0, 'ot' => 0.0, 'night_diff' => 0.0,
-            'base_wage' => 0.0, 'base_ot' => 0.0, 'total' => 0.0,
+            'base_wage' => 0.0, 'base_ot' => 0.0,
+            'late' => false, 'late_penalty' => 0.0, 'total' => 0.0,
             'premium_label' => $label, 'premium_multiplier' => $mult,
         ];
     }

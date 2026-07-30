@@ -19,6 +19,7 @@ class PayrollSettingController extends Controller {
             'overtime_multiplier' => ['required', 'numeric', 'min:1'],
             'night_diff_multiplier' => ['required', 'numeric', 'min:0'],
             'unpaid_break_hours' => ['required', 'numeric', 'min:0'],
+            'late_penalty_amount' => ['required', 'numeric', 'min:0'],
             'period_start' => ['required', 'date'],
             'period_end' => ['required', 'date'],
             'release_date' => ['required', 'date'],

@@ -83,6 +83,9 @@ export default function PayrollView() {
                       {r.pay?.premium_label && r.pay.premium_label !== "Ordinary" && (
                         <div style={{ fontSize: 11, color: "#9A6B12" }}>{r.pay.premium_label}</div>
                       )}
+                      {r.pay?.late && (
+                        <div style={{ fontSize: 11, color: "#C1521F" }}>Late −{formatPHP(r.pay.late_penalty)}</div>
+                      )}
                     </td>
                   </tr>
                 ))}
