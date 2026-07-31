@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { apiClient } from "../api/client";
 import { formatTime12 } from "../theme";
-import { Button, ModalShell, inputStyle } from "./ui";
+import { Button, ModalShell, inputStyle, textareaStyle, labelStyle } from "./ui";
+
+const rowStyle = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 };
 
 const REASONS = ["Late Arrival", "Early Departure", "Forgot to Clock In/Out", "System Error", "Power / Internet Outage", "Client / Supplier Errand", "Other"];
 
@@ -33,29 +35,29 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
       <div style={{ fontSize: 12.5, color: "#7A6A57", marginBottom: 16 }}>
         {row.employee.short_name} · original: {formatTime12(row.record.clock_in)} → {row.record.clock_out ? formatTime12(row.record.clock_out) : "still clocked in"}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+      <div style={rowStyle}>
         <div>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Clock In</div>
+          <label style={labelStyle}>Clock In</label>
           <input type="time" value={clockIn} onChange={(e) => setClockIn(e.target.value)} style={inputStyle} />
         </div>
         <div>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Clock Out</div>
+          <label style={labelStyle}>Clock Out</label>
           <input type="time" value={clockOut} onChange={(e) => setClockOut(e.target.value)} style={inputStyle} />
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+      <div style={rowStyle}>
         <div>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Shift Start</div>
+          <label style={labelStyle}>Shift Start</label>
           <input type="time" value={shiftStart} onChange={(e) => setShiftStart(e.target.value)} style={inputStyle} />
         </div>
         <div>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Shift End</div>
+          <label style={labelStyle}>Shift End</label>
           <input type="time" value={shiftEnd} onChange={(e) => setShiftEnd(e.target.value)} style={inputStyle} />
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+      <div style={rowStyle}>
         <div>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Holiday</div>
+          <label style={labelStyle}>Holiday</label>
           <select value={holidayType} onChange={(e) => setHolidayType(e.target.value)} style={inputStyle}>
             <option value="">None</option>
             <option value="special">Special (non-working)</option>
@@ -63,7 +65,7 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
           </select>
         </div>
         <div>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Status</div>
+          <label style={labelStyle}>Status</label>
           <select value={absenceType} onChange={(e) => setAbsenceType(e.target.value)} style={inputStyle}>
             <option value="">Worked</option>
             <option value="half_day">Half day</option>
@@ -75,17 +77,21 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
           </select>
         </div>
       </div>
-      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, marginBottom: 14 }}>
+      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, marginBottom: 16 }}>
         <input type="checkbox" checked={isRestDay} onChange={(e) => setIsRestDay(e.target.checked)} />
         Rest day (worked)
       </label>
-      <div style={{ fontSize: 12, marginBottom: 4 }}>Reason for Adjustment *</div>
-      <select value={reason} onChange={(e) => setReason(e.target.value)} style={{ ...inputStyle, marginBottom: 14 }}>
-        <option value="">Select a reason...</option>
-        {REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
-      </select>
-      <div style={{ fontSize: 12, marginBottom: 4 }}>Additional Details</div>
-      <textarea value={details} onChange={(e) => setDetails(e.target.value)} style={{ ...inputStyle, minHeight: 64, marginBottom: 18 }} />
+      <div style={{ marginBottom: 16 }}>
+        <label style={labelStyle}>Reason for Adjustment *</label>
+        <select value={reason} onChange={(e) => setReason(e.target.value)} style={inputStyle}>
+          <option value="">Select a reason...</option>
+          {REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </div>
+      <div style={{ marginBottom: 18 }}>
+        <label style={labelStyle}>Additional Details</label>
+        <textarea value={details} onChange={(e) => setDetails(e.target.value)} style={textareaStyle} />
+      </div>
       <div style={{ display: "flex", gap: 8 }}>
         <Button variant="gold" disabled={!reason} onClick={save}>Save Adjustment</Button>
         <Button variant="ghost" onClick={onCancel}>Cancel</Button>

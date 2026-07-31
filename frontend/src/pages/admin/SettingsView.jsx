@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
-import { Button, inputStyle } from "../../components/ui";
+import { Button, Field, inputStyle } from "../../components/ui";
 
 const EARNING_CODES = { BASIC: "Basic Salary", OVERTIME: "Overtime Pay", NIGHT_DIFF: "Night Differential", HOLIDAY_PREMIUM: "Holiday Premium", ALLOWANCE: "Allowances", BONUS: "Bonuses", INCENTIVE: "Incentives", COMMISSION: "Commissions", LEAVE_CONVERSION: "Leave Conversion" };
 const EMPLOYMENT_TYPES = ["regular", "probationary", "fixed_term", "seasonal"];
+
+const cardStyle = { background: "white", border: "1px solid #E7DCC6", borderRadius: 10, padding: 20 };
+const cardTitle = { margin: "0 0 16px", fontSize: 16 };
 
 export default function SettingsView() {
   const [settings, setSettings] = useState(null);
@@ -42,45 +45,38 @@ export default function SettingsView() {
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-      <div style={{ background: "white", border: "1px solid #E7DCC6", borderRadius: 10, padding: 20 }}>
-        <h3>Basic Pay Rate & Overtime</h3>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Daily Basic Rate (₱)</div>
+      <div style={cardStyle}>
+        <h3 style={cardTitle}>Basic Pay Rate & Overtime</h3>
+        <Field label="Daily Basic Rate (₱)">
           <input type="number" value={settings.daily_basic_rate} onChange={(e) => set("daily_basic_rate", e.target.value)} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Overtime Multiplier</div>
+        </Field>
+        <Field label="Overtime Multiplier">
           <input type="number" step="0.05" value={settings.overtime_multiplier} onChange={(e) => set("overtime_multiplier", e.target.value)} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Night Differential Multiplier</div>
+        </Field>
+        <Field label="Night Differential Multiplier">
           <input type="number" step="0.01" value={settings.night_diff_multiplier} onChange={(e) => set("night_diff_multiplier", e.target.value)} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Unpaid Break (hours) — deducted from worked hours</div>
+        </Field>
+        <Field label="Unpaid Break (hours) — deducted from worked hours">
           <input type="number" step="0.25" value={settings.unpaid_break_hours} onChange={(e) => set("unpaid_break_hours", e.target.value)} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Late Penalty (₱) — flat deduction for any late clock-in</div>
+        </Field>
+        <Field label="Late Penalty (₱) — flat deduction for any late clock-in">
           <input type="number" step="0.01" value={settings.late_penalty_amount} onChange={(e) => set("late_penalty_amount", e.target.value)} style={inputStyle} />
-        </div>
+        </Field>
         <Button variant="gold" onClick={save}>{saved ? "Saved ✓" : "Save Settings"}</Button>
       </div>
 
-      <div style={{ background: "white", border: "1px solid #E7DCC6", borderRadius: 10, padding: 20 }}>
-        <h3>13th Month Period & Release</h3>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Release Date</div>
+      <div style={cardStyle}>
+        <h3 style={cardTitle}>13th Month Period & Release</h3>
+        <Field label="Release Date">
           <input type="date" value={settings.release_date} onChange={(e) => set("release_date", e.target.value)} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, marginBottom: 4 }}>Minimum Months of Service</div>
+        </Field>
+        <Field label="Minimum Months of Service">
           <input type="number" value={settings.minimum_months} onChange={(e) => set("minimum_months", e.target.value)} style={inputStyle} />
-        </div>
+        </Field>
       </div>
 
-      <div style={{ background: "white", border: "1px solid #E7DCC6", borderRadius: 10, padding: 20 }}>
-        <h3>Included Earnings (13th Month Base)</h3>
+      <div style={cardStyle}>
+        <h3 style={cardTitle}>Included Earnings (13th Month Base)</h3>
         {Object.entries(EARNING_CODES).map(([code, label]) => (
           <label key={code} style={{ display: "flex", gap: 10, padding: "7px 0", fontSize: 13 }}>
             <input type="checkbox" checked={settings.included_earnings.includes(code)} disabled={code === "BASIC"} onChange={() => toggleEarning(code)} />
@@ -89,8 +85,8 @@ export default function SettingsView() {
         ))}
       </div>
 
-      <div style={{ background: "white", border: "1px solid #E7DCC6", borderRadius: 10, padding: 20 }}>
-        <h3>Employment Type Eligibility</h3>
+      <div style={cardStyle}>
+        <h3 style={cardTitle}>Employment Type Eligibility</h3>
         {EMPLOYMENT_TYPES.map((type) => (
           <label key={type} style={{ display: "flex", gap: 8, fontSize: 13, marginBottom: 8 }}>
             <input type="checkbox" checked={settings.employment_types_included.includes(type)} onChange={() => toggleType(type)} />

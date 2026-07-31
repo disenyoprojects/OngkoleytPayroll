@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { apiClient } from "../api/client";
-import { Button, ModalShell, inputStyle } from "./ui";
+import { Button, ModalShell, textareaStyle } from "./ui";
 
 export default function TmUnlockModal({ row, onCancel, onSaved }) {
   const [reason, setReason] = useState("");
@@ -16,7 +16,7 @@ export default function TmUnlockModal({ row, onCancel, onSaved }) {
       <p style={{ fontSize: 12, color: "#7A6A57" }}>{row.employee.short_name} — unlocking a released record requires an approval reason.</p>
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 12, marginBottom: 4 }}>Reason for unlock</div>
-        <textarea value={reason} onChange={(e) => setReason(e.target.value)} style={{ ...inputStyle, minHeight: 70 }} />
+        <textarea value={reason} onChange={(e) => setReason(e.target.value)} style={textareaStyle} />
       </div>
       <div style={{ display: "flex", gap: 8 }}>
         <Button variant="danger" disabled={reason.length < 5} onClick={confirm}>Confirm Unlock</Button>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { apiClient } from "../api/client";
 import { formatPHP } from "../theme";
-import { Button, ModalShell, inputStyle } from "./ui";
+import { Button, ModalShell, inputStyle, textareaStyle } from "./ui";
 
 export default function TmAdjustModal({ row, onCancel, onSaved }) {
   const [amount, setAmount] = useState("");
@@ -22,7 +22,7 @@ export default function TmAdjustModal({ row, onCancel, onSaved }) {
       </div>
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 12, marginBottom: 4 }}>Reason</div>
-        <textarea value={reason} onChange={(e) => setReason(e.target.value)} style={{ ...inputStyle, minHeight: 70 }} />
+        <textarea value={reason} onChange={(e) => setReason(e.target.value)} style={textareaStyle} />
       </div>
       <div style={{ display: "flex", gap: 8 }}>
         <Button variant="gold" disabled={!amount || reason.length < 5} onClick={confirm}>Apply Adjustment</Button>

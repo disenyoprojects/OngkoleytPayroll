@@ -42,7 +42,25 @@ export function ModalShell({ children, onClose, width = 460 }) {
   );
 }
 
-export const inputStyle = { width: "100%", padding: "9px 10px", border: `1px solid ${COLOR.line}`, borderRadius: 6, fontSize: 13 };
+// One box model for every control (number / time / date / select) so heights
+// and edges line up exactly. box-sizing keeps width:100% consistent across
+// native controls that otherwise render at slightly different sizes.
+export const inputStyle = { width: "100%", boxSizing: "border-box", height: 40, padding: "0 12px", border: `1px solid ${COLOR.line}`, borderRadius: 8, fontSize: 13, background: "white", color: COLOR.ink, fontFamily: "inherit" };
+
+// Multi-line variant (grows instead of a fixed height).
+export const textareaStyle = { ...inputStyle, height: "auto", minHeight: 72, padding: "9px 12px", resize: "vertical" };
+
+// Consistent field label + wrapper so every form spaces fields identically.
+export const labelStyle = { display: "block", fontSize: 12, fontWeight: 600, color: COLOR.inkSoft, marginBottom: 6 };
+
+export function Field({ label, children, style }) {
+  return (
+    <div style={{ marginBottom: 16, ...style }}>
+      <label style={labelStyle}>{label}</label>
+      {children}
+    </div>
+  );
+}
 
 // Shared table styling for the admin data tables (card look, aligned headers,
 // row dividers). Wrap a <table style={tableStyle}> inside <div style={tableWrap}>.
