@@ -41,7 +41,8 @@ class PayslipController extends Controller {
         $settings = PayrollSetting::current();
 
         $records = AttendanceRecord::where('employee_id', $employee->id)
-            ->whereBetween('work_date', [$window['from'], $window['to']])
+            ->whereDate('work_date', '>=', $window['from'])
+            ->whereDate('work_date', '<=', $window['to'])
             ->whereNotNull('clock_out')
             ->orderBy('work_date')
             ->get();
@@ -77,7 +78,8 @@ class PayslipController extends Controller {
 
         // Ad-hoc adjustments (bonuses, allowances, cash advances) dated inside this window.
         $adjustments = PayrollAdjustment::where('employee_id', $employee->id)
-            ->whereBetween('date', [$window['from'], $window['to']])
+            ->whereDate('date', '>=', $window['from'])
+            ->whereDate('date', '<=', $window['to'])
             ->orderBy('date')
             ->get()
             ->map(fn (PayrollAdjustment $a) => [

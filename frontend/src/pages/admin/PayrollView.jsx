@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
 import { formatPHP, formatTime12, formatLateLabel, FONT_DISPLAY } from "../../theme";
-import { Button, StatCard, tabBtnStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
+import { Button, StatCard, tabBtnStyle, tableWrap, tableStyle, thStyle, tdStyle, inputStyle } from "../../components/ui";
 import PayslipView from "./PayslipView";
+
+const thisMonth = () => new Date().toISOString().slice(0, 7);
 
 export default function PayrollView() {
   const [range, setRange] = useState("daily");
@@ -11,8 +13,13 @@ export default function PayrollView() {
   // never rendered against the other range's data shape during a switch.
   const [dataRange, setDataRange] = useState(null);
 
+  // Semi-monthly (all-staff) register controls + data.
+  const [month, setMonth] = useState(thisMonth());
+  const [period, setPeriod] = useState("second");
+  const [periodData, setPeriodData] = useState(null);
+
   useEffect(() => {
-    if (range === "payslip") return;
+    if (range === "payslip" || range === "semi") return;
     let cancelled = false;
     setData(null);
     const endpoint = range === "daily" ? "/api/admin/payroll/daily" : "/api/admin/payroll/weekly";
@@ -21,6 +28,16 @@ export default function PayrollView() {
     });
     return () => { cancelled = true; };
   }, [range]);
+
+  useEffect(() => {
+    if (range !== "semi") return;
+    let cancelled = false;
+    setPeriodData(null);
+    apiClient.get(`/api/admin/payroll/period?month=${month}&period=${period}`).then((res) => {
+      if (!cancelled) setPeriodData(res.data);
+    });
+    return () => { cancelled = true; };
+  }, [range, month, period]);
 
   function download(kind) {
     const url = `${apiClient.defaults.baseURL}/api/admin/payroll/${kind}?range=${range}`;
@@ -31,12 +48,13 @@ export default function PayrollView() {
     <div>
       <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, marginBottom: 18 }}>Payroll</h1>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button onClick={() => setRange("daily")} style={tabBtnStyle(range === "daily")}>Daily</button>
           <button onClick={() => setRange("weekly")} style={tabBtnStyle(range === "weekly")}>Weekly</button>
+          <button onClick={() => setRange("semi")} style={tabBtnStyle(range === "semi")}>Semi-Monthly</button>
           <button onClick={() => setRange("payslip")} style={tabBtnStyle(range === "payslip")}>Payslip</button>
         </div>
-        {range !== "payslip" && (
+        {(range === "daily" || range === "weekly") && (
           <div style={{ display: "flex", gap: 8 }}>
             <Button variant="outline" onClick={() => download("export")}>⬇ CSV</Button>
             <Button variant="outline" onClick={() => download("pdf")}>⬇ PDF</Button>
@@ -46,6 +64,10 @@ export default function PayrollView() {
 
       {range === "payslip" ? (
         <PayslipView />
+      ) : range === "semi" ? (
+        <SemiMonthly
+          month={month} setMonth={setMonth} period={period} setPeriod={setPeriod} data={periodData}
+        />
       ) : (!data || dataRange !== range) ? (
         <div>Loading...</div>
       ) : (
@@ -125,5 +147,81 @@ export default function PayrollView() {
       </>
       )}
     </div>
+  );
+}
+
+const numTd = { ...tdStyle, textAlign: "right" };
+const numTh = { ...thStyle, textAlign: "right" };
+
+function SemiMonthly({ month, setMonth, period, setPeriod, data }) {
+  return (
+    <>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 18, flexWrap: "wrap" }}>
+        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ ...inputStyle, width: 170 }} />
+        <select value={period} onChange={(e) => setPeriod(e.target.value)} style={{ ...inputStyle, width: 200 }}>
+          <option value="first">1st half (1–15)</option>
+          <option value="second">2nd half (16–end)</option>
+          <option value="whole">Whole month</option>
+        </select>
+        {data && (
+          <Button variant="outline" onClick={() => window.print()}>🖨 Print</Button>
+        )}
+      </div>
+
+      {!data ? (
+        <div>Loading...</div>
+      ) : (
+        <>
+          <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
+            <StatCard label={`Gross · ${data.period.label}`} value={formatPHP(data.totals.gross)} />
+            <StatCard label="Deductions" value={`−${formatPHP(data.totals.late_penalty + Math.max(0, -data.totals.adjustments))}`} />
+            <StatCard label="Net to Release" value={formatPHP(data.totals.net_to_release)} />
+          </div>
+          <div style={tableWrap}>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Staff</th>
+                  <th style={thStyle}>Branch</th>
+                  <th style={numTh}>Days</th>
+                  <th style={numTh}>Basic</th>
+                  <th style={numTh}>OT</th>
+                  <th style={numTh}>Gross</th>
+                  <th style={numTh}>Late</th>
+                  <th style={numTh}>Allow./Ded.</th>
+                  <th style={numTh}>Total Salary</th>
+                  <th style={numTh}>Net to Release</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.rows.length === 0 && (
+                  <tr><td style={{ ...tdStyle, textAlign: "center", color: "#7A6A57" }} colSpan={10}>No payroll for this period.</td></tr>
+                )}
+                {data.rows.map((r) => (
+                  <tr key={r.employee_id}>
+                    <td style={{ ...tdStyle, fontWeight: 600 }}>{r.name}</td>
+                    <td style={tdStyle}>{r.branch ?? "—"}</td>
+                    <td style={numTd}>{r.days}</td>
+                    <td style={numTd}>{formatPHP(r.basic)}</td>
+                    <td style={numTd}>{r.ot ? formatPHP(r.ot) : "—"}</td>
+                    <td style={numTd}>{formatPHP(r.gross)}</td>
+                    <td style={{ ...numTd, color: r.late_penalty ? "#C1521F" : undefined }}>{r.late_penalty ? `−${formatPHP(r.late_penalty)}` : "—"}</td>
+                    <td style={{ ...numTd, color: r.adjustments < 0 ? "#C1521F" : (r.adjustments > 0 ? "#3B7A57" : undefined) }}>
+                      {r.adjustments ? `${r.adjustments < 0 ? "−" : "+"}${formatPHP(Math.abs(r.adjustments))}` : "—"}
+                    </td>
+                    <td style={{ ...numTd, fontWeight: 600 }}>{formatPHP(r.total_salary)}</td>
+                    <td style={{ ...numTd, fontWeight: 700 }}>{formatPHP(r.net_to_release)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p style={{ color: "#7A6A57", fontSize: 12, marginTop: 10 }}>
+            "Allow./Ded." nets paid allowances (added to Total Salary, already handed out in cash) and cash-advance deductions.
+            Net to Release excludes amounts already paid. Excludes statutory deductions (SSS / PhilHealth / Pag-IBIG / tax).
+          </p>
+        </>
+      )}
+    </>
   );
 }
