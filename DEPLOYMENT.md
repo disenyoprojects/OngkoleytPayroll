@@ -12,17 +12,18 @@ This repo is a monorepo (`backend/`, `frontend/`). Each app has its own `Dockerf
    - `APP_KEY` — generate locally with `php artisan key:generate --show` and paste the value.
    - `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL` = the backend service's Railway domain (e.g. `https://ongkoleyt-backend.up.railway.app`).
    - `DB_CONNECTION=pgsql`, `DB_HOST=${{Postgres.PGHOST}}`, `DB_PORT=${{Postgres.PGPORT}}`, `DB_DATABASE=${{Postgres.PGDATABASE}}`, `DB_USERNAME=${{Postgres.PGUSER}}`, `DB_PASSWORD=${{Postgres.PGPASSWORD}}` (reference the Postgres plugin's *private* variables — never `DATABASE_PUBLIC_URL`, which routes through the public proxy and incurs egress fees).
-   - `SESSION_DOMAIN` and `SANCTUM_STATEFUL_DOMAINS` = the frontend service's Railway domain (no scheme, no trailing slash), e.g. `ongkoleyt-frontend.up.railway.app`.
+   - `SANCTUM_STATEFUL_DOMAINS` — **leave unset/empty.** Auth is token-based (bearer), not cookie/session, so no stateful domains are needed. Setting it makes Sanctum enforce CSRF on the token login and it fails with **419**.
    - `SESSION_SECURE_COOKIE=true` (Railway domains are HTTPS by default).
    - `CORS_ALLOWED_ORIGINS` = the frontend's full URL, e.g. `https://ongkoleyt-frontend.up.railway.app`.
    - Railway injects `PORT` automatically — the Dockerfile's `CMD` already binds to it.
 6. Set frontend service variables:
    - `VITE_API_BASE_URL` = the backend service's Railway domain, e.g. `https://ongkoleyt-backend.up.railway.app`. This must be set **before the build** — Vite bakes env vars in at build time, so redeploy after changing it.
 7. On every push to the deployed branch, both services rebuild and redeploy automatically. The backend's `CMD` runs `php artisan migrate --force` on every boot, so schema changes ship automatically — no manual SSH step needed.
-8. First deploy only: since there's no admin seeder (by design — see the post-deploy checklist below), open the backend service's Railway shell (or run a one-off command via the Railway CLI: `railway run php artisan tinker`) and create the first admin:
-   ```php
-   \App\Models\User::create(['name' => 'Admin', 'email' => 'admin@ongkoleyt.test', 'password' => bcrypt('choose-a-real-password')]);
+8. First deploy only: since there's no admin seeder (by design — see the post-deploy checklist below), open the backend service's Railway shell (or `railway run ...`) and create the first admin with the built-in command:
+   ```bash
+   php artisan admin:create --name="Admin" --email="admin@ongkoleyt.example" --password="choose-a-real-password"
    ```
+   (Re-run with `--force` to reset an existing admin's password.)
 
 ## Backend (Laravel API) — manual VPS alternative
 

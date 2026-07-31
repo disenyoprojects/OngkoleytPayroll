@@ -12,11 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Enables Sanctum's SPA authentication: adds the session/cookie
-        // middleware to the api stack so stateful (cookie-based) requests
-        // from the configured frontend domains can log in via session,
-        // rather than requiring bearer tokens.
-        $middleware->statefulApi();
+        // Auth is purely token-based: /admin/login issues a Sanctum bearer
+        // token and the SPA sends it as `Authorization: Bearer`. We deliberately
+        // do NOT enable statefulApi() — it would treat requests from the
+        // configured frontend domain as cookie/session ("stateful") and enforce
+        // CSRF, which the token flow never satisfies (login then fails with 419).
 
         // This is an API-only backend (no server-rendered "login" route), so
         // unauthenticated requests must never try to redirect to one.
