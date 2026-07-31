@@ -58,7 +58,10 @@ return [
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                // PHP 8.4 moved this constant to the Pdo\Mysql class; the global
+                // PDO::MYSQL_ATTR_SSL_CA name is deprecated on 8.5+. Pick the
+                // right one per runtime so this works on PHP 8.2 through 8.5.
+                (PHP_VERSION_ID >= 80400 ? Pdo\Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
 
@@ -78,7 +81,10 @@ return [
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                // PHP 8.4 moved this constant to the Pdo\Mysql class; the global
+                // PDO::MYSQL_ATTR_SSL_CA name is deprecated on 8.5+. Pick the
+                // right one per runtime so this works on PHP 8.2 through 8.5.
+                (PHP_VERSION_ID >= 80400 ? Pdo\Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
 
