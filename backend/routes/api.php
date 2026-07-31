@@ -37,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/payroll/daily', [PayrollController::class, 'daily']);
     Route::get('/admin/payroll/weekly', [PayrollController::class, 'weekly']);
     Route::get('/admin/payroll/period', [PayrollController::class, 'period']);
+    Route::get('/admin/payroll/period/pdf', [PayrollController::class, 'periodPdf']);
     Route::get('/admin/payroll/export', [PayrollExportController::class, 'export']);
     Route::get('/admin/payroll/pdf', [PayrollPdfController::class, 'export']);
     Route::get('/admin/thirteenth-month', [ThirteenthMonthController::class, 'index']);

@@ -163,8 +163,8 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data }) {
           <option value="second">2nd half (16–end)</option>
           <option value="whole">Whole month</option>
         </select>
-        {data && (
-          <Button variant="outline" onClick={() => window.print()}>🖨 Print</Button>
+        {data && data.rows.length > 0 && (
+          <Button variant="outline" onClick={() => window.open(`${apiClient.defaults.baseURL}/api/admin/payroll/period/pdf?month=${month}&period=${period}`, "_blank")}>🖨 Print / PDF</Button>
         )}
       </div>
 

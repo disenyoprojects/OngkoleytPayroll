@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\PayrollSetting;
 use App\Services\AttendancePayCalculator;
 use App\Services\PayslipPeriod;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -25,11 +26,29 @@ class PayrollController extends Controller {
             'period' => ['required', 'in:first,second,whole'],
         ]);
 
-        $window = PayslipPeriod::resolve($data['month'], $data['period']);
+        return response()->json($this->buildRegister($data['month'], $data['period'], $payslips));
+    }
+
+    /** Clean, one-page landscape PDF of the semi-monthly register (prints without clipping). */
+    public function periodPdf(Request $request, PayslipController $payslips) {
+        $data = $request->validate([
+            'month' => ['required', 'date_format:Y-m'],
+            'period' => ['required', 'in:first,second,whole'],
+        ]);
+
+        $register = $this->buildRegister($data['month'], $data['period'], $payslips);
+        $pdf = Pdf::loadView('pdf.payroll-period', ['register' => $register])->setPaper('a4', 'landscape');
+
+        return $pdf->stream("payroll-{$data['month']}-{$data['period']}.pdf");
+    }
+
+    /** One row per employee with pay activity, plus grand totals for the window. */
+    private function buildRegister(string $month, string $period, PayslipController $payslips): array {
+        $window = PayslipPeriod::resolve($month, $period);
 
         $rows = Employee::withTrashed()->with('branch')->orderBy('employee_code')->get()
-            ->map(function (Employee $employee) use ($payslips, $data) {
-                $slip = $payslips->buildPayslip($employee, $data['month'], $data['period']);
+            ->map(function (Employee $employee) use ($payslips, $month, $period) {
+                $slip = $payslips->buildPayslip($employee, $month, $period);
                 $t = $slip['totals'];
                 return [
                     'employee_id' => $employee->id,
@@ -37,6 +56,7 @@ class PayrollController extends Controller {
                     'name' => $employee->short_name,
                     'full_name' => $employee->full_name,
                     'branch' => $employee->branch?->name,
+                    'separated' => $employee->trashed(),
                     'days' => count($slip['lines']),
                     'basic' => $t['basic'],
                     'ot' => $t['ot'],
@@ -54,17 +74,21 @@ class PayrollController extends Controller {
             ->filter(fn ($r) => $r['days'] > 0 || $r['adjustments'] != 0.0)
             ->values();
 
-        return response()->json([
+        return [
             'period' => $window,
             'rows' => $rows,
             'totals' => [
+                'days' => $rows->sum('days'),
+                'basic' => round($rows->sum('basic'), 2),
+                'ot' => round($rows->sum('ot'), 2),
                 'gross' => round($rows->sum('gross'), 2),
                 'late_penalty' => round($rows->sum('late_penalty'), 2),
                 'adjustments' => round($rows->sum('adjustments'), 2),
                 'total_salary' => round($rows->sum('total_salary'), 2),
+                'paid' => round($rows->sum('paid'), 2),
                 'net_to_release' => round($rows->sum('net_to_release'), 2),
             ],
-        ]);
+        ];
     }
 
     public function daily(Request $request) {

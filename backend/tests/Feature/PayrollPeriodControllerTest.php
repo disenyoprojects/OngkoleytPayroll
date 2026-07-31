@@ -88,4 +88,20 @@ class PayrollPeriodControllerTest extends TestCase {
         $this->actingAs($admin)->getJson('/api/admin/payroll/period?month=2026-07&period=bogus')
             ->assertStatus(422);
     }
+
+    public function test_period_pdf_streams_a_pdf(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => null]);
+        $this->workedDay($employee, '2026-07-20');
+
+        $res = $this->actingAs($admin)->get('/api/admin/payroll/period/pdf?month=2026-07&period=second');
+
+        $res->assertOk();
+        $this->assertSame('application/pdf', $res->headers->get('content-type'));
+        $this->assertNotEmpty($res->getContent());
+    }
+
+    public function test_period_pdf_requires_authentication(): void {
+        $this->getJson('/api/admin/payroll/period/pdf?month=2026-07&period=second')->assertStatus(401);
+    }
 }
