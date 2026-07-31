@@ -181,7 +181,7 @@ export default function PayslipView() {
               <Button variant="gold" onClick={addAdjustment} disabled={!adj.label || adj.amount === ""}>Add</Button>
             </div>
             {adjError && <div style={{ color: "#C1521F", fontSize: 12, marginTop: 8 }}>{adjError}</div>}
-            <div style={{ color: "#7A6A57", fontSize: 12, marginTop: 8 }}>Tip: a positive amount adds to pay; a negative amount deducts (e.g. a cash advance). "Already paid" is added to Total Salary but subtracted from what's still handed over.</div>
+            <div style={{ color: "#7A6A57", fontSize: 12, marginTop: 8 }}>Tip: pick the type and enter a positive amount — a <b>Deduction</b> (e.g. a cash advance) is subtracted automatically; allowances/bonuses are added. "Already paid" is added to Total Salary but subtracted from what's still handed over.</div>
           </div>
 
           <div style={{ maxWidth: 340, marginLeft: "auto", marginTop: 14, fontSize: 14 }}>
@@ -190,7 +190,15 @@ export default function PayslipView() {
             <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}><span>Night Differential</span><span>{formatPHP(slip.totals.night_diff)}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", borderTop: "1px solid #E7DCC6" }}><span>Gross Pay</span><span>{formatPHP(slip.totals.gross)}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", color: "#C1521F" }}><span>Late Penalty</span><span>−{formatPHP(slip.totals.late_penalty)}</span></div>
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}><span>Adjustments</span><span>{signed(slip.totals.adjustments)}</span></div>
+            {CATEGORIES.map(([cat, label]) => {
+              const sum = slip.adjustments.filter((a) => a.category === cat).reduce((t, a) => t + Number(a.amount), 0);
+              if (!sum) return null;
+              return (
+                <div key={cat} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", color: sum < 0 ? "#C1521F" : undefined }}>
+                  <span>{label}</span><span>{signed(sum)}</span>
+                </div>
+              );
+            })}
             <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontWeight: 700, fontSize: 16, borderTop: "1px solid #E7DCC6" }}><span>Total Salary</span><span>{formatPHP(slip.totals.total_salary)}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", color: "#7A6A57" }}><span>Less already paid (Cash on Hand)</span><span>−{formatPHP(slip.totals.paid)}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontWeight: 700, fontSize: 16, borderTop: "1px solid #E7DCC6" }}><span>Net to Release</span><span>{formatPHP(slip.totals.net_to_release)}</span></div>

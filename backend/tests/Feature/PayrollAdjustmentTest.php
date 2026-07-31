@@ -63,6 +63,38 @@ class PayrollAdjustmentTest extends TestCase {
         $this->assertEquals(1225.0, $slip['totals']['net_to_release']);
     }
 
+    public function test_deduction_amount_is_stored_negative_and_subtracts(): void {
+        $admin = User::factory()->create();
+        $employee = $this->workedEmployee();
+
+        // Admin enters a positive amount for a Deduction; it must subtract.
+        $created = $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/adjustments", [
+            'date' => '2026-07-20', 'label' => 'Cash advance', 'category' => 'deduction',
+            'amount' => 300, 'paid' => false,
+        ])->assertCreated()->json();
+
+        $this->assertEquals(-300.0, (float) $created['amount']);
+
+        $slip = $this->actingAs($admin)
+            ->getJson("/api/admin/employees/{$employee->id}/payslip?month=2026-07&period=second")
+            ->assertOk()->json();
+
+        $this->assertEquals(205.0, $slip['totals']['total_salary']);      // 505 − 300
+        $this->assertEquals(205.0, $slip['totals']['net_to_release']);
+    }
+
+    public function test_bonus_amount_is_stored_positive_even_if_negative_entered(): void {
+        $admin = User::factory()->create();
+        $employee = $this->workedEmployee();
+
+        $created = $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/adjustments", [
+            'date' => '2026-07-20', 'label' => 'Bonus', 'category' => 'bonus',
+            'amount' => -200, 'paid' => false,
+        ])->assertCreated()->json();
+
+        $this->assertEquals(200.0, (float) $created['amount']);
+    }
+
     public function test_adjustment_outside_period_is_excluded(): void {
         $admin = User::factory()->create();
         $employee = $this->workedEmployee();

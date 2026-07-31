@@ -35,12 +35,21 @@ class PayrollAdjustmentController extends Controller {
             'reason' => ['nullable', 'string', 'max:255'],
         ]);
 
+        // Sign follows the category so the admin never has to type a negative:
+        // a deduction always subtracts; allowance/bonus/cash-on-hand always add.
+        // "other" keeps the entered sign for full flexibility.
+        $amount = match ($data['category']) {
+            'deduction' => -abs($data['amount']),
+            'other' => $data['amount'],
+            default => abs($data['amount']),
+        };
+
         $adjustment = PayrollAdjustment::create([
             'employee_id' => $employee->id,
             'date' => $data['date'],
             'label' => $data['label'],
             'category' => $data['category'],
-            'amount' => $data['amount'],
+            'amount' => $amount,
             'paid' => $data['paid'] ?? false,
             'reason' => $data['reason'] ?? null,
             'created_by' => $request->user()->id,

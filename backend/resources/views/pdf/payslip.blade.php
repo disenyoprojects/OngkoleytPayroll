@@ -66,7 +66,15 @@
         <tr><td>Night Differential</td><td class="right">₱{{ number_format($payslip['totals']['night_diff'], 2) }}</td></tr>
         <tr><td>Gross Pay</td><td class="right">₱{{ number_format($payslip['totals']['gross'], 2) }}</td></tr>
         <tr><td>Late Penalty</td><td class="right">−₱{{ number_format($payslip['totals']['late_penalty'], 2) }}</td></tr>
-        <tr><td>Adjustments</td><td class="right">{{ $payslip['totals']['adjustments'] < 0 ? '−' : '' }}₱{{ number_format(abs($payslip['totals']['adjustments']), 2) }}</td></tr>
+        @php
+            $catLabels = ['cash_on_hand' => 'Cash on Hand', 'allowance' => 'Allowance', 'bonus' => 'Bonus', 'deduction' => 'Deduction', 'other' => 'Other'];
+            $byCat = collect($payslip['adjustments'])->groupBy('category')->map(fn ($g) => $g->sum('amount'));
+        @endphp
+        @foreach ($catLabels as $cat => $lbl)
+            @if (($byCat[$cat] ?? 0) != 0)
+                <tr><td>{{ $lbl }}</td><td class="right">{{ $byCat[$cat] < 0 ? '−' : '' }}₱{{ number_format(abs($byCat[$cat]), 2) }}</td></tr>
+            @endif
+        @endforeach
         <tr class="gross"><td>Total Salary</td><td class="right">₱{{ number_format($payslip['totals']['total_salary'], 2) }}</td></tr>
         <tr><td>Less already paid (Cash on Hand)</td><td class="right">−₱{{ number_format($payslip['totals']['paid'], 2) }}</td></tr>
         <tr class="gross"><td>Net to Release</td><td class="right">₱{{ number_format($payslip['totals']['net_to_release'], 2) }}</td></tr>
