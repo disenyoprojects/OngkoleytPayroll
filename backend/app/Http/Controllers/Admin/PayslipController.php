@@ -51,6 +51,9 @@ class PayslipController extends Controller {
 
         $lines = [];
         $basic = $ot = $nightDiff = $latePenalty = 0.0;
+        // Split the day's regular pay into ordinary wage + holiday/rest premiums
+        // so the payslip can itemise Basic Wage, Special Holiday (SH), etc.
+        $baseWage = $sh = $rh = $restPremium = 0.0;
         foreach ($records as $record) {
             $record->setRelation('employee', $employee);
             $pay = $this->calculator->computeForRecord($record, $settings);
@@ -61,6 +64,17 @@ class PayslipController extends Controller {
             $ot += (float) $pay['ot'];
             $nightDiff += (float) $pay['night_diff'];
             $latePenalty += (float) $pay['late_penalty'];
+
+            $baseWage += (float) $pay['base_wage'];
+            $uplift = (float) $pay['basic'] - (float) $pay['base_wage']; // holiday/rest premium portion
+            $label = (string) $pay['premium_label'];
+            if (str_contains($label, 'Regular Holiday')) {
+                $rh += $uplift;
+            } elseif (str_contains($label, 'Special Holiday')) {
+                $sh += $uplift;
+            } elseif (str_contains($label, 'Rest Day')) {
+                $restPremium += $uplift;
+            }
             $lines[] = [
                 'date' => $record->work_date->format('Y-m-d'),
                 'shift_start' => $record->shift_start,
@@ -98,6 +112,37 @@ class PayslipController extends Controller {
         $totalSalary = round($gross - $latePenalty + $adjustmentsTotal, 2);
         $netToRelease = round($totalSalary - $paidTotal, 2);
 
+        // Itemised earnings / deductions for the printable payslip. Net here
+        // equals Net to Release: paid-in-cash amounts show as both an earning
+        // and a deduction so the take-home is what's actually handed over.
+        $earnings = [
+            ['label' => 'Basic Wage', 'amount' => round($baseWage, 2)],
+            ['label' => 'Overtime Pay', 'amount' => round($ot, 2)],
+            ['label' => 'Night Shift Differential', 'amount' => round($nightDiff, 2)],
+            ['label' => 'Special Holiday (SH)', 'amount' => round($sh, 2)],
+            ['label' => 'Regular Holiday (RH)', 'amount' => round($rh, 2)],
+        ];
+        if ($restPremium > 0.005) {
+            $earnings[] = ['label' => 'Rest Day Premium', 'amount' => round($restPremium, 2)];
+        }
+        foreach ($adjustments->where('amount', '>', 0) as $a) {
+            $earnings[] = ['label' => $a['label'], 'amount' => round((float) $a['amount'], 2)];
+        }
+
+        $deductions = [
+            ['label' => 'Tardiness', 'amount' => round($latePenalty, 2)],
+            ['label' => 'Undertime/Overbreak', 'amount' => 0.0],
+        ];
+        foreach ($adjustments->where('amount', '<', 0) as $a) {
+            $deductions[] = ['label' => $a['label'], 'amount' => round(abs((float) $a['amount']), 2)];
+        }
+        foreach ($adjustments->filter(fn ($a) => $a['amount'] > 0 && $a['paid']) as $a) {
+            $deductions[] = ['label' => $a['label'] . ' (paid in cash)', 'amount' => round((float) $a['amount'], 2)];
+        }
+
+        $grossEarnings = round(collect($earnings)->sum('amount'), 2);
+        $totalDeductions = round(collect($deductions)->sum('amount'), 2);
+
         $rate = $employee->daily_basic_rate === null ? (float) $settings->daily_basic_rate : (float) $employee->daily_basic_rate;
 
         return [
@@ -108,6 +153,14 @@ class PayslipController extends Controller {
             'period' => $window,
             'lines' => $lines,
             'adjustments' => $adjustments,
+            'slip' => [
+                'days_worked' => count($lines),
+                'earnings' => $earnings,
+                'deductions' => $deductions,
+                'gross_earnings' => $grossEarnings,
+                'total_deductions' => $totalDeductions,
+                'net' => round($grossEarnings - $totalDeductions, 2),
+            ],
             'totals' => [
                 'basic' => round($basic, 2),
                 'ot' => round($ot, 2),

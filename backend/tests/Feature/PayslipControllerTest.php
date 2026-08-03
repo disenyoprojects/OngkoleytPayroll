@@ -61,4 +61,36 @@ class PayslipControllerTest extends TestCase {
         $this->assertSame('application/pdf', $response->headers->get('content-type'));
         $this->assertNotEmpty($response->getContent());
     }
+
+    public function test_payslip_breakdown_itemises_earnings_and_reconciles_net(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create([
+            'shift_start' => '08:00:00', 'shift_end' => '17:00:00', 'daily_basic_rate' => null,
+        ]);
+        // A worked day + a special-holiday worked day (July 15).
+        AttendanceRecord::factory()->for($employee)->create([
+            'work_date' => '2026-07-10', 'shift_start' => '08:00:00', 'shift_end' => '17:00:00',
+            'clock_in' => '08:00:00', 'clock_out' => '17:00:00',
+        ]);
+        AttendanceRecord::factory()->for($employee)->create([
+            'work_date' => '2026-07-15', 'shift_start' => '08:00:00', 'shift_end' => '17:00:00',
+            'clock_in' => '08:00:00', 'clock_out' => '17:00:00', 'holiday_type' => 'special',
+        ]);
+
+        $slip = $this->actingAs($admin)
+            ->getJson("/api/admin/employees/{$employee->id}/payslip?month=2026-07&period=first")
+            ->assertOk()->json();
+
+        $labels = collect($slip['slip']['earnings'])->pluck('label');
+        $this->assertTrue($labels->contains('Basic Wage'));
+        $this->assertTrue($labels->contains('Special Holiday (SH)'));
+
+        // Special-holiday premium is broken out of Basic Wage, so SH > 0.
+        $sh = collect($slip['slip']['earnings'])->firstWhere('label', 'Special Holiday (SH)')['amount'];
+        $this->assertGreaterThan(0, $sh);
+
+        // The printable Net equals Net to Release.
+        $this->assertEqualsWithDelta($slip['totals']['net_to_release'], $slip['slip']['net'], 0.01);
+        $this->assertEquals(2, $slip['slip']['days_worked']);
+    }
 }

@@ -2,83 +2,102 @@
 <html>
 <head>
 <meta charset="utf-8">
+@php
+    // Legal entity shown on the payslip (change here if the company name changes).
+    $companyName = 'WANG CHOCOLATE INC.';
+    $companyAddress = 'Upper Ground Floor, Olympian, Upper Mabini, Baguio City 2600';
+
+    $from = \Carbon\Carbon::parse($payslip['period']['from']);
+    $to = \Carbon\Carbon::parse($payslip['period']['to']);
+    $periodText = $from->format('F j') . ' to ' . $to->format('j') . ', ' . $to->format('Y');
+
+    $slip = $payslip['slip'];
+    $earnings = $slip['earnings'];
+    $deductions = $slip['deductions'];
+    $rowCount = max(count($earnings), count($deductions));
+@endphp
 <style>
-    body { font-family: DejaVu Sans, sans-serif; color: #221A13; font-size: 12px; }
-    h1 { font-size: 18px; margin: 0 0 2px; }
-    .muted { color: #7A6A57; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    th, td { border: 1px solid #E7DCC6; padding: 6px 8px; text-align: left; }
-    th { background: #FAF6EC; }
-    .right { text-align: right; }
-    .totals td { border: none; padding: 3px 8px; }
-    .gross { font-size: 15px; font-weight: bold; }
+    @page { margin: 22mm 20mm; }
+    body { font-family: DejaVu Sans, sans-serif; color: #1c1c1c; font-size: 11px; }
+    .sheet { border: 1px solid #3a3a3a; }
+    .band-name { background: #6b3410; color: #fff; text-align: center; font-size: 17px; font-weight: bold; padding: 8px 0; letter-spacing: .5px; }
+    .band-addr { background: #dfe8cf; color: #222; text-align: center; font-size: 10.5px; font-style: italic; padding: 5px 0; border-bottom: 1px solid #3a3a3a; }
+    .title { text-align: center; font-size: 15px; font-weight: bold; padding: 8px 0 4px; letter-spacing: 1px; }
+    .meta { width: 100%; border-collapse: collapse; }
+    .meta td { padding: 2px 14px; font-size: 11px; }
+    .meta .lbl { font-weight: bold; }
+    .cols { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
+    .cols th { background: #f2f2f2; border-top: 1px solid #3a3a3a; border-bottom: 1px solid #3a3a3a; padding: 5px 10px; font-size: 11.5px; }
+    .cols th.l { text-align: center; }
+    .cols td { padding: 3px 10px; font-size: 11px; }
+    .cols .item { color: #1f3a6b; }
+    .cols .amt { text-align: right; }
+    .cols .mid { border-left: 1px solid #3a3a3a; }
+    .totrow td { border-top: 1px solid #3a3a3a; border-bottom: 1px solid #3a3a3a; font-weight: bold; padding: 6px 10px; }
+    .net { text-align: center; padding: 16px 0 6px; font-size: 13px; font-weight: bold; }
+    .net .val { color: #C00000; margin-left: 30px; }
+    .confirm { font-style: italic; color: #333; font-size: 10px; padding: 26px 14px 6px; }
+    .sign { width: 100%; border-collapse: collapse; padding: 0 14px; }
+    .sign td { padding: 26px 14px 6px; font-size: 10px; vertical-align: bottom; }
+    .sign .line { border-top: 1px solid #555; padding-top: 4px; font-weight: bold; }
 </style>
 </head>
 <body>
-    <h1>Payslip</h1>
-    <div class="muted">
-        {{ $payslip['employee']['full_name'] }} · {{ $payslip['employee']['role'] }}
-        · {{ $payslip['employee']['branch'] ?? '—' }}
-    </div>
-    <div class="muted">Period: {{ $payslip['period']['label'] }} ({{ $payslip['period']['from'] }} to {{ $payslip['period']['to'] }})</div>
-    <div class="muted">Daily rate: ₱{{ number_format($payslip['employee']['daily_rate'], 2) }}</div>
+<div class="sheet">
+    <div class="band-name">{{ $companyName }}</div>
+    <div class="band-addr">{{ $companyAddress }}</div>
+    <div class="title">PAY SLIP</div>
 
-    <table>
+    <table class="meta">
+        <tr>
+            <td class="lbl" style="width:16%">EMPLOYEE:</td>
+            <td class="lbl" style="width:40%">{{ $payslip['employee']['full_name'] }}</td>
+            <td class="lbl" style="width:16%; text-align:right;">PAY PERIOD:</td>
+            <td style="width:28%">{{ $periodText }}</td>
+        </tr>
+        <tr>
+            <td></td><td></td>
+            <td class="lbl" style="text-align:right;">DAYS WORKED</td>
+            <td>{{ number_format($slip['days_worked'], 2) }}</td>
+        </tr>
+    </table>
+
+    <table class="cols">
+        <colgroup><col style="width:32%"><col style="width:18%"><col style="width:32%"><col style="width:18%"></colgroup>
         <thead>
-            <tr><th>Date</th><th>Shift</th><th>In</th><th>Out</th><th class="right">Hours</th><th>Type</th><th class="right">Day Pay</th></tr>
+            <tr>
+                <th class="l">Earnings</th><th class="l">Amount</th>
+                <th class="l mid">Deductions</th><th class="l">Amount</th>
+            </tr>
         </thead>
         <tbody>
-            @forelse ($payslip['lines'] as $line)
+            @for ($i = 0; $i < $rowCount; $i++)
                 <tr>
-                    <td>{{ $line['date'] }}</td>
-                    <td>{{ $line['shift_start'] ? substr($line['shift_start'], 0, 5) : '—' }}–{{ $line['shift_end'] ? substr($line['shift_end'], 0, 5) : '—' }}</td>
-                    <td>{{ $line['clock_in'] ? substr($line['clock_in'], 0, 5) : '—' }}</td>
-                    <td>{{ $line['clock_out'] ? substr($line['clock_out'], 0, 5) : '—' }}</td>
-                    <td class="right">{{ number_format($line['hours'], 2) }}</td>
-                    <td>{{ $line['premium_label'] }}@if ($line['late']) · Late {{ $line['late_minutes'] }}m @endif</td>
-                    <td class="right">₱{{ number_format($line['day_pay'], 2) }}</td>
+                    <td class="item">{{ $earnings[$i]['label'] ?? '' }}</td>
+                    <td class="amt">@isset($earnings[$i])₱{{ number_format($earnings[$i]['amount'], 2) }}@endisset</td>
+                    <td class="item mid">{{ $deductions[$i]['label'] ?? '' }}</td>
+                    <td class="amt">@isset($deductions[$i])₱{{ number_format($deductions[$i]['amount'], 2) }}@endisset</td>
                 </tr>
-            @empty
-                <tr><td colspan="7" class="muted">No worked days in this period.</td></tr>
-            @endforelse
+            @endfor
+            <tr class="totrow">
+                <td>Gross Earnings</td>
+                <td class="amt">₱{{ number_format($slip['gross_earnings'], 2) }}</td>
+                <td class="mid">Total Deductions</td>
+                <td class="amt">₱{{ number_format($slip['total_deductions'], 2) }}</td>
+            </tr>
         </tbody>
     </table>
 
-    @if (count($payslip['adjustments']))
-        <table style="margin-top: 12px;">
-            <thead><tr><th>Adjustment</th><th>Date</th><th>Status</th><th class="right">Amount</th></tr></thead>
-            <tbody>
-                @foreach ($payslip['adjustments'] as $adj)
-                    <tr>
-                        <td>{{ $adj['label'] }}</td>
-                        <td>{{ $adj['date'] }}</td>
-                        <td>{{ $adj['paid'] ? 'Paid (Cash on Hand)' : 'To pay' }}</td>
-                        <td class="right">{{ $adj['amount'] < 0 ? '−' : '' }}₱{{ number_format(abs($adj['amount']), 2) }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endif
+    <div class="net">Net Salary Received: <span class="val">₱{{ number_format($slip['net'], 2) }}</span></div>
 
-    <table class="totals" style="width: 300px; margin-left: auto;">
-        <tr><td>Basic</td><td class="right">₱{{ number_format($payslip['totals']['basic'], 2) }}</td></tr>
-        <tr><td>Overtime</td><td class="right">₱{{ number_format($payslip['totals']['ot'], 2) }}</td></tr>
-        <tr><td>Night Differential</td><td class="right">₱{{ number_format($payslip['totals']['night_diff'], 2) }}</td></tr>
-        <tr><td>Gross Pay</td><td class="right">₱{{ number_format($payslip['totals']['gross'], 2) }}</td></tr>
-        <tr><td>Late Penalty</td><td class="right">−₱{{ number_format($payslip['totals']['late_penalty'], 2) }}</td></tr>
-        @php
-            $catLabels = ['cash_on_hand' => 'Cash on Hand', 'allowance' => 'Allowance', 'bonus' => 'Bonus', 'deduction' => 'Deduction', 'other' => 'Other'];
-            $byCat = collect($payslip['adjustments'])->groupBy('category')->map(fn ($g) => $g->sum('amount'));
-        @endphp
-        @foreach ($catLabels as $cat => $lbl)
-            @if (($byCat[$cat] ?? 0) != 0)
-                <tr><td>{{ $lbl }}</td><td class="right">{{ $byCat[$cat] < 0 ? '−' : '' }}₱{{ number_format(abs($byCat[$cat]), 2) }}</td></tr>
-            @endif
-        @endforeach
-        <tr class="gross"><td>Total Salary</td><td class="right">₱{{ number_format($payslip['totals']['total_salary'], 2) }}</td></tr>
-        <tr><td>Less already paid (Cash on Hand)</td><td class="right">−₱{{ number_format($payslip['totals']['paid'], 2) }}</td></tr>
-        <tr class="gross"><td>Net to Release</td><td class="right">₱{{ number_format($payslip['totals']['net_to_release'], 2) }}</td></tr>
+    <div class="confirm">I hereby confirm that the above records are true and correct.</div>
+
+    <table class="sign">
+        <tr>
+            <td style="width:55%"><div class="line">Employee's Printed Name &amp; Signature</div></td>
+            <td style="width:45%"><div class="line">Date</div></td>
+        </tr>
     </table>
-    <p class="muted" style="margin-top: 14px;">Total salary includes adjustments and is net of late penalties. "Net to Release" excludes amounts already paid in cash. Excludes statutory deductions (SSS / PhilHealth / Pag-IBIG / tax).</p>
+</div>
 </body>
 </html>
