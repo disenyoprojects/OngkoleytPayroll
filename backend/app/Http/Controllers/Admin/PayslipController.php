@@ -16,6 +16,7 @@ class PayslipController extends Controller {
     public function __construct(private AttendancePayCalculator $calculator) {}
 
     public function show(Request $request, Employee $employee) {
+        $this->assertBranchAccess($request, $employee);
         $data = $request->validate([
             'month' => ['required', 'date_format:Y-m'],
             'period' => ['required', 'in:first,second,whole'],
@@ -25,6 +26,7 @@ class PayslipController extends Controller {
     }
 
     public function pdf(Request $request, Employee $employee) {
+        $this->assertBranchAccess($request, $employee);
         $data = $request->validate([
             'month' => ['required', 'date_format:Y-m'],
             'period' => ['required', 'in:first,second,whole'],

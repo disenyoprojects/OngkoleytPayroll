@@ -10,9 +10,10 @@ use Illuminate\Validation\ValidationException;
 
 class ClockController extends Controller {
     /** Active staff for the clock-in screen. */
-    public function staff() {
+    public function staff(Request $request) {
         return response()->json(
             Employee::with('branch')
+                ->when($this->branchFilter($request), fn ($q, $bid) => $q->where('branch_id', $bid))
                 ->orderBy('short_name')
                 ->get(['id', 'short_name', 'full_name', 'role', 'branch_id'])
         );
@@ -20,9 +21,9 @@ class ClockController extends Controller {
 
     /** Today's attendance record for one employee (or null). */
     public function status(Request $request) {
-        $data = $request->validate(['employee_id' => ['required', 'exists:employees,id']]);
+        $employee = $this->resolveEmployee($request);
 
-        $record = AttendanceRecord::where('employee_id', $data['employee_id'])
+        $record = AttendanceRecord::where('employee_id', $employee->id)
             ->where('work_date', now()->toDateString())
             ->first();
 
@@ -66,7 +67,9 @@ class ClockController extends Controller {
 
     private function resolveEmployee(Request $request): Employee {
         $data = $request->validate(['employee_id' => ['required', 'exists:employees,id']]);
+        $employee = Employee::findOrFail($data['employee_id']);
+        $this->assertBranchAccess($request, $employee);
 
-        return Employee::findOrFail($data['employee_id']);
+        return $employee;
     }
 }

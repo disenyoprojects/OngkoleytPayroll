@@ -12,6 +12,7 @@ class PayrollAdjustmentController extends Controller {
     private const CATEGORIES = ['cash_on_hand', 'allowance', 'bonus', 'deduction', 'other'];
 
     public function index(Request $request, Employee $employee) {
+        $this->assertBranchAccess($request, $employee);
         $data = $request->validate([
             'from' => ['required', 'date_format:Y-m-d'],
             'to' => ['required', 'date_format:Y-m-d'],
@@ -26,6 +27,7 @@ class PayrollAdjustmentController extends Controller {
     }
 
     public function store(Request $request, Employee $employee) {
+        $this->assertBranchAccess($request, $employee);
         $data = $request->validate([
             'date' => ['required', 'date_format:Y-m-d'],
             'label' => ['required', 'string', 'max:120'],
@@ -58,7 +60,11 @@ class PayrollAdjustmentController extends Controller {
         return response()->json($adjustment, 201);
     }
 
-    public function destroy(PayrollAdjustment $adjustment) {
+    public function destroy(Request $request, PayrollAdjustment $adjustment) {
+        $adjustment->loadMissing('employee');
+        if ($adjustment->employee) {
+            $this->assertBranchAccess($request, $adjustment->employee);
+        }
         $adjustment->delete();
 
         return response()->json(['message' => 'Adjustment removed.']);

@@ -15,9 +15,11 @@ class AttendanceDashboardController extends Controller {
         $request->validate(['date' => 'nullable|date_format:Y-m-d']);
         $date = $request->query('date', now()->toDateString());
 
+        $branchId = $this->branchFilter($request);
         $settings = PayrollSetting::current();
         $records = AttendanceRecord::with(['employee' => fn ($q) => $q->withTrashed()->with('branch')])
             ->where('work_date', $date)
+            ->when($branchId, fn ($q, $bid) => $q->whereHas('employee', fn ($e) => $e->withTrashed()->where('branch_id', $bid)))
             ->get();
 
         $rows = $records->map(function (AttendanceRecord $record) use ($settings) {

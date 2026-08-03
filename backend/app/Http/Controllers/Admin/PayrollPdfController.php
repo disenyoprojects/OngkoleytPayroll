@@ -17,9 +17,14 @@ class PayrollPdfController extends Controller {
         $date = $request->query('date', now()->toDateString());
         $settings = PayrollSetting::current();
 
+        $branchId = $this->branchFilter($request);
+        $base = AttendanceRecord::with(['employee' => fn ($q) => $q->withTrashed()->with('branch')])
+            ->whereNotNull('clock_out')
+            ->when($branchId, fn ($q, $bid) => $q->whereHas('employee', fn ($e) => $e->withTrashed()->where('branch_id', $bid)));
+
         $records = $range === 'daily'
-            ? AttendanceRecord::with(['employee' => fn ($q) => $q->withTrashed()->with('branch')])->where('work_date', $date)->whereNotNull('clock_out')->get()
-            : AttendanceRecord::with(['employee' => fn ($q) => $q->withTrashed()->with('branch')])->whereBetween('work_date', [$date, now()->parse($date)->addDays(6)->toDateString()])->whereNotNull('clock_out')->get();
+            ? (clone $base)->where('work_date', $date)->get()
+            : (clone $base)->whereBetween('work_date', [$date, now()->parse($date)->addDays(6)->toDateString()])->get();
 
         $rows = $records->map(fn (AttendanceRecord $record) => [
             'employee' => $record->employee,

@@ -11,15 +11,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class EmployeeController extends Controller {
-    public function index() {
+    public function index(Request $request) {
         return response()->json(
-            Employee::with('branch')->orderBy('short_name')->get()
+            Employee::with('branch')
+                ->when($this->branchFilter($request), fn ($q, $bid) => $q->where('branch_id', $bid))
+                ->orderBy('short_name')->get()
         );
     }
 
-    public function branches() {
+    public function branches(Request $request) {
         return response()->json(
-            Branch::orderBy('name')->get(['id', 'name'])
+            Branch::when($this->branchFilter($request), fn ($q, $bid) => $q->where('id', $bid))
+                ->orderBy('name')->get(['id', 'name'])
         );
     }
 
@@ -131,7 +134,9 @@ class EmployeeController extends Controller {
     }
 
     public function separated(Request $request) {
-        $query = Employee::onlyTrashed()->with('branch')->orderBy('short_name');
+        $query = Employee::onlyTrashed()->with('branch')
+            ->when($this->branchFilter($request), fn ($q, $bid) => $q->where('branch_id', $bid))
+            ->orderBy('short_name');
 
         $type = $request->query('type');
         if (in_array($type, ['proper', 'improper'], true)) {

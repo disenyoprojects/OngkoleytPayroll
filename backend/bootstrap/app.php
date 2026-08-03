@@ -21,6 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // This is an API-only backend (no server-rendered "login" route), so
         // unauthenticated requests must never try to redirect to one.
         $middleware->redirectGuestsTo(fn () => null);
+
+        $middleware->alias([
+            'admin.only' => \App\Http\Middleware\EnsureAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Always render a JSON error response instead of Laravel's default

@@ -13,6 +13,7 @@ class EmployeeAttendanceController extends Controller {
     public function __construct(private AttendancePayCalculator $calculator) {}
 
     public function index(Request $request, Employee $employee) {
+        $this->assertBranchAccess($request, $employee);
         $month = $request->query('month', now()->format('Y-m'));
         $request->merge(['month' => $month])->validate(['month' => ['date_format:Y-m']]);
         [$year, $mon] = explode('-', $month);

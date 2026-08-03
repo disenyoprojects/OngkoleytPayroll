@@ -17,7 +17,7 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function EmployeesView() {
+export default function EmployeesView({ canEdit = true }) {
   const [view, setView] = useState("active"); // "active" | "separated"
   const [employees, setEmployees] = useState([]);
   const [separated, setSeparated] = useState([]);
@@ -141,7 +141,7 @@ export default function EmployeesView() {
         <button style={switchStyle(view === "separated")} onClick={() => setView("separated")}>Separated</button>
         {view === "active" && (
           <>
-            <Button variant="gold" onClick={openAdd}>+ Add Employee</Button>
+            {canEdit && <Button variant="gold" onClick={openAdd}>+ Add Employee</Button>}
             <select
               value={branchFilter}
               onChange={(e) => setBranchFilter(e.target.value)}
@@ -179,8 +179,8 @@ export default function EmployeesView() {
                 <td style={{ padding: 10 }}>{emp.daily_basic_rate == null ? "— (global)" : formatPHP(emp.daily_basic_rate)}</td>
                 <td style={{ padding: 10, textAlign: "right", whiteSpace: "nowrap" }}>
                   <Button small onClick={() => setLogEmployee(emp)}>Log</Button>{" "}
-                  <Button small onClick={() => openEdit(emp)}>Edit</Button>{" "}
-                  <Button small variant="danger" onClick={() => openRemove(emp)}>Remove</Button>
+                  {canEdit && <><Button small onClick={() => openEdit(emp)}>Edit</Button>{" "}
+                  <Button small variant="danger" onClick={() => openRemove(emp)}>Remove</Button></>}
                 </td>
               </tr>
             ))}
@@ -228,7 +228,7 @@ export default function EmployeesView() {
                   <td style={{ padding: 10 }}>{emp.separation_reason}</td>
                   <td style={{ padding: 10, textAlign: "right" }}>
                     <Button small onClick={() => setLogEmployee(emp)}>Log</Button>{" "}
-                    <Button small onClick={() => restore(emp)}>Restore</Button>
+                    {canEdit && <Button small onClick={() => restore(emp)}>Restore</Button>}
                   </td>
                 </tr>
               ))}

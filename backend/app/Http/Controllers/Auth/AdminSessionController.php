@@ -35,6 +35,15 @@ class AdminSessionController extends Controller {
     }
 
     public function me(Request $request) {
-        return response()->json($request->user());
+        $user = $request->user()->loadMissing('branch');
+
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->isAdmin() ? 'admin' : 'branch',
+            'branch_id' => $user->branch_id,
+            'branch' => $user->branch?->name,
+        ]);
     }
 }

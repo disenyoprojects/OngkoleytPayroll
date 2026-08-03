@@ -40,18 +40,26 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/payroll/period/pdf', [PayrollController::class, 'periodPdf']);
     Route::get('/admin/payroll/export', [PayrollExportController::class, 'export']);
     Route::get('/admin/payroll/pdf', [PayrollPdfController::class, 'export']);
-    Route::get('/admin/thirteenth-month', [ThirteenthMonthController::class, 'index']);
-    Route::post('/admin/thirteenth-month/compute-all', [ThirteenthMonthController::class, 'computeAll']);
-    Route::post('/admin/thirteenth-month/{employee}/compute', [ThirteenthMonthController::class, 'compute']);
-    Route::post('/admin/thirteenth-month/{employee}/recompute', [ThirteenthMonthController::class, 'recompute']);
-    Route::post('/admin/thirteenth-month/{employee}/adjust', [ThirteenthMonthController::class, 'adjust']);
-    Route::post('/admin/thirteenth-month/{employee}/lock', [ThirteenthMonthController::class, 'lock']);
-    Route::post('/admin/thirteenth-month/{employee}/unlock', [ThirteenthMonthController::class, 'unlock']);
-    Route::post('/admin/thirteenth-month/{employee}/release', [ThirteenthMonthController::class, 'release']);
-    Route::get('/admin/thirteenth-month/{employee}/payslip', [ThirteenthMonthPayslipController::class, 'show']);
-    Route::get('/admin/settings', [PayrollSettingController::class, 'show']);
-    Route::put('/admin/settings', [PayrollSettingController::class, 'update']);
-    Route::get('/admin/audit-log', [AuditLogController::class, 'index']);
+    // Company-wide sections — full admins only (branch logins get 403).
+    Route::middleware('admin.only')->group(function () {
+        Route::get('/admin/thirteenth-month', [ThirteenthMonthController::class, 'index']);
+        Route::post('/admin/thirteenth-month/compute-all', [ThirteenthMonthController::class, 'computeAll']);
+        Route::post('/admin/thirteenth-month/{employee}/compute', [ThirteenthMonthController::class, 'compute']);
+        Route::post('/admin/thirteenth-month/{employee}/recompute', [ThirteenthMonthController::class, 'recompute']);
+        Route::post('/admin/thirteenth-month/{employee}/adjust', [ThirteenthMonthController::class, 'adjust']);
+        Route::post('/admin/thirteenth-month/{employee}/lock', [ThirteenthMonthController::class, 'lock']);
+        Route::post('/admin/thirteenth-month/{employee}/unlock', [ThirteenthMonthController::class, 'unlock']);
+        Route::post('/admin/thirteenth-month/{employee}/release', [ThirteenthMonthController::class, 'release']);
+        Route::get('/admin/thirteenth-month/{employee}/payslip', [ThirteenthMonthPayslipController::class, 'show']);
+        Route::get('/admin/settings', [PayrollSettingController::class, 'show']);
+        Route::put('/admin/settings', [PayrollSettingController::class, 'update']);
+        Route::get('/admin/audit-log', [AuditLogController::class, 'index']);
+        // Employee master data + rates — admin only.
+        Route::post('/admin/employees', [EmployeeController::class, 'store']);
+        Route::put('/admin/employees/{employee}', [EmployeeController::class, 'update']);
+        Route::post('/admin/employees/{employee}/separate', [EmployeeController::class, 'separate']);
+        Route::post('/admin/employees/{id}/restore', [EmployeeController::class, 'restore']);
+    });
     Route::get('/admin/employees', [EmployeeController::class, 'index']);
     Route::get('/admin/employees/separated', [EmployeeController::class, 'separated']);
     Route::get('/admin/employees/{employee}/attendance', [EmployeeAttendanceController::class, 'index'])->withTrashed();
@@ -61,8 +69,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/employees/{employee}/adjustments', [PayrollAdjustmentController::class, 'store'])->withTrashed();
     Route::delete('/admin/adjustments/{adjustment}', [PayrollAdjustmentController::class, 'destroy']);
     Route::get('/admin/branches', [EmployeeController::class, 'branches']);
-    Route::post('/admin/employees', [EmployeeController::class, 'store']);
-    Route::put('/admin/employees/{employee}', [EmployeeController::class, 'update']);
-    Route::post('/admin/employees/{employee}/separate', [EmployeeController::class, 'separate']);
-    Route::post('/admin/employees/{id}/restore', [EmployeeController::class, 'restore']);
 });

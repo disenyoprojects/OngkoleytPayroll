@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceRecord;
 use App\Models\AuditLog;
+use App\Models\Employee;
 use Illuminate\Http\Request;
 
 class AttendanceAdminController extends Controller {
     public function adjust(Request $request, AttendanceRecord $record) {
+        $this->guardBranch($request, $record);
         $data = $request->validate([
             'clock_in' => ['required', 'date_format:H:i'],
             'clock_out' => ['required', 'date_format:H:i'],
@@ -54,8 +56,17 @@ class AttendanceAdminController extends Controller {
     }
 
     public function approve(Request $request, AttendanceRecord $record) {
+        $this->guardBranch($request, $record);
         $record->update(['status' => 'approved']);
 
         return response()->json($record);
+    }
+
+    /** Branch logins may only touch attendance for staff in their own branch. */
+    private function guardBranch(Request $request, AttendanceRecord $record): void {
+        $employee = Employee::withTrashed()->find($record->employee_id);
+        if ($employee) {
+            $this->assertBranchAccess($request, $employee);
+        }
     }
 }

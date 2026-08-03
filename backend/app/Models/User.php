@@ -22,7 +22,22 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'branch_id',
     ];
+
+    public function branch() {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function isAdmin(): bool {
+        return ($this->role ?? 'admin') === 'admin';
+    }
+
+    /** Branch id a non-admin user is limited to, or null for admins (see everything). */
+    public function scopedBranchId(): ?int {
+        return $this->isAdmin() ? null : $this->branch_id;
+    }
 
     /**
      * The attributes that should be hidden for serialization.
