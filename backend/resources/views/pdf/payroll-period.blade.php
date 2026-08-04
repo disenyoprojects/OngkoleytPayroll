@@ -55,7 +55,7 @@
                 <tr><td colspan="10" class="muted" style="text-align:center;">No payroll for this period.</td></tr>
             @endforelse
         </tbody>
-        @if (count($register['rows']))
+        @if (count($register['rows']) && ($showTotals ?? true))
             <tfoot>
                 <tr class="total">
                     <td>TOTAL</td><td></td>

@@ -6,7 +6,7 @@ import PayslipView from "./PayslipView";
 
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 
-export default function PayrollView() {
+export default function PayrollView({ isAdmin = true }) {
   const [range, setRange] = useState("daily");
   const [data, setData] = useState(null);
   // Track which range the loaded data belongs to, so the daily/weekly table is
@@ -66,15 +66,17 @@ export default function PayrollView() {
         <PayslipView />
       ) : range === "semi" ? (
         <SemiMonthly
-          month={month} setMonth={setMonth} period={period} setPeriod={setPeriod} data={periodData}
+          month={month} setMonth={setMonth} period={period} setPeriod={setPeriod} data={periodData} isAdmin={isAdmin}
         />
       ) : (!data || dataRange !== range) ? (
         <div>Loading...</div>
       ) : (
       <>
-      <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
-        <StatCard label={`Total ${range === "daily" ? "Today" : "This Week"}`} value={formatPHP(data.total)} />
-      </div>
+      {isAdmin && (
+        <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
+          <StatCard label={`Total ${range === "daily" ? "Today" : "This Week"}`} value={formatPHP(data.total)} />
+        </div>
+      )}
       <div style={tableWrap}>
         <table style={tableStyle}>
           {range === "daily" ? (
@@ -153,7 +155,7 @@ export default function PayrollView() {
 const numTd = { ...tdStyle, textAlign: "right" };
 const numTh = { ...thStyle, textAlign: "right" };
 
-function SemiMonthly({ month, setMonth, period, setPeriod, data }) {
+function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true }) {
   return (
     <>
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 18, flexWrap: "wrap" }}>
@@ -172,11 +174,13 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data }) {
         <div>Loading...</div>
       ) : (
         <>
-          <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
-            <StatCard label={`Gross · ${data.period.label}`} value={formatPHP(data.totals.gross)} />
-            <StatCard label="Deductions" value={`−${formatPHP(data.totals.late_penalty + Math.max(0, -data.totals.adjustments))}`} />
-            <StatCard label="Net to Release" value={formatPHP(data.totals.net_to_release)} />
-          </div>
+          {isAdmin && (
+            <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
+              <StatCard label={`Gross · ${data.period.label}`} value={formatPHP(data.totals.gross)} />
+              <StatCard label="Deductions" value={`−${formatPHP(data.totals.late_penalty + Math.max(0, -data.totals.adjustments))}`} />
+              <StatCard label="Net to Release" value={formatPHP(data.totals.net_to_release)} />
+            </div>
+          )}
           <div style={tableWrap}>
             <table style={tableStyle}>
               <thead>
