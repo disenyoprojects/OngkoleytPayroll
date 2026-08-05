@@ -95,6 +95,26 @@ class PayrollAdjustmentTest extends TestCase {
         $this->assertEquals(200.0, (float) $created['amount']);
     }
 
+    public function test_statutory_category_subtracts_and_auto_labels(): void {
+        $admin = User::factory()->create();
+        $employee = $this->workedEmployee();
+
+        // No label typed — SSS should subtract and label itself "SSS".
+        $created = $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/adjustments", [
+            'date' => '2026-07-20', 'category' => 'sss', 'amount' => 425, 'paid' => false,
+        ])->assertCreated()->json();
+
+        $this->assertEquals(-425.0, (float) $created['amount']);
+        $this->assertSame('SSS', $created['label']);
+
+        $slip = $this->actingAs($admin)
+            ->getJson("/api/admin/employees/{$employee->id}/payslip?month=2026-07&period=second")
+            ->assertOk()->json();
+
+        $this->assertEquals(80.0, $slip['totals']['net_to_release']); // 505 − 425
+        $this->assertContains('SSS', array_column($slip['slip']['deductions'], 'label'));
+    }
+
     public function test_adjustment_outside_period_is_excluded(): void {
         $admin = User::factory()->create();
         $employee = $this->workedEmployee();

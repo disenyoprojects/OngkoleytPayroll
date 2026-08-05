@@ -9,7 +9,12 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class PayrollAdjustmentController extends Controller {
-    private const CATEGORIES = ['cash_on_hand', 'allowance', 'bonus', 'deduction', 'other'];
+    private const CATEGORIES = ['cash_on_hand', 'allowance', 'bonus', 'deduction', 'sss', 'pagibig', 'philhealth', 'other'];
+
+    // Categories that always subtract, plus their default label if none is typed.
+    private const DEDUCTION_LABELS = [
+        'deduction' => 'Deduction', 'sss' => 'SSS', 'pagibig' => 'Pag-IBIG', 'philhealth' => 'PhilHealth',
+    ];
 
     public function index(Request $request, Employee $employee) {
         $this->assertBranchAccess($request, $employee);
@@ -30,7 +35,7 @@ class PayrollAdjustmentController extends Controller {
         $this->assertBranchAccess($request, $employee);
         $data = $request->validate([
             'date' => ['required', 'date_format:Y-m-d'],
-            'label' => ['required', 'string', 'max:120'],
+            'label' => ['nullable', 'string', 'max:120'],
             'category' => ['required', Rule::in(self::CATEGORIES)],
             'amount' => ['required', 'numeric'],
             'paid' => ['boolean'],
@@ -38,18 +43,22 @@ class PayrollAdjustmentController extends Controller {
         ]);
 
         // Sign follows the category so the admin never has to type a negative:
-        // a deduction always subtracts; allowance/bonus/cash-on-hand always add.
-        // "other" keeps the entered sign for full flexibility.
-        $amount = match ($data['category']) {
-            'deduction' => -abs($data['amount']),
-            'other' => $data['amount'],
+        // deductions (incl. SSS / Pag-IBIG / PhilHealth) always subtract;
+        // allowance/bonus/cash-on-hand always add; "other" keeps the entered sign.
+        $amount = match (true) {
+            array_key_exists($data['category'], self::DEDUCTION_LABELS) => -abs($data['amount']),
+            $data['category'] === 'other' => $data['amount'],
             default => abs($data['amount']),
         };
+
+        // Statutory/deduction lines can be left unlabelled — fall back to the
+        // category's name (SSS, Pag-IBIG, PhilHealth, Deduction).
+        $label = trim((string) ($data['label'] ?? '')) ?: (self::DEDUCTION_LABELS[$data['category']] ?? 'Adjustment');
 
         $adjustment = PayrollAdjustment::create([
             'employee_id' => $employee->id,
             'date' => $data['date'],
-            'label' => $data['label'],
+            'label' => $label,
             'category' => $data['category'],
             'amount' => $amount,
             'paid' => $data['paid'] ?? false,

@@ -14,8 +14,13 @@ const CATEGORIES = [
   ["allowance", "Allowance"],
   ["bonus", "Bonus"],
   ["deduction", "Deduction"],
+  ["sss", "SSS"],
+  ["pagibig", "Pag-IBIG"],
+  ["philhealth", "PhilHealth"],
   ["other", "Other"],
 ];
+// Deduction categories that don't need a typed label — the name is the label.
+const DEFAULT_LABELS = { deduction: "Deduction", sss: "SSS", pagibig: "Pag-IBIG", philhealth: "PhilHealth" };
 const BLANK_ADJ = { label: "", category: "cash_on_hand", amount: "", paid: true, date: "" };
 
 function signed(amount) {
@@ -170,7 +175,18 @@ export default function PayslipView() {
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <input value={adj.label} onChange={(e) => setAdjField("label", e.target.value)} placeholder="Label (e.g. Night shift bonus)" style={{ ...inputStyle, width: 220 }} />
               <input type="number" step="0.01" value={adj.amount} onChange={(e) => setAdjField("amount", e.target.value)} placeholder="Amount" style={{ ...inputStyle, width: 110 }} />
-              <select value={adj.category} onChange={(e) => setAdjField("category", e.target.value)} style={{ ...inputStyle, width: "auto" }}>
+              <select
+                value={adj.category}
+                onChange={(e) => {
+                  const cat = e.target.value;
+                  setAdj((a) => {
+                    // Auto-fill the label for SSS/Pag-IBIG/PhilHealth/Deduction, but keep a custom label the user typed.
+                    const wasAuto = !a.label || Object.values(DEFAULT_LABELS).includes(a.label);
+                    return { ...a, category: cat, label: wasAuto ? (DEFAULT_LABELS[cat] || "") : a.label };
+                  });
+                }}
+                style={{ ...inputStyle, width: "auto" }}
+              >
                 {CATEGORIES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
               </select>
               <input type="date" value={adj.date || slip.period.from} min={slip.period.from} max={slip.period.to} onChange={(e) => setAdjField("date", e.target.value)} style={{ ...inputStyle, width: "auto" }} />
@@ -178,10 +194,10 @@ export default function PayslipView() {
                 <input type="checkbox" checked={adj.paid} onChange={(e) => setAdjField("paid", e.target.checked)} />
                 Already paid (cash on hand)
               </label>
-              <Button variant="gold" onClick={addAdjustment} disabled={!adj.label || adj.amount === ""}>Add</Button>
+              <Button variant="gold" onClick={addAdjustment} disabled={adj.amount === "" || (!adj.label && !DEFAULT_LABELS[adj.category])}>Add</Button>
             </div>
             {adjError && <div style={{ color: "#C1521F", fontSize: 12, marginTop: 8 }}>{adjError}</div>}
-            <div style={{ color: "#7A6A57", fontSize: 12, marginTop: 8 }}>Tip: pick the type and enter a positive amount — a <b>Deduction</b> (e.g. a cash advance) is subtracted automatically; allowances/bonuses are added. "Already paid" is added to Total Salary but subtracted from what's still handed over.</div>
+            <div style={{ color: "#7A6A57", fontSize: 12, marginTop: 8 }}>Tip: pick the type and enter a positive amount. <b>SSS, Pag-IBIG, PhilHealth</b> and <b>Deduction</b> are subtracted automatically (type any amount you want — nothing is fixed); allowances/bonuses are added. For <b>Other</b>, type your own label. "Already paid" is added to Total Salary but subtracted from what's still handed over.</div>
           </div>
 
           <div style={{ maxWidth: 340, marginLeft: "auto", marginTop: 14, fontSize: 14 }}>
