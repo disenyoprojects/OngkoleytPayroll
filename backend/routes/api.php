@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\PayrollPdfController;
 use App\Http\Controllers\Admin\PayrollSettingController;
 use App\Http\Controllers\Admin\ThirteenthMonthController;
 use App\Http\Controllers\Admin\ThirteenthMonthPayslipController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AdminSessionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -53,6 +54,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/thirteenth-month/{employee}/payslip', [ThirteenthMonthPayslipController::class, 'show']);
         Route::get('/admin/settings', [PayrollSettingController::class, 'show']);
         Route::put('/admin/settings', [PayrollSettingController::class, 'update']);
+        Route::get('/admin/users', [UserController::class, 'index']);
+        Route::put('/admin/users/{user}/password', [UserController::class, 'updatePassword']);
         Route::get('/admin/audit-log', [AuditLogController::class, 'index']);
         // Employee master data + rates — admin only.
         Route::post('/admin/employees', [EmployeeController::class, 'store']);

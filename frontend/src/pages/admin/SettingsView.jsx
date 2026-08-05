@@ -11,10 +11,30 @@ const cardTitle = { margin: "0 0 16px", fontSize: 16 };
 export default function SettingsView() {
   const [settings, setSettings] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [pw, setPw] = useState({}); // userId -> new password typed
+  const [pwMsg, setPwMsg] = useState({}); // userId -> { ok, text }
 
   useEffect(() => {
     apiClient.get("/api/admin/settings").then((res) => setSettings(res.data));
+    apiClient.get("/api/admin/users").then((res) => setUsers(res.data)).catch(() => setUsers([]));
   }, []);
+
+  async function changePassword(user) {
+    const value = (pw[user.id] || "").trim();
+    if (value.length < 8) {
+      setPwMsg((m) => ({ ...m, [user.id]: { ok: false, text: "At least 8 characters." } }));
+      return;
+    }
+    try {
+      await apiClient.put(`/api/admin/users/${user.id}/password`, { password: value });
+      setPw((p) => ({ ...p, [user.id]: "" }));
+      setPwMsg((m) => ({ ...m, [user.id]: { ok: true, text: "Updated ✓" } }));
+      setTimeout(() => setPwMsg((m) => ({ ...m, [user.id]: null })), 2500);
+    } catch {
+      setPwMsg((m) => ({ ...m, [user.id]: { ok: false, text: "Couldn't update — try again." } }));
+    }
+  }
 
   function set(field, value) {
     setSettings((s) => ({ ...s, [field]: value }));
@@ -93,6 +113,40 @@ export default function SettingsView() {
             {type.replace("_", " ")}
           </label>
         ))}
+      </div>
+
+      <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
+        <h3 style={cardTitle}>Logins & Passwords</h3>
+        <p style={{ margin: "-8px 0 14px", fontSize: 13, color: "#7A6A57" }}>
+          Change the password for any login — the admin and every branch. Type a new password (min 8 characters) and press Update.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {users.length === 0 && <div style={{ fontSize: 13, color: "#7A6A57" }}>No logins found.</div>}
+          {users.map((u) => (
+            <div key={u.id} style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", borderTop: "1px solid #F0E7D4", paddingTop: 10 }}>
+              <div style={{ minWidth: 220 }}>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>
+                  {u.role === "admin" ? "Admin" : (u.branch || "Branch")}
+                  <span style={{ marginLeft: 6, fontWeight: 400, fontSize: 11, color: u.role === "admin" ? "#9A6B12" : "#3F6B45" }}>
+                    {u.role === "admin" ? "· full access" : "· branch only"}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: "#7A6A57" }}>{u.email}</div>
+              </div>
+              <input
+                type="text"
+                value={pw[u.id] || ""}
+                onChange={(e) => setPw((p) => ({ ...p, [u.id]: e.target.value }))}
+                placeholder="New password"
+                style={{ ...inputStyle, width: 220 }}
+              />
+              <Button variant="gold" onClick={() => changePassword(u)} disabled={!(pw[u.id] || "").trim()}>Update</Button>
+              {pwMsg[u.id] && (
+                <span style={{ fontSize: 12, color: pwMsg[u.id].ok ? "#3F6B45" : "#C1521F" }}>{pwMsg[u.id].text}</span>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
