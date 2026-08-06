@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\PayrollAdjustment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Tests\TestCase;
 
 class PayrollPeriodControllerTest extends TestCase {
@@ -103,5 +104,61 @@ class PayrollPeriodControllerTest extends TestCase {
 
     public function test_period_pdf_requires_authentication(): void {
         $this->getJson('/api/admin/payroll/period/pdf?month=2026-07&period=second')->assertStatus(401);
+    }
+
+    public function test_owner_pdf_filename_and_manager_pdf_filename_differ(): void {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $branch = Branch::factory()->create(['name' => 'Mabini']);
+        $manager = User::factory()->create(['role' => 'branch', 'branch_id' => $branch->id]);
+        $employee = Employee::factory()->for($branch)->create(['daily_basic_rate' => null]);
+        $this->workedDay($employee, '2026-07-20');
+
+        $ownerRes = $this->actingAs($admin)->get('/api/admin/payroll/period/pdf?month=2026-07&period=second')->assertOk();
+        $this->assertStringContainsString('payroll-owner-', $ownerRes->headers->get('content-disposition'));
+
+        $managerRes = $this->actingAs($manager)->get('/api/admin/payroll/period/pdf?month=2026-07&period=second')->assertOk();
+        $this->assertStringContainsString('payroll-mabini-', $managerRes->headers->get('content-disposition'));
+    }
+
+    public function test_owner_document_is_grouped_by_branch_with_a_company_wide_total(): void {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $mabini = Branch::factory()->create(['name' => 'Mabini']);
+        $diego = Branch::factory()->create(['name' => 'Diego']);
+        $a = Employee::factory()->for($mabini)->create(['daily_basic_rate' => null]);
+        $b = Employee::factory()->for($diego)->create(['daily_basic_rate' => null]);
+        $this->workedDay($a, '2026-07-20');
+        $this->workedDay($b, '2026-07-21');
+
+        $register = $this->actingAs($admin)
+            ->getJson('/api/admin/payroll/period?month=2026-07&period=second')
+            ->assertOk()->json();
+        $register['rows'] = Collection::make($register['rows']);
+
+        $html = view('pdf.payroll-period', ['register' => $register, 'isAdmin' => true, 'branchName' => null])->render();
+
+        $this->assertStringContainsString('Company-Wide Payroll Register', $html);
+        $this->assertStringContainsString('Mabini', $html);
+        $this->assertStringContainsString('Diego', $html);
+        $this->assertStringContainsString('subtotal', $html);
+        $this->assertStringContainsString('COMPANY-WIDE TOTAL', $html);
+    }
+
+    public function test_manager_document_is_titled_to_their_branch_with_no_company_total(): void {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $branch = Branch::factory()->create(['name' => 'Mabini']);
+        $employee = Employee::factory()->for($branch)->create(['daily_basic_rate' => null]);
+        $this->workedDay($employee, '2026-07-20');
+
+        $register = $this->actingAs($admin)
+            ->getJson('/api/admin/payroll/period?month=2026-07&period=second')
+            ->assertOk()->json();
+        $register['rows'] = Collection::make($register['rows']);
+
+        $html = view('pdf.payroll-period', ['register' => $register, 'isAdmin' => false, 'branchName' => 'Mabini'])->render();
+
+        $this->assertStringContainsString('Branch Payroll Register — Mabini', $html);
+        $this->assertStringNotContainsString('Company-Wide Payroll Register', $html);
+        $this->assertStringNotContainsString('COMPANY-WIDE TOTAL', $html);
+        $this->assertStringContainsString('owner only', $html);
     }
 }

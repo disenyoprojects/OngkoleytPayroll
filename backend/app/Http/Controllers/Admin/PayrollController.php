@@ -29,19 +29,35 @@ class PayrollController extends Controller {
         return response()->json($this->buildRegister($data['month'], $data['period'], $payslips, $this->branchFilter($request)));
     }
 
-    /** Clean, one-page landscape PDF of the semi-monthly register (prints without clipping). */
+    /**
+     * Clean, one-page landscape PDF of the semi-monthly register — a
+     * genuinely different document depending on who asks for it:
+     *   Owner (admin)   — every branch, grouped with a subtotal each, and
+     *                      the company-wide grand total at the end.
+     *   Manager (branch)— only their own branch's staff, titled with the
+     *                      branch name; no company-wide figure is included
+     *                      (that stays owner-only, per the access rules).
+     */
     public function periodPdf(Request $request, PayslipController $payslips) {
         $data = $request->validate([
             'month' => ['required', 'date_format:Y-m'],
             'period' => ['required', 'in:first,second,whole'],
         ]);
 
-        $register = $this->buildRegister($data['month'], $data['period'], $payslips, $this->branchFilter($request));
-        // Branch logins see per-person rows for their branch but not the grand total.
-        $showTotals = $request->user()->isAdmin();
-        $pdf = Pdf::loadView('pdf.payroll-period', ['register' => $register, 'showTotals' => $showTotals])->setPaper('a4', 'landscape');
+        $user = $request->user()->loadMissing('branch');
+        $isAdmin = $user->isAdmin();
+        $branchName = $user->branch?->name;
 
-        return $pdf->stream("payroll-{$data['month']}-{$data['period']}.pdf");
+        $register = $this->buildRegister($data['month'], $data['period'], $payslips, $this->branchFilter($request));
+        $pdf = Pdf::loadView('pdf.payroll-period', [
+            'register' => $register,
+            'isAdmin' => $isAdmin,
+            'branchName' => $branchName,
+        ])->setPaper('a4', 'landscape');
+
+        $slug = $isAdmin ? 'owner' : \Illuminate\Support\Str::slug($branchName ?? 'branch');
+
+        return $pdf->stream("payroll-{$slug}-{$data['month']}-{$data['period']}.pdf");
     }
 
     /** One row per employee with pay activity, plus grand totals for the window. */

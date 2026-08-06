@@ -142,7 +142,7 @@ export default function AdminApp() {
       </div>
       {activeTab === "clock" && <ClockView />}
       {activeTab === "attendance" && <AttendanceView />}
-      {activeTab === "payroll" && <PayrollView isAdmin={isAdmin} />}
+      {activeTab === "payroll" && <PayrollView isAdmin={isAdmin} branchName={admin.branch} />}
       {activeTab === "thirteenth-month" && <ThirteenthMonthView />}
       {activeTab === "settings" && <SettingsView />}
       {activeTab === "audit" && <AuditLogView />}

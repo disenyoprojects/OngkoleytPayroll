@@ -6,7 +6,7 @@ import PayslipView from "./PayslipView";
 
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 
-export default function PayrollView({ isAdmin = true }) {
+export default function PayrollView({ isAdmin = true, branchName = null }) {
   const [range, setRange] = useState("daily");
   const [data, setData] = useState(null);
   // Track which range the loaded data belongs to, so the daily/weekly table is
@@ -66,7 +66,7 @@ export default function PayrollView({ isAdmin = true }) {
         <PayslipView />
       ) : range === "semi" ? (
         <SemiMonthly
-          month={month} setMonth={setMonth} period={period} setPeriod={setPeriod} data={periodData} isAdmin={isAdmin}
+          month={month} setMonth={setMonth} period={period} setPeriod={setPeriod} data={periodData} isAdmin={isAdmin} branchName={branchName}
         />
       ) : (!data || dataRange !== range) ? (
         <div>Loading...</div>
@@ -155,9 +155,12 @@ export default function PayrollView({ isAdmin = true }) {
 const numTd = { ...tdStyle, textAlign: "right" };
 const numTh = { ...thStyle, textAlign: "right" };
 
-function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true }) {
+function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true, branchName = null }) {
   return (
     <>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: "#9A6B12", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 2 }}>
+        {isAdmin ? "Owner view — company-wide" : `Manager view — ${branchName || "your branch"} only`}
+      </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 18, flexWrap: "wrap" }}>
         <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ ...inputStyle, width: 170 }} />
         <select value={period} onChange={(e) => setPeriod(e.target.value)} style={{ ...inputStyle, width: 200 }}>
