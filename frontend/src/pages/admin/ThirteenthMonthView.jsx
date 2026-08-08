@@ -4,11 +4,13 @@ import { formatPHP, FONT_DISPLAY } from "../../theme";
 import { Button, Pill, StatCard, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 import TmAdjustModal from "../../components/TmAdjustModal";
 import TmUnlockModal from "../../components/TmUnlockModal";
+import TmHistoryModal from "../../components/TmHistoryModal";
 
 export default function ThirteenthMonthView() {
   const [records, setRecords] = useState([]);
   const [adjustRow, setAdjustRow] = useState(null);
   const [unlockRow, setUnlockRow] = useState(null);
+  const [historyRow, setHistoryRow] = useState(null);
 
   function load() {
     apiClient.get("/api/admin/thirteenth-month").then((res) => setRecords(res.data.records));
@@ -68,7 +70,8 @@ export default function ThirteenthMonthView() {
                   {r.status === "computed" && <Button small variant="primary" onClick={() => act(r.employee.id, "release")}>Release</Button>}{" "}
                   {(r.status === "computed" || r.status === "released") && <Button small variant="danger" onClick={() => act(r.employee.id, "lock")}>Lock</Button>}{" "}
                   {r.status === "locked" && <Button small variant="outline" onClick={() => setUnlockRow(r)}>Unlock</Button>}{" "}
-                  {r.status !== "pending" && <Button small variant="ghost" onClick={() => downloadPayslip(r.employee.id)}>Payslip</Button>}
+                  {r.status !== "pending" && <Button small variant="ghost" onClick={() => downloadPayslip(r.employee.id)}>Payslip</Button>}{" "}
+                  <Button small variant="ghost" onClick={() => setHistoryRow(r)}>History</Button>
                 </td>
               </tr>
             ))}
@@ -77,6 +80,7 @@ export default function ThirteenthMonthView() {
       </div>
       {adjustRow && <TmAdjustModal row={adjustRow} onCancel={() => setAdjustRow(null)} onSaved={() => { setAdjustRow(null); load(); }} />}
       {unlockRow && <TmUnlockModal row={unlockRow} onCancel={() => setUnlockRow(null)} onSaved={() => { setUnlockRow(null); load(); }} />}
+      {historyRow && <TmHistoryModal row={historyRow} onCancel={() => setHistoryRow(null)} />}
     </div>
   );
 }
