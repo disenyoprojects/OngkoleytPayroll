@@ -30,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/me', [AdminSessionController::class, 'me']);
     Route::patch('/admin/attendance/{record}/adjust', [AttendanceAdminController::class, 'adjust']);
     Route::post('/admin/attendance/{record}/approve', [AttendanceAdminController::class, 'approve']);
+    Route::post('/admin/employees/{employee}/attendance/manual', [AttendanceAdminController::class, 'store']);
     Route::get('/admin/attendance/today', [AttendanceDashboardController::class, 'today']);
     Route::get('/admin/clock/staff', [ClockController::class, 'staff']);
     Route::get('/admin/clock/status', [ClockController::class, 'status']);

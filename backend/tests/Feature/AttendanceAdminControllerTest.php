@@ -108,4 +108,72 @@ class AttendanceAdminControllerTest extends TestCase {
         $this->patchJson("/api/admin/attendance/{$record->id}/adjust", ['clock_in' => '08:00', 'clock_out' => '17:00', 'reason' => 'x'])
             ->assertStatus(401);
     }
+
+    public function test_admin_can_manually_add_a_missed_day_with_no_existing_record(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create();
+
+        $response = $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/attendance/manual", [
+            'work_date' => '2026-08-01',
+            'clock_in' => '08:00',
+            'clock_out' => '17:00',
+            'reason' => 'Forgot to Clock In/Out',
+        ]);
+
+        $response->assertCreated();
+        $record = AttendanceRecord::where('employee_id', $employee->id)->whereDate('work_date', '2026-08-01')->first();
+        $this->assertNotNull($record);
+        $this->assertStringStartsWith('08:00', $record->clock_in);
+        $this->assertStringStartsWith('17:00', $record->clock_out);
+        $this->assertTrue($record->adjusted);
+        $this->assertSame('approved', $record->status);
+        $this->assertSame(1, AuditLog::where('type', 'attendance')->where('action', 'manual_entry')->count());
+    }
+
+    public function test_manual_entry_without_a_reason_is_rejected(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create();
+
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/attendance/manual", [
+            'work_date' => '2026-08-01', 'clock_in' => '08:00', 'clock_out' => '17:00',
+        ])->assertStatus(422);
+    }
+
+    public function test_manual_entry_is_rejected_when_a_record_already_exists_for_that_date(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create();
+        AttendanceRecord::factory()->for($employee)->create(['work_date' => '2026-08-01']);
+
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/attendance/manual", [
+            'work_date' => '2026-08-01', 'clock_in' => '08:00', 'clock_out' => '17:00', 'reason' => 'Forgot to Clock In/Out',
+        ])->assertStatus(422)->assertJsonValidationErrors('work_date');
+    }
+
+    public function test_manual_entry_rejects_a_future_date(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create();
+
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/attendance/manual", [
+            'work_date' => now()->addDay()->toDateString(), 'clock_in' => '08:00', 'clock_out' => '17:00', 'reason' => 'x',
+        ])->assertStatus(422);
+    }
+
+    public function test_branch_login_cannot_add_a_manual_entry_for_another_branchs_employee(): void {
+        $branchA = Branch::factory()->create();
+        $branchB = Branch::factory()->create();
+        $manager = User::factory()->create(['role' => 'branch', 'branch_id' => $branchA->id]);
+        $employee = Employee::factory()->for($branchB)->create();
+
+        $this->actingAs($manager)->postJson("/api/admin/employees/{$employee->id}/attendance/manual", [
+            'work_date' => '2026-08-01', 'clock_in' => '08:00', 'clock_out' => '17:00', 'reason' => 'x',
+        ])->assertStatus(403);
+    }
+
+    public function test_manual_entry_endpoint_requires_authentication(): void {
+        $employee = Employee::factory()->for(Branch::factory())->create();
+
+        $this->postJson("/api/admin/employees/{$employee->id}/attendance/manual", [
+            'work_date' => '2026-08-01', 'clock_in' => '08:00', 'clock_out' => '17:00', 'reason' => 'x',
+        ])->assertStatus(401);
+    }
 }

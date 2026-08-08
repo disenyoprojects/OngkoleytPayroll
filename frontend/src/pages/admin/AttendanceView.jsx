@@ -3,6 +3,7 @@ import { apiClient } from "../../api/client";
 import { formatPHP, formatTime12, formatLateLabel, FONT_DISPLAY } from "../../theme";
 import { Button, Pill, StatCard, inputStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 import AdjustAttendanceModal from "../../components/AdjustAttendanceModal";
+import ManualAttendanceModal from "../../components/ManualAttendanceModal";
 
 function today() {
   const d = new Date();
@@ -19,6 +20,7 @@ export default function AttendanceView() {
   const [date, setDate] = useState(today());
   const [data, setData] = useState(null);
   const [adjustRow, setAdjustRow] = useState(null);
+  const [showManual, setShowManual] = useState(false);
 
   function load() {
     apiClient.get(`/api/admin/attendance/today?date=${date}`).then((res) => setData(res.data));
@@ -40,6 +42,7 @@ export default function AttendanceView() {
           <Button small onClick={() => setDate((d) => shiftDate(d, -1))}>‹</Button>
           <input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value || today())} style={{ ...inputStyle, width: "auto" }} />
           <Button small onClick={() => setDate((d) => shiftDate(d, 1))} disabled={isToday}>›</Button>
+          <Button small variant="outline" onClick={() => setShowManual(true)}>+ Add Missed Entry</Button>
         </div>
       </div>
       {!data ? <div>Loading...</div> : <>
@@ -93,6 +96,13 @@ export default function AttendanceView() {
       </div>
       {adjustRow && <AdjustAttendanceModal row={adjustRow} onCancel={() => setAdjustRow(null)} onSaved={() => { setAdjustRow(null); load(); }} />}
       </>}
+      {showManual && (
+        <ManualAttendanceModal
+          defaultDate={date}
+          onCancel={() => setShowManual(false)}
+          onSaved={() => { setShowManual(false); load(); }}
+        />
+      )}
     </div>
   );
 }
