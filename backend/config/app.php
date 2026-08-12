@@ -65,7 +65,11 @@ return [
     |
     */
 
-    'timezone' => env('APP_TIMEZONE', 'Asia/Manila'),
+    // Hardcoded, not env-driven: this app only ever operates in the
+    // Philippines, and a misconfigured/missing APP_TIMEZONE on the host
+    // (e.g. Railway defaulting to UTC) previously caused clock-in/out
+    // times to be recorded 8 hours off from local time.
+    'timezone' => 'Asia/Manila',
 
     /*
     |--------------------------------------------------------------------------
