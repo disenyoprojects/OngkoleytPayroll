@@ -12,6 +12,7 @@ class ThirteenthMonthCalculator {
 
     public function monthlyBreakdown(Employee $employee, PayrollSetting $settings, int $year): array {
         $included = $settings->included_earnings;
+        $dailyRate = $employee->daily_basic_rate === null ? (float) $settings->daily_basic_rate : (float) $employee->daily_basic_rate;
         $months = [];
 
         for ($month = 1; $month <= 12; $month++) {
@@ -37,10 +38,10 @@ class ThirteenthMonthCalculator {
                     if ($pay === null) {
                         continue;
                     }
-                    // 13th-month base uses the un-premiumed wage (PD 851: basic
-                    // salary only) — holiday/rest premiums and night diff excluded.
+                    // 13th-month base = days worked (excluding holidays) × the
+                    // daily basic rate — a flat day count, not hour-prorated.
                     if (in_array('BASIC', $included, true)) {
-                        $basicPay += (float) $pay['base_wage'];
+                        $basicPay += $dailyRate * ($record->absence_type === 'half_day' ? 0.5 : 1.0);
                     }
                     if (in_array('OVERTIME', $included, true)) {
                         $otPay += (float) $pay['base_ot'];

@@ -29,6 +29,10 @@ export default function PayrollView({ isAdmin = true }) {
     return () => { cancelled = true; };
   }, [range]);
 
+  function reloadPeriod() {
+    return apiClient.get(`/api/admin/payroll/period?month=${month}&period=${period}`).then((res) => setPeriodData(res.data));
+  }
+
   useEffect(() => {
     if (range !== "semi") return;
     let cancelled = false;
@@ -67,6 +71,7 @@ export default function PayrollView({ isAdmin = true }) {
       ) : range === "semi" ? (
         <SemiMonthly
           month={month} setMonth={setMonth} period={period} setPeriod={setPeriod} data={periodData} isAdmin={isAdmin}
+          onGenerated={reloadPeriod}
         />
       ) : (!data || dataRange !== range) ? (
         <div>Loading...</div>
@@ -155,10 +160,26 @@ export default function PayrollView({ isAdmin = true }) {
 const numTd = { ...tdStyle, textAlign: "right" };
 const numTh = { ...thStyle, textAlign: "right" };
 
-function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true }) {
+function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true, onGenerated }) {
+  const [generating, setGenerating] = useState(false);
+  const [notice, setNotice] = useState(null);
+
+  async function generateStatutory() {
+    setGenerating(true);
+    setNotice(null);
+    try {
+      const res = await apiClient.post(`/api/admin/payroll/period/statutory?month=${month}&period=${period}`);
+      const { generated, skipped } = res.data;
+      setNotice(`Generated ${generated.pagibig} Pag-IBIG, ${generated.philhealth} PhilHealth (${skipped.pagibig + skipped.philhealth} already existed).`);
+      await onGenerated?.();
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   return (
     <>
-      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 18, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
         <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ ...inputStyle, width: 170 }} />
         <select value={period} onChange={(e) => setPeriod(e.target.value)} style={{ ...inputStyle, width: 200 }}>
           <option value="first">1st half (1–15)</option>
@@ -168,7 +189,11 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true 
         {data && data.rows.length > 0 && (
           <Button variant="outline" onClick={() => window.open(`${apiClient.defaults.baseURL}/api/admin/payroll/period/pdf?month=${month}&period=${period}`, "_blank")}>🖨 Print / PDF</Button>
         )}
+        <Button variant="outline" disabled={generating} onClick={generateStatutory}>
+          {generating ? "Generating…" : "Generate Pag-IBIG + PhilHealth"}
+        </Button>
       </div>
+      {notice && <div style={{ fontSize: 12.5, color: "#7A6A57", marginBottom: 12 }}>{notice}</div>}
 
       {!data ? (
         <div>Loading...</div>

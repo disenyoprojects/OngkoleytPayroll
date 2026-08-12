@@ -57,6 +57,28 @@ class ThirteenthMonthCalculatorTest extends TestCase {
         $this->assertSame(505.0, $april['month_total_included']);
     }
 
+    public function test_basic_pay_is_a_flat_day_count_times_daily_rate_not_hour_prorated(): void {
+        // Matches the client's worksheet: 25 ordinary days worked (30 total,
+        // 5 of them holidays already excluded) x 505/day / 12 = 1,052.08,
+        // regardless of actual hours clocked per day.
+        $settings = PayrollSetting::current(); // daily rate 505, BASIC only
+        $employee = Employee::factory()->for(Branch::factory())->create([
+            'hire_date' => '2026-01-01', 'resignation_date' => null, 'daily_basic_rate' => null,
+        ]);
+        for ($day = 1; $day <= 25; $day++) {
+            AttendanceRecord::factory()->for($employee)->create([
+                'work_date' => sprintf('2026-01-%02d', $day),
+                // Deliberately partial hours (4h, not a full 8h shift) to prove
+                // the 13th month base doesn't prorate by actual hours worked.
+                'clock_in' => '08:00:00', 'clock_out' => '12:00:00',
+            ]);
+        }
+
+        $amount = (new ThirteenthMonthCalculator())->computedAmount($employee, $settings, 2026);
+
+        $this->assertEqualsWithDelta(1052.08, $amount, 0.01);
+    }
+
     public function test_other_earnings_are_only_included_when_settings_include_the_code(): void {
         $settings = PayrollSetting::current();
         $settings->update(['included_earnings' => ['BASIC', 'BONUS']]);

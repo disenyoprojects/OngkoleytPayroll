@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\PayrollAdjustmentController;
 use App\Http\Controllers\Admin\PayrollExportController;
 use App\Http\Controllers\Admin\PayrollPdfController;
 use App\Http\Controllers\Admin\PayrollSettingController;
+use App\Http\Controllers\Admin\StatutoryDeductionController;
 use App\Http\Controllers\Admin\ThirteenthMonthController;
 use App\Http\Controllers\Admin\ThirteenthMonthPayslipController;
 use App\Http\Controllers\Admin\UserController;
@@ -40,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/payroll/weekly', [PayrollController::class, 'weekly']);
     Route::get('/admin/payroll/period', [PayrollController::class, 'period']);
     Route::get('/admin/payroll/period/pdf', [PayrollController::class, 'periodPdf']);
+    Route::post('/admin/payroll/period/statutory', [StatutoryDeductionController::class, 'generate']);
     Route::get('/admin/payroll/export', [PayrollExportController::class, 'export']);
     Route::get('/admin/payroll/pdf', [PayrollPdfController::class, 'export']);
     // Company-wide sections — full admins only (branch logins get 403).
