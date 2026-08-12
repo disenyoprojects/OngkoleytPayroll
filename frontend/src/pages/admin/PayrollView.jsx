@@ -188,7 +188,10 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true,
           <option value="whole">Whole month</option>
         </select>
         {data && data.rows.length > 0 && (
-          <Button variant="outline" onClick={() => window.open(`${apiClient.defaults.baseURL}/api/admin/payroll/period/pdf?month=${month}&period=${period}`, "_blank")}>🖨 Print / PDF</Button>
+          <>
+            <Button variant="outline" onClick={() => window.open(`${apiClient.defaults.baseURL}/api/admin/payroll/period/pdf?month=${month}&period=${period}`, "_blank")}>🖨 Print Summary</Button>
+            <Button variant="outline" onClick={() => window.open(`${apiClient.defaults.baseURL}/api/admin/payroll/period/payslips-pdf?month=${month}&period=${period}`, "_blank")}>🖨 Print All Payslips</Button>
+          </>
         )}
         <Button variant="outline" disabled={generating} onClick={generateStatutory}>
           {generating ? "Generating…" : "Generate SSS/Pag-IBIG/PhilHealth"}

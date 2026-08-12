@@ -104,4 +104,36 @@ class PayrollPeriodControllerTest extends TestCase {
     public function test_period_pdf_requires_authentication(): void {
         $this->getJson('/api/admin/payroll/period/pdf?month=2026-07&period=second')->assertStatus(401);
     }
+
+    public function test_period_payslips_pdf_streams_a_pdf_for_every_active_employee(): void {
+        $admin = User::factory()->create();
+        $branch = Branch::factory()->create();
+        $a = Employee::factory()->for($branch)->create(['daily_basic_rate' => null]);
+        $b = Employee::factory()->for($branch)->create(['daily_basic_rate' => null]);
+        $this->workedDay($a, '2026-07-20');
+        $this->workedDay($b, '2026-07-21');
+
+        $res = $this->actingAs($admin)->get('/api/admin/payroll/period/payslips-pdf?month=2026-07&period=second');
+
+        $res->assertOk();
+        $this->assertSame('application/pdf', $res->headers->get('content-type'));
+        $this->assertNotEmpty($res->getContent());
+    }
+
+    public function test_period_payslips_pdf_excludes_employees_with_no_activity(): void {
+        $admin = User::factory()->create();
+        $branch = Branch::factory()->create();
+        $worked = Employee::factory()->for($branch)->create(['daily_basic_rate' => null]);
+        Employee::factory()->for($branch)->create(['daily_basic_rate' => null]); // no attendance/adjustments this period
+        $this->workedDay($worked, '2026-07-20');
+
+        $res = $this->actingAs($admin)->get('/api/admin/payroll/period/payslips-pdf?month=2026-07&period=second');
+
+        $res->assertOk();
+        $this->assertNotEmpty($res->getContent());
+    }
+
+    public function test_period_payslips_pdf_requires_authentication(): void {
+        $this->getJson('/api/admin/payroll/period/payslips-pdf?month=2026-07&period=second')->assertStatus(401);
+    }
 }

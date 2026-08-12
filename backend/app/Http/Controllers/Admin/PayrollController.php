@@ -44,6 +44,27 @@ class PayrollController extends Controller {
         return $pdf->stream("payroll-{$data['month']}-{$data['period']}.pdf");
     }
 
+    /** Bulk-print every employee's itemized payslip for the period, one after another in a single PDF. */
+    public function periodPayslipsPdf(Request $request, PayslipController $payslips) {
+        $data = $request->validate([
+            'month' => ['required', 'date_format:Y-m'],
+            'period' => ['required', 'in:first,second,whole'],
+        ]);
+
+        $branchId = $this->branchFilter($request);
+
+        $slips = Employee::withTrashed()->with('branch')
+            ->when($branchId, fn ($q, $bid) => $q->where('branch_id', $bid))
+            ->orderBy('employee_code')->get()
+            ->map(fn (Employee $employee) => $payslips->buildPayslip($employee, $data['month'], $data['period']))
+            ->filter(fn ($slip) => count($slip['lines']) > 0 || $slip['totals']['adjustments'] != 0.0)
+            ->values();
+
+        $pdf = Pdf::loadView('pdf.payslips-bulk', ['slips' => $slips])->setPaper('a4', 'portrait');
+
+        return $pdf->stream("payslips-{$data['month']}-{$data['period']}.pdf");
+    }
+
     /** One row per employee with pay activity, plus grand totals for the window. */
     private function buildRegister(string $month, string $period, PayslipController $payslips, ?int $branchId = null): array {
         $window = PayslipPeriod::resolve($month, $period);
