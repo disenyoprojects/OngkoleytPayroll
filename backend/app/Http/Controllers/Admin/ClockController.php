@@ -93,7 +93,10 @@ class ClockController extends Controller {
             return now();
         }
 
-        $moment = Carbon::parse($data['clocked_at']);
+        // The browser sends this as an ISO string (Date.toISOString(), always
+        // UTC) — convert to app-local time so the resulting wall-clock time
+        // (H:i:s / work_date) reflects Manila time, not the UTC instant.
+        $moment = Carbon::parse($data['clocked_at'])->setTimezone(config('app.timezone'));
 
         if ($moment->lt(now()->subDays(3)) || $moment->gt(now()->addMinutes(5))) {
             throw ValidationException::withMessages([

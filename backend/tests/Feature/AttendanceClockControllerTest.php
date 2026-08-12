@@ -137,6 +137,23 @@ class AttendanceClockControllerTest extends TestCase {
         $this->assertSame('17:30:00', $record->clock_out);
     }
 
+    public function test_clock_in_converts_a_utc_z_suffixed_timestamp_to_local_time(): void {
+        // Browsers send `new Date().toISOString()`, which is always UTC
+        // ("...Z"), regardless of the app's configured timezone — the
+        // resulting wall-clock time must land in local (Asia/Manila) time.
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create();
+        $moment = now();
+
+        $this->actingAs($admin)->postJson('/api/admin/clock/in', [
+            'employee_id' => $employee->id,
+            'clocked_at' => $moment->clone()->setTimezone('UTC')->toIso8601ZuluString(),
+        ])->assertOk();
+
+        $record = AttendanceRecord::where('employee_id', $employee->id)->firstOrFail();
+        $this->assertSame($moment->format('H:i'), substr($record->clock_in, 0, 5));
+    }
+
     public function test_clock_in_rejects_a_clocked_at_too_far_in_the_past(): void {
         $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create();
