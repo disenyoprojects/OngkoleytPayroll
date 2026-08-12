@@ -170,7 +170,8 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true,
     try {
       const res = await apiClient.post(`/api/admin/payroll/period/statutory?month=${month}&period=${period}`);
       const { generated, skipped } = res.data;
-      setNotice(`Generated ${generated.pagibig} Pag-IBIG, ${generated.philhealth} PhilHealth (${skipped.pagibig + skipped.philhealth} already existed).`);
+      const totalSkipped = skipped.pagibig + skipped.philhealth + skipped.sss;
+      setNotice(`Generated ${generated.pagibig} Pag-IBIG, ${generated.philhealth} PhilHealth, ${generated.sss} SSS (${totalSkipped} already existed).`);
       await onGenerated?.();
     } finally {
       setGenerating(false);
@@ -190,7 +191,7 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true,
           <Button variant="outline" onClick={() => window.open(`${apiClient.defaults.baseURL}/api/admin/payroll/period/pdf?month=${month}&period=${period}`, "_blank")}>🖨 Print / PDF</Button>
         )}
         <Button variant="outline" disabled={generating} onClick={generateStatutory}>
-          {generating ? "Generating…" : "Generate Pag-IBIG + PhilHealth"}
+          {generating ? "Generating…" : "Generate SSS/Pag-IBIG/PhilHealth"}
         </Button>
       </div>
       {notice && <div style={{ fontSize: 12.5, color: "#7A6A57", marginBottom: 12 }}>{notice}</div>}
