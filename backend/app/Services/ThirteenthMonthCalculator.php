@@ -27,6 +27,11 @@ class ThirteenthMonthCalculator {
                     ->get();
 
                 foreach ($records as $record) {
+                    // Days worked on a declared holiday don't count toward the
+                    // 13th month base at all (not even at the plain rate).
+                    if ($record->holiday_type !== null) {
+                        continue;
+                    }
                     $record->setRelation('employee', $employee);
                     $pay = $this->payCalculator->computeForRecord($record, $settings);
                     if ($pay === null) {
