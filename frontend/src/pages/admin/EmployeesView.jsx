@@ -17,7 +17,7 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function EmployeesView({ canEdit = true }) {
+export default function EmployeesView({ isAdmin = true, myBranchId = null }) {
   const [view, setView] = useState("active"); // "active" | "separated"
   const [employees, setEmployees] = useState([]);
   const [separated, setSeparated] = useState([]);
@@ -52,7 +52,7 @@ export default function EmployeesView({ canEdit = true }) {
 
   function openAdd() {
     setError(null);
-    setEditing({ ...BLANK, id: null });
+    setEditing({ ...BLANK, id: null, branch_id: isAdmin ? "" : myBranchId });
   }
 
   function openEdit(emp) {
@@ -141,7 +141,7 @@ export default function EmployeesView({ canEdit = true }) {
         <button style={switchStyle(view === "separated")} onClick={() => setView("separated")}>Separated</button>
         {view === "active" && (
           <>
-            {canEdit && <Button variant="gold" onClick={openAdd}>+ Add Employee</Button>}
+            <Button variant="gold" onClick={openAdd}>+ Add Employee</Button>
             <select
               value={branchFilter}
               onChange={(e) => setBranchFilter(e.target.value)}
@@ -179,8 +179,8 @@ export default function EmployeesView({ canEdit = true }) {
                 <td style={{ padding: 10 }}>{emp.daily_basic_rate == null ? "— (global)" : formatPHP(emp.daily_basic_rate)}</td>
                 <td style={{ padding: 10, textAlign: "right", whiteSpace: "nowrap" }}>
                   <Button small onClick={() => setLogEmployee(emp)}>Log</Button>{" "}
-                  {canEdit && <><Button small onClick={() => openEdit(emp)}>Edit</Button>{" "}
-                  <Button small variant="danger" onClick={() => openRemove(emp)}>Remove</Button></>}
+                  <Button small onClick={() => openEdit(emp)}>Edit</Button>{" "}
+                  <Button small variant="danger" onClick={() => openRemove(emp)}>Remove</Button>
                 </td>
               </tr>
             ))}
@@ -228,7 +228,7 @@ export default function EmployeesView({ canEdit = true }) {
                   <td style={{ padding: 10 }}>{emp.separation_reason}</td>
                   <td style={{ padding: 10, textAlign: "right" }}>
                     <Button small onClick={() => setLogEmployee(emp)}>Log</Button>{" "}
-                    {canEdit && <Button small onClick={() => restore(emp)}>Restore</Button>}
+                    <Button small onClick={() => restore(emp)}>Restore</Button>
                   </td>
                 </tr>
               ))}
@@ -257,10 +257,14 @@ export default function EmployeesView({ canEdit = true }) {
           ))}
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 12, marginBottom: 4 }}>Branch</div>
-            <select value={editing.branch_id} onChange={(e) => set("branch_id", e.target.value)} style={inputStyle}>
-              <option value="">Select branch…</option>
-              {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
+            {isAdmin ? (
+              <select value={editing.branch_id} onChange={(e) => set("branch_id", e.target.value)} style={inputStyle}>
+                <option value="">Select branch…</option>
+                {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            ) : (
+              <input type="text" value={branches.find((b) => String(b.id) === String(editing.branch_id))?.name ?? "Your branch"} disabled style={inputStyle} />
+            )}
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 12, marginBottom: 4 }}>Employment Type</div>

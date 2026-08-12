@@ -146,7 +146,7 @@ export default function AdminApp() {
       {activeTab === "thirteenth-month" && <ThirteenthMonthView />}
       {activeTab === "settings" && <SettingsView />}
       {activeTab === "audit" && <AuditLogView />}
-      {activeTab === "employees" && <EmployeesView canEdit={isAdmin} />}
+      {activeTab === "employees" && <EmployeesView isAdmin={isAdmin} myBranchId={admin.branch_id} />}
     </div>
   );
 }

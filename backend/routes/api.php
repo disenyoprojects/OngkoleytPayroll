@@ -58,12 +58,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/users', [UserController::class, 'index']);
         Route::put('/admin/users/{user}/password', [UserController::class, 'updatePassword']);
         Route::get('/admin/audit-log', [AuditLogController::class, 'index']);
-        // Employee master data + rates — admin only.
-        Route::post('/admin/employees', [EmployeeController::class, 'store']);
-        Route::put('/admin/employees/{employee}', [EmployeeController::class, 'update']);
-        Route::post('/admin/employees/{employee}/separate', [EmployeeController::class, 'separate']);
-        Route::post('/admin/employees/{id}/restore', [EmployeeController::class, 'restore']);
     });
+    // Employee master data + rates — branch logins may manage their own branch's
+    // roster (enforced per-action via assertBranchAccess in the controller).
+    Route::post('/admin/employees', [EmployeeController::class, 'store']);
+    Route::put('/admin/employees/{employee}', [EmployeeController::class, 'update']);
+    Route::post('/admin/employees/{employee}/separate', [EmployeeController::class, 'separate']);
+    Route::post('/admin/employees/{id}/restore', [EmployeeController::class, 'restore']);
     Route::get('/admin/employees', [EmployeeController::class, 'index']);
     Route::get('/admin/employees/separated', [EmployeeController::class, 'separated']);
     Route::get('/admin/employees/{employee}/attendance', [EmployeeAttendanceController::class, 'index'])->withTrashed();

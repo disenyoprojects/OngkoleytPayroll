@@ -302,4 +302,99 @@ class EmployeeControllerTest extends TestCase {
         $indexIds = collect($this->actingAs($admin)->getJson('/api/admin/employees')->json())->pluck('id');
         $this->assertTrue($indexIds->contains($employee->id));
     }
+
+    public function test_branch_login_can_create_an_employee_forced_into_its_own_branch(): void {
+        $ownBranch = Branch::factory()->create();
+        $otherBranch = Branch::factory()->create();
+        $manager = User::factory()->create(['role' => 'branch', 'branch_id' => $ownBranch->id]);
+
+        $this->actingAs($manager)->postJson('/api/admin/employees', $this->payload($otherBranch))
+            ->assertCreated();
+
+        $employee = Employee::where('employee_code', 'ONG-5001')->firstOrFail();
+        $this->assertSame($ownBranch->id, $employee->branch_id);
+    }
+
+    public function test_branch_login_can_update_an_employee_in_its_own_branch(): void {
+        $branch = Branch::factory()->create();
+        $manager = User::factory()->create(['role' => 'branch', 'branch_id' => $branch->id]);
+        $employee = Employee::factory()->for($branch)->create(['role' => 'Barista']);
+
+        $this->actingAs($manager)->putJson("/api/admin/employees/{$employee->id}", [
+            'employee_code' => $employee->employee_code,
+            'full_name' => $employee->full_name,
+            'short_name' => $employee->short_name,
+            'role' => 'Head Barista',
+            'branch_id' => $employee->branch_id,
+            'employment_type' => $employee->employment_type,
+            'hire_date' => $employee->hire_date->toDateString(),
+            'daily_basic_rate' => 600,
+        ])->assertOk();
+
+        $fresh = $employee->fresh();
+        $this->assertSame('Head Barista', $fresh->role);
+        $this->assertSame('600.00', $fresh->daily_basic_rate);
+    }
+
+    public function test_branch_login_cannot_update_an_employee_in_another_branch(): void {
+        $ownBranch = Branch::factory()->create();
+        $otherBranch = Branch::factory()->create();
+        $manager = User::factory()->create(['role' => 'branch', 'branch_id' => $ownBranch->id]);
+        $employee = Employee::factory()->for($otherBranch)->create();
+
+        $this->actingAs($manager)->putJson("/api/admin/employees/{$employee->id}", [
+            'employee_code' => $employee->employee_code,
+            'full_name' => $employee->full_name,
+            'short_name' => $employee->short_name,
+            'role' => 'Hacked',
+            'branch_id' => $employee->branch_id,
+            'employment_type' => $employee->employment_type,
+            'hire_date' => $employee->hire_date->toDateString(),
+        ])->assertStatus(403);
+    }
+
+    public function test_branch_login_cannot_move_an_employee_to_another_branch(): void {
+        $ownBranch = Branch::factory()->create();
+        $otherBranch = Branch::factory()->create();
+        $manager = User::factory()->create(['role' => 'branch', 'branch_id' => $ownBranch->id]);
+        $employee = Employee::factory()->for($ownBranch)->create();
+
+        $this->actingAs($manager)->putJson("/api/admin/employees/{$employee->id}", [
+            'employee_code' => $employee->employee_code,
+            'full_name' => $employee->full_name,
+            'short_name' => $employee->short_name,
+            'role' => $employee->role,
+            'branch_id' => $otherBranch->id,
+            'employment_type' => $employee->employment_type,
+            'hire_date' => $employee->hire_date->toDateString(),
+        ])->assertOk();
+
+        $this->assertSame($ownBranch->id, $employee->fresh()->branch_id);
+    }
+
+    public function test_branch_login_cannot_separate_an_employee_in_another_branch(): void {
+        $ownBranch = Branch::factory()->create();
+        $otherBranch = Branch::factory()->create();
+        $manager = User::factory()->create(['role' => 'branch', 'branch_id' => $ownBranch->id]);
+        $employee = Employee::factory()->for($otherBranch)->create();
+
+        $this->actingAs($manager)->postJson("/api/admin/employees/{$employee->id}/separate", [
+            'separation_type' => 'proper', 'reason' => 'x',
+        ])->assertStatus(403);
+    }
+
+    public function test_branch_login_can_separate_and_restore_its_own_employee(): void {
+        $branch = Branch::factory()->create();
+        $manager = User::factory()->create(['role' => 'branch', 'branch_id' => $branch->id]);
+        $employee = Employee::factory()->for($branch)->create();
+
+        $this->actingAs($manager)->postJson("/api/admin/employees/{$employee->id}/separate", [
+            'separation_type' => 'proper', 'reason' => 'x',
+        ])->assertOk();
+
+        $this->actingAs($manager)->postJson("/api/admin/employees/{$employee->id}/restore")
+            ->assertOk();
+
+        $this->assertNull($employee->fresh()->deleted_at);
+    }
 }

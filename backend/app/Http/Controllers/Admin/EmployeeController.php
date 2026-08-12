@@ -42,6 +42,12 @@ class EmployeeController extends Controller {
             'reason' => ['nullable', 'string'],
         ]);
 
+        // A branch login can only add staff to its own branch, regardless of
+        // what branch_id was submitted.
+        if ($scopedBranchId = $this->branchFilter($request)) {
+            $data['branch_id'] = $scopedBranchId;
+        }
+
         return DB::transaction(function () use ($request, $data) {
             $employee = new Employee([
                 'employee_code' => $data['employee_code'],
@@ -75,6 +81,8 @@ class EmployeeController extends Controller {
     }
 
     public function update(Request $request, Employee $employee) {
+        $this->assertBranchAccess($request, $employee);
+
         $data = $request->validate([
             'employee_code' => ['required', 'string', Rule::unique('employees', 'employee_code')->ignore($employee->id)],
             'full_name' => ['required', 'string'],
@@ -89,6 +97,12 @@ class EmployeeController extends Controller {
             'daily_basic_rate' => ['nullable', 'numeric', 'min:0'],
             'reason' => ['nullable', 'string'],
         ]);
+
+        // A branch login can't move an employee out of its own branch,
+        // regardless of what branch_id was submitted.
+        if ($scopedBranchId = $this->branchFilter($request)) {
+            $data['branch_id'] = $scopedBranchId;
+        }
 
         $oldRate = $employee->daily_basic_rate === null ? null : (float) $employee->daily_basic_rate;
         if (array_key_exists('daily_basic_rate', $data)) {
@@ -147,6 +161,8 @@ class EmployeeController extends Controller {
     }
 
     public function separate(Request $request, Employee $employee) {
+        $this->assertBranchAccess($request, $employee);
+
         $data = $request->validate([
             'separation_type' => ['required', Rule::in(['proper', 'improper'])],
             'reason' => ['required', 'string'],
@@ -186,6 +202,7 @@ class EmployeeController extends Controller {
 
     public function restore(Request $request, int $id) {
         $employee = Employee::onlyTrashed()->findOrFail($id);
+        $this->assertBranchAccess($request, $employee);
 
         return DB::transaction(function () use ($request, $employee) {
             $employee->restore();

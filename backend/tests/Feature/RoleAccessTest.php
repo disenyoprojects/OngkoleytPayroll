@@ -79,7 +79,6 @@ class RoleAccessTest extends TestCase {
         $this->actingAs($this->branchUser)->getJson('/api/admin/settings')->assertStatus(403);
         $this->actingAs($this->branchUser)->getJson('/api/admin/audit-log')->assertStatus(403);
         $this->actingAs($this->branchUser)->getJson('/api/admin/thirteenth-month')->assertStatus(403);
-        $this->actingAs($this->branchUser)->postJson('/api/admin/employees', [])->assertStatus(403);
     }
 
     public function test_admin_can_reach_admin_only_sections(): void {
