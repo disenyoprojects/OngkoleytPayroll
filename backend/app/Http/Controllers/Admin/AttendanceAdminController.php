@@ -27,7 +27,7 @@ class AttendanceAdminController extends Controller {
             'shift_end' => ['nullable', 'date_format:H:i'],
             'holiday_type' => ['nullable', 'in:special,regular'],
             'is_rest_day' => ['nullable', 'boolean'],
-            'absence_type' => ['nullable', 'in:leave,sick_leave,half_day,absent,awol,travel'],
+            'absence_type' => ['nullable', 'in:leave,sick_leave,half_day,absent,awol,travel,rest_day'],
             'break_out' => ['nullable', 'date_format:H:i'],
             'break_in' => ['nullable', 'date_format:H:i'],
         ]);
@@ -79,7 +79,7 @@ class AttendanceAdminController extends Controller {
             'shift_end' => ['nullable', 'date_format:H:i'],
             'holiday_type' => ['nullable', 'in:special,regular'],
             'is_rest_day' => ['nullable', 'boolean'],
-            'absence_type' => ['nullable', 'in:leave,sick_leave,half_day,absent,awol,travel'],
+            'absence_type' => ['nullable', 'in:leave,sick_leave,half_day,absent,awol,travel,rest_day'],
             'break_out' => ['nullable', 'date_format:H:i'],
             'break_in' => ['nullable', 'date_format:H:i'],
         ]);

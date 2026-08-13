@@ -74,6 +74,7 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
             <option value="absent">Absent</option>
             <option value="awol">AWOL</option>
             <option value="travel">Travel</option>
+            <option value="rest_day">Rest Day</option>
           </select>
         </div>
       </div>

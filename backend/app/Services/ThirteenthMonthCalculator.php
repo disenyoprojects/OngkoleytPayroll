@@ -33,6 +33,12 @@ class ThirteenthMonthCalculator {
                     if ($record->holiday_type !== null) {
                         continue;
                     }
+                    // No-pay days (absent, AWOL, leave, unworked rest day, etc.)
+                    // don't count as a day worked, even though the record still
+                    // carries clock in/out values.
+                    if (in_array($record->absence_type, AttendancePayCalculator::NO_PAY_ABSENCES, true)) {
+                        continue;
+                    }
                     $record->setRelation('employee', $employee);
                     $pay = $this->payCalculator->computeForRecord($record, $settings);
                     if ($pay === null) {

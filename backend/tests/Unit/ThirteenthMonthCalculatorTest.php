@@ -57,6 +57,30 @@ class ThirteenthMonthCalculatorTest extends TestCase {
         $this->assertSame(505.0, $april['month_total_included']);
     }
 
+    public function test_thirteenth_month_base_excludes_no_pay_absence_days(): void {
+        $settings = PayrollSetting::current(); // daily 505, BASIC only
+        $employee = Employee::factory()->for(Branch::factory())->create([
+            'hire_date' => '2026-01-01', 'resignation_date' => null, 'daily_basic_rate' => null,
+        ]);
+        // These still carry clock in/out (the adjustment form requires it) but
+        // aren't actually worked days, so none should count toward 13th month.
+        foreach (['absent', 'awol', 'leave', 'sick_leave', 'travel', 'rest_day'] as $i => $absenceType) {
+            AttendanceRecord::factory()->for($employee)->create([
+                'work_date' => sprintf('2026-05-%02d', $i + 1),
+                'clock_in' => '08:00:00', 'clock_out' => '17:00:00', 'absence_type' => $absenceType,
+            ]);
+        }
+        // One genuinely worked day in the same month still counts.
+        AttendanceRecord::factory()->for($employee)->create([
+            'work_date' => '2026-05-20', 'clock_in' => '08:00:00', 'clock_out' => '17:00:00',
+        ]);
+
+        $breakdown = (new ThirteenthMonthCalculator())->monthlyBreakdown($employee, $settings, 2026);
+        $may = collect($breakdown)->firstWhere('month', 5);
+
+        $this->assertSame(505.0, $may['basic_pay']);
+    }
+
     public function test_basic_pay_is_a_flat_day_count_times_daily_rate_not_hour_prorated(): void {
         // Matches the client's worksheet: 25 ordinary days worked (30 total,
         // 5 of them holidays already excluded) x 505/day / 12 = 1,052.08,

@@ -7,7 +7,7 @@ use App\Models\PayrollSetting;
 class AttendancePayCalculator {
     private const DEFAULT_SHIFT_START = '08:00';
     private const DEFAULT_SHIFT_END = '17:00';
-    private const NO_PAY_ABSENCES = ['absent', 'awol', 'travel', 'leave', 'sick_leave'];
+    public const NO_PAY_ABSENCES = ['absent', 'awol', 'travel', 'leave', 'sick_leave', 'rest_day'];
 
     public function computeForRecord(\App\Models\AttendanceRecord $record, PayrollSetting $settings): ?array {
         $employee = $record->employee;

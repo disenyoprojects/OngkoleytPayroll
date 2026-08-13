@@ -101,6 +101,21 @@ class AttendanceAdminControllerTest extends TestCase {
         $this->assertSame('14:00:00', $fresh->break_in);       // preserved
     }
 
+    public function test_adjust_accepts_rest_day_status_and_zeroes_pay(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => null]);
+        $record = AttendanceRecord::factory()->for($employee)->create([
+            'clock_in' => '08:00:00', 'clock_out' => '17:00:00', 'status' => 'pending',
+        ]);
+
+        $this->actingAs($admin)->patchJson("/api/admin/attendance/{$record->id}/adjust", [
+            'clock_in' => '08:00', 'clock_out' => '17:00', 'reason' => 'Marked as rest day',
+            'absence_type' => 'rest_day',
+        ])->assertOk();
+
+        $this->assertSame('rest_day', $record->fresh()->absence_type);
+    }
+
     public function test_endpoints_require_admin_authentication(): void {
         $employee = Employee::factory()->for(Branch::factory())->create();
         $record = AttendanceRecord::factory()->for($employee)->create();

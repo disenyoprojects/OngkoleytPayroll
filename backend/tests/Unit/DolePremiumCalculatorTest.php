@@ -65,6 +65,12 @@ class DolePremiumCalculatorTest extends TestCase {
         $this->assertSame(0.0, $this->eightHourDay(['absence_type' => 'travel'])['total']);
     }
 
+    public function test_unworked_rest_day_status_pays_zero(): void {
+        // Distinct from is_rest_day=true (worked their rest day, premium pay):
+        // absence_type=rest_day marks the day as their scheduled day off.
+        $this->assertSame(0.0, $this->eightHourDay(['absence_type' => 'rest_day'])['total']);
+    }
+
     public function test_half_day_caps_regular_at_half_scheduled(): void {
         // Worked the full 8h but flagged half_day: regular capped at 4h.
         $pay = $this->eightHourDay(['absence_type' => 'half_day']);
