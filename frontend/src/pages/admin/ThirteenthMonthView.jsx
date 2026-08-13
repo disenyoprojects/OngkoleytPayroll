@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiClient } from "../../api/client";
+import { apiClient, openAuthedPdf } from "../../api/client";
 import { formatPHP, FONT_DISPLAY } from "../../theme";
 import { Button, Pill, StatCard, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 import TmAdjustModal from "../../components/TmAdjustModal";
@@ -23,7 +23,7 @@ export default function ThirteenthMonthView() {
   }
 
   function downloadPayslip(employeeId) {
-    window.open(`${apiClient.defaults.baseURL}/api/admin/thirteenth-month/${employeeId}/payslip`, "_blank");
+    openAuthedPdf(`/api/admin/thirteenth-month/${employeeId}/payslip`);
   }
 
   const pending = records.filter((r) => r.status === "pending").length;

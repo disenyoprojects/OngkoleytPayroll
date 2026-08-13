@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiClient } from "../../api/client";
+import { apiClient, downloadAuthedFile, openAuthedPdf } from "../../api/client";
 import { formatPHP, formatTime12, formatLateLabel, FONT_DISPLAY } from "../../theme";
 import { Button, StatCard, tabBtnStyle, tableWrap, tableStyle, thStyle, tdStyle, inputStyle } from "../../components/ui";
 import PayslipView from "./PayslipView";
@@ -44,8 +44,9 @@ export default function PayrollView({ isAdmin = true }) {
   }, [range, month, period]);
 
   function download(kind) {
-    const url = `${apiClient.defaults.baseURL}/api/admin/payroll/${kind}?range=${range}`;
-    window.open(url, "_blank");
+    const path = `/api/admin/payroll/${kind}?range=${range}`;
+    if (kind === "export") downloadAuthedFile(path, `payroll-${range}.csv`);
+    else openAuthedPdf(path);
   }
 
   return (
@@ -189,8 +190,8 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true,
         </select>
         {data && data.rows.length > 0 && (
           <>
-            <Button variant="outline" onClick={() => window.open(`${apiClient.defaults.baseURL}/api/admin/payroll/period/pdf?month=${month}&period=${period}`, "_blank")}>🖨 Print Summary</Button>
-            <Button variant="outline" onClick={() => window.open(`${apiClient.defaults.baseURL}/api/admin/payroll/period/payslips-pdf?month=${month}&period=${period}`, "_blank")}>🖨 Print All Payslips</Button>
+            <Button variant="outline" onClick={() => openAuthedPdf(`/api/admin/payroll/period/pdf?month=${month}&period=${period}`)}>🖨 Print Summary</Button>
+            <Button variant="outline" onClick={() => openAuthedPdf(`/api/admin/payroll/period/payslips-pdf?month=${month}&period=${period}`)}>🖨 Print All Payslips</Button>
           </>
         )}
         <Button variant="outline" disabled={generating} onClick={generateStatutory}>

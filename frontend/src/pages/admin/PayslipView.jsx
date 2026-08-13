@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiClient } from "../../api/client";
+import { apiClient, openAuthedPdf } from "../../api/client";
 import { formatPHP, formatTime12, formatLateLabel } from "../../theme";
 import { Button, inputStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 
@@ -52,7 +52,7 @@ export default function PayslipView() {
 
   function downloadPdf() {
     if (!employeeId) return;
-    window.open(`${apiClient.defaults.baseURL}/api/admin/employees/${employeeId}/payslip/pdf?month=${month}&period=${period}`, "_blank");
+    openAuthedPdf(`/api/admin/employees/${employeeId}/payslip/pdf?month=${month}&period=${period}`);
   }
 
   async function addAdjustment() {

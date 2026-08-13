@@ -35,6 +35,27 @@ export function clearAdminToken() {
 // Last-known /admin/me response, so a cold page load with no connectivity
 // can still show the signed-in shell (e.g. to use offline Clock In/Out)
 // instead of forcing a login screen that itself requires the network.
+// window.open()/plain <a href> never carry the Bearer token (there's no
+// cookie session), so any authenticated file (PDF/CSV) has to be fetched
+// through apiClient first, then handed to the browser as a blob.
+export async function openAuthedPdf(path) {
+  const res = await apiClient.get(path, { responseType: "blob" });
+  const blobUrl = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+  window.open(blobUrl, "_blank");
+}
+
+export async function downloadAuthedFile(path, filename) {
+  const res = await apiClient.get(path, { responseType: "blob" });
+  const blobUrl = URL.createObjectURL(new Blob([res.data]));
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(blobUrl);
+}
+
 export function getCachedMe() {
   try {
     const raw = localStorage.getItem(ADMIN_ME_CACHE_KEY);
