@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
 import { apiClient, openAuthedPdf } from "../../api/client";
-import { formatPHP, formatTime12, formatLateLabel } from "../../theme";
+import { formatPHP, formatTime12, formatLateLabel, phThisMonth as thisMonth } from "../../theme";
 import { Button, inputStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 import GenerateStatutoryButton from "../../components/GenerateStatutoryButton";
-
-function thisMonth() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
 
 const PERIODS = [["first", "1–15"], ["second", "16–end"], ["whole", "Whole month"]];
 const CATEGORIES = [

@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { apiClient, downloadAuthedFile, openAuthedPdf } from "../../api/client";
-import { formatPHP, formatTime12, formatLateLabel, FONT_DISPLAY } from "../../theme";
+import { formatPHP, formatTime12, formatLateLabel, phThisMonth as thisMonth, FONT_DISPLAY } from "../../theme";
 import { Button, StatCard, tabBtnStyle, tableWrap, tableStyle, thStyle, tdStyle, inputStyle } from "../../components/ui";
 import PayslipView from "./PayslipView";
 import GenerateStatutoryButton from "../../components/GenerateStatutoryButton";
-
-const thisMonth = () => new Date().toISOString().slice(0, 7);
 
 export default function PayrollView({ isAdmin = true }) {
   const [range, setRange] = useState("daily");

@@ -18,6 +18,36 @@ export const FONT_DISPLAY = "'Fraunces', serif";
 export const FONT_BODY = "'Inter', sans-serif";
 export const FONT_MONO = "'IBM Plex Mono', monospace";
 
+// Payroll is reckoned in Philippine time, so every "today" and "this month"
+// the UI derives must come from Manila's calendar — not the browser's
+// timezone, and never from toISOString(), which is UTC and rolls the date over
+// eight hours early (before 08:00 local, that returns yesterday).
+export const PH_TIMEZONE = "Asia/Manila";
+
+/** Today in Manila as YYYY-MM-DD. */
+export function phToday() {
+  return phDateParts(new Date()).ymd;
+}
+
+/** The current Manila month as YYYY-MM. */
+export function phThisMonth() {
+  return phDateParts(new Date()).ym;
+}
+
+/** A timestamp from the API rendered in Manila time, whatever the device is set to. */
+export function formatPHDateTime(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-PH", { timeZone: PH_TIMEZONE, dateStyle: "medium", timeStyle: "short" });
+}
+
+function phDateParts(date) {
+  // en-CA formats as YYYY-MM-DD, which is what the API and <input type="date"> want.
+  const ymd = date.toLocaleDateString("en-CA", { timeZone: PH_TIMEZONE });
+  return { ymd, ym: ymd.slice(0, 7) };
+}
+
 export function formatPHP(amount) {
   if (amount == null) return "—";
   return "₱" + Number(amount).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

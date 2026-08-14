@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
-import { formatPHP } from "../../theme";
+import { formatPHP, formatPHDateTime } from "../../theme";
 import { Pill, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 
 export default function AuditLogView() {
@@ -32,7 +32,7 @@ export default function AuditLogView() {
         <tbody>
           {log.map((entry) => (
             <tr key={entry.id}>
-              <td style={{ ...tdStyle, whiteSpace: "nowrap", color: "#7A6A57" }}>{new Date(entry.created_at).toLocaleString()}</td>
+              <td style={{ ...tdStyle, whiteSpace: "nowrap", color: "#7A6A57" }}>{formatPHDateTime(entry.created_at)}</td>
               <td style={{ ...tdStyle, fontWeight: 600 }}>{entry.employee ? entry.employee.short_name : "All eligible employees"}</td>
               <td style={tdStyle}><Pill>{areaLabel(entry.type)}</Pill></td>
               <td style={tdStyle}><Pill tone="neutral">{entry.action.replace(/_/g, " ")}</Pill></td>

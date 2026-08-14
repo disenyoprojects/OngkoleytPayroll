@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../api/client";
-import { formatTime12 } from "../theme";
+import { formatTime12, phThisMonth as thisMonth } from "../theme";
 import { Button, ModalShell, Pill, tableWrap, tableStyle, thStyle, tdStyle } from "./ui";
-
-function thisMonth() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
 
 function ymOf(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;

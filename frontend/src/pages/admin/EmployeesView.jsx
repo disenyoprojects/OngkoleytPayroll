@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
 import { Button, inputStyle, ModalShell, Pill } from "../../components/ui";
-import { formatPHP } from "../../theme";
+import { formatPHP, phToday as today } from "../../theme";
 import AttendanceLogModal from "../../components/AttendanceLogModal";
 
 const EMPLOYMENT_TYPES = ["regular", "probationary", "fixed_term", "seasonal"];
@@ -12,10 +12,6 @@ const BLANK = {
   resignation_date: "", shift_start: "08:00", shift_end: "17:00",
   daily_basic_rate: "",
 };
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export default function EmployeesView({ isAdmin = true, myBranchId = null }) {
   const [view, setView] = useState("active"); // "active" | "separated"

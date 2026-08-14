@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../api/client";
-import { formatPHP } from "../theme";
+import { formatPHP, formatPHDateTime } from "../theme";
 import { Button, ModalShell, Pill } from "./ui";
 
 export default function TmHistoryModal({ row, onCancel }) {
@@ -25,7 +25,7 @@ export default function TmHistoryModal({ row, onCancel }) {
             <div key={entry.id} style={{ borderBottom: "1px solid #E7DCC6", paddingBottom: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                 <Pill tone="neutral">{entry.action.replace(/_/g, " ")}</Pill>
-                <span style={{ fontSize: 11.5, color: "#7A6A57" }}>{new Date(entry.created_at).toLocaleString()}</span>
+                <span style={{ fontSize: 11.5, color: "#7A6A57" }}>{formatPHDateTime(entry.created_at)}</span>
               </div>
               {entry.old_amount != null && (
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{formatPHP(entry.old_amount)} → {formatPHP(entry.new_amount)}</div>

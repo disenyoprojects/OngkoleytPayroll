@@ -1,14 +1,9 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
-import { formatPHP, formatTime12, formatLateLabel, FONT_DISPLAY } from "../../theme";
+import { formatPHP, formatTime12, formatLateLabel, phToday as today, FONT_DISPLAY } from "../../theme";
 import { Button, Pill, StatCard, inputStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 import AdjustAttendanceModal from "../../components/AdjustAttendanceModal";
 import ManualAttendanceModal from "../../components/ManualAttendanceModal";
-
-function today() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function shiftDate(ymd, delta) {
   const [y, m, d] = ymd.split("-").map(Number);

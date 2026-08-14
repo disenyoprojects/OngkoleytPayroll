@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../api/client";
 import { Button, ModalShell, inputStyle, textareaStyle, labelStyle } from "./ui";
+import { phToday as today } from "../theme";
 
 const rowStyle = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 };
 
 const REASONS = ["Forgot to Clock In/Out", "System Error", "Power / Internet Outage", "Client / Supplier Errand", "Other"];
-
-function today() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 export default function ManualAttendanceModal({ defaultDate, onCancel, onSaved }) {
   const [employees, setEmployees] = useState([]);
