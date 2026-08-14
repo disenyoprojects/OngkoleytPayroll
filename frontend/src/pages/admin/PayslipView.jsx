@@ -13,14 +13,14 @@ const CATEGORIES = [
   ["cash_on_hand", "Cash on Hand"],
   ["allowance", "Allowance"],
   ["bonus", "Bonus"],
-  ["deduction", "Deduction"],
+  ["deduction", "Authorized Deduction"],
   ["sss", "SSS"],
   ["pagibig", "Pag-IBIG"],
   ["philhealth", "PhilHealth"],
   ["other", "Other"],
 ];
 // Deduction categories that don't need a typed label — the name is the label.
-const DEFAULT_LABELS = { deduction: "Deduction", sss: "SSS", pagibig: "Pag-IBIG", philhealth: "PhilHealth" };
+const DEFAULT_LABELS = { deduction: "Authorized Deduction", sss: "SSS", pagibig: "Pag-IBIG", philhealth: "PhilHealth" };
 const BLANK_ADJ = { label: "", category: "cash_on_hand", amount: "", paid: true, date: "" };
 
 function signed(amount) {
@@ -134,7 +134,7 @@ export default function PayslipView() {
                         <div style={{ fontSize: 11, color: "#9A6B12" }}>{l.premium_label}</div>
                       )}
                       {l.late && (
-                        <div style={{ fontSize: 11, color: "#C1521F" }}>{formatLateLabel(l.late_minutes)} · −{formatPHP(l.late_penalty)}</div>
+                        <div style={{ fontSize: 11, color: "#C1521F" }}>{formatLateLabel(l.late_minutes)} · −{formatPHP(l.tardiness)}</div>
                       )}
                     </td>
                   </tr>
@@ -180,7 +180,7 @@ export default function PayslipView() {
                 onChange={(e) => {
                   const cat = e.target.value;
                   setAdj((a) => {
-                    // Auto-fill the label for SSS/Pag-IBIG/PhilHealth/Deduction, but keep a custom label the user typed.
+                    // Auto-fill the label for SSS/Pag-IBIG/PhilHealth/Authorized Deduction, but keep a custom label the user typed.
                     const wasAuto = !a.label || Object.values(DEFAULT_LABELS).includes(a.label);
                     return { ...a, category: cat, label: wasAuto ? (DEFAULT_LABELS[cat] || "") : a.label };
                   });
@@ -197,7 +197,7 @@ export default function PayslipView() {
               <Button variant="gold" onClick={addAdjustment} disabled={adj.amount === "" || (!adj.label && !DEFAULT_LABELS[adj.category])}>Add</Button>
             </div>
             {adjError && <div style={{ color: "#C1521F", fontSize: 12, marginTop: 8 }}>{adjError}</div>}
-            <div style={{ color: "#7A6A57", fontSize: 12, marginTop: 8 }}>Tip: pick the type and enter a positive amount. <b>SSS, Pag-IBIG, PhilHealth</b> and <b>Deduction</b> are subtracted automatically (type any amount you want — nothing is fixed); allowances/bonuses are added. For <b>Other</b>, type your own label. "Already paid" is added to Total Salary but subtracted from what's still handed over.</div>
+            <div style={{ color: "#7A6A57", fontSize: 12, marginTop: 8 }}>Tip: pick the type and enter a positive amount. <b>SSS, Pag-IBIG, PhilHealth</b> and <b>Authorized Deduction</b> are subtracted automatically (type any amount you want — nothing is fixed); allowances/bonuses are added. For <b>Other</b>, type your own label. "Already paid" is added to Total Salary but subtracted from what's still handed over.</div>
           </div>
 
           <div style={{ fontWeight: 700, fontSize: 14, margin: "20px 0 8px" }}>Payslip preview</div>

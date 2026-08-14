@@ -13,7 +13,7 @@ class PayrollAdjustmentController extends Controller {
 
     // Categories that always subtract, plus their default label if none is typed.
     private const DEDUCTION_LABELS = [
-        'deduction' => 'Deduction', 'sss' => 'SSS', 'pagibig' => 'Pag-IBIG', 'philhealth' => 'PhilHealth',
+        'deduction' => 'Authorized Deduction', 'sss' => 'SSS', 'pagibig' => 'Pag-IBIG', 'philhealth' => 'PhilHealth',
     ];
 
     public function index(Request $request, Employee $employee) {
@@ -52,7 +52,7 @@ class PayrollAdjustmentController extends Controller {
         };
 
         // Statutory/deduction lines can be left unlabelled — fall back to the
-        // category's name (SSS, Pag-IBIG, PhilHealth, Deduction).
+        // category's name (SSS, Pag-IBIG, PhilHealth, Authorized Deduction).
         $label = trim((string) ($data['label'] ?? '')) ?: (self::DEDUCTION_LABELS[$data['category']] ?? 'Adjustment');
 
         $adjustment = PayrollAdjustment::create([

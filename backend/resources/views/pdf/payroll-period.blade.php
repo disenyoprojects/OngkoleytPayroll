@@ -33,7 +33,7 @@
             <tr>
                 <th>Staff</th><th>Branch</th><th class="r">Days</th>
                 <th class="r">Basic</th><th class="r">OT</th><th class="r">Gross</th>
-                <th class="r">Late</th><th class="r">Allow./Ded.</th>
+                <th class="r">Tardiness</th><th class="r">Allow./Ded.</th>
                 <th class="r">Total Salary</th><th class="r">Net to Release</th>
             </tr>
         </thead>
@@ -46,7 +46,7 @@
                     <td class="r">{{ number_format($row['basic'], 2) }}</td>
                     <td class="r">{{ $row['ot'] ? number_format($row['ot'], 2) : '—' }}</td>
                     <td class="r">{{ number_format($row['gross'], 2) }}</td>
-                    <td class="r neg">{{ $row['late_penalty'] ? '−'.number_format($row['late_penalty'], 2) : '—' }}</td>
+                    <td class="r neg">{{ $row['tardiness'] ? '−'.number_format($row['tardiness'], 2) : '—' }}</td>
                     <td class="r {{ $row['adjustments'] < 0 ? 'neg' : ($row['adjustments'] > 0 ? 'pos' : '') }}">{{ $row['adjustments'] ? ($row['adjustments'] < 0 ? '−' : '+').number_format(abs($row['adjustments']), 2) : '—' }}</td>
                     <td class="r">{{ number_format($row['total_salary'], 2) }}</td>
                     <td class="r">{{ number_format($row['net_to_release'], 2) }}</td>
@@ -63,7 +63,7 @@
                     <td class="r">{{ number_format($register['totals']['basic'], 2) }}</td>
                     <td class="r">{{ number_format($register['totals']['ot'], 2) }}</td>
                     <td class="r">{{ number_format($register['totals']['gross'], 2) }}</td>
-                    <td class="r">−{{ number_format($register['totals']['late_penalty'], 2) }}</td>
+                    <td class="r">−{{ number_format($register['totals']['tardiness'], 2) }}</td>
                     <td class="r">{{ number_format($register['totals']['adjustments'], 2) }}</td>
                     <td class="r">{{ number_format($register['totals']['total_salary'], 2) }}</td>
                     <td class="r">₱{{ number_format($register['totals']['net_to_release'], 2) }}</td>

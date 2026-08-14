@@ -50,7 +50,7 @@ class PayslipController extends Controller {
             ->get();
 
         $lines = [];
-        $basic = $ot = $nightDiff = $latePenalty = 0.0;
+        $basic = $ot = $nightDiff = $tardiness = 0.0;
         // Split the day's regular pay into ordinary wage + holiday/rest premiums
         // so the payslip can itemise Basic Wage, Special Holiday (SH), etc.
         $baseWage = $sh = $rh = $restPremium = 0.0;
@@ -63,7 +63,7 @@ class PayslipController extends Controller {
             $basic += (float) $pay['basic'];
             $ot += (float) $pay['ot'];
             $nightDiff += (float) $pay['night_diff'];
-            $latePenalty += (float) $pay['late_penalty'];
+            $tardiness += (float) $pay['tardiness'];
 
             $baseWage += (float) $pay['base_wage'];
             $uplift = (float) $pay['basic'] - (float) $pay['base_wage']; // holiday/rest premium portion
@@ -85,7 +85,7 @@ class PayslipController extends Controller {
                 'premium_label' => $pay['premium_label'],
                 'late' => $pay['late'],
                 'late_minutes' => $pay['late_minutes'],
-                'late_penalty' => $pay['late_penalty'],
+                'tardiness' => $pay['tardiness'],
                 'day_pay' => $pay['total'],
             ];
         }
@@ -109,7 +109,7 @@ class PayslipController extends Controller {
 
         $adjustmentsTotal = round($adjustments->sum('amount'), 2);
         $paidTotal = round($adjustments->where('paid', true)->sum('amount'), 2);
-        $totalSalary = round($gross - $latePenalty + $adjustmentsTotal, 2);
+        $totalSalary = round($gross - $tardiness + $adjustmentsTotal, 2);
         $netToRelease = round($totalSalary - $paidTotal, 2);
 
         // Itemised earnings / deductions for the printable payslip. Net here
@@ -130,7 +130,7 @@ class PayslipController extends Controller {
         }
 
         $deductions = [
-            ['label' => 'Tardiness', 'amount' => round($latePenalty, 2)],
+            ['label' => 'Tardiness', 'amount' => round($tardiness, 2)],
             ['label' => 'Undertime/Overbreak', 'amount' => 0.0],
         ];
         foreach ($adjustments->where('amount', '<', 0) as $a) {
@@ -166,7 +166,7 @@ class PayslipController extends Controller {
                 'ot' => round($ot, 2),
                 'night_diff' => round($nightDiff, 2),
                 'gross' => $gross,
-                'late_penalty' => round($latePenalty, 2),
+                'tardiness' => round($tardiness, 2),
                 'adjustments' => $adjustmentsTotal,
                 'total_salary' => $totalSalary,
                 'paid' => $paidTotal,

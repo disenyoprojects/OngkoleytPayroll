@@ -42,23 +42,36 @@ class AttendancePayCalculatorTest extends TestCase {
         $this->assertEqualsWithDelta(round($hourlyRate * 1 * 0.10, 2), $result['night_diff'], 0.01);
     }
 
-    public function test_no_late_penalty_when_on_time(): void {
+    public function test_no_tardiness_when_on_time(): void {
         $result = (new AttendancePayCalculator())->compute('08:00', '17:00', $this->settings(), null, '08:00', '17:00');
 
         $this->assertFalse($result['late']);
-        $this->assertSame(0.0, $result['late_penalty']);
+        $this->assertSame(0.0, $result['tardiness']);
     }
 
-    public function test_flat_late_penalty_is_deducted_from_total(): void {
-        // Clock in 08:15 for an 08:00 shift → late by any margin → flat ₱75 off.
+    public function test_tardiness_is_the_peso_value_of_the_late_minutes(): void {
+        // Clock in 08:15 for an 08:00 shift → 15 min late. The basic wage still
+        // covers the full scheduled shift; the 15 min comes off as Tardiness.
         $result = (new AttendancePayCalculator())->compute('08:15', '17:00', $this->settings(), null, '08:00', '17:00');
+        $hourlyRate = 505 / 8;
 
         $this->assertTrue($result['late']);
-        $this->assertSame(75.0, $result['late_penalty']);
-        // No OT or night diff here, so total = basic − penalty.
-        $this->assertEqualsWithDelta($result['basic'] - 75.0, $result['total'], 0.01);
-        // The 13th-month base is unaffected by the penalty.
-        $this->assertEqualsWithDelta($result['basic'], $result['base_wage'], 0.01);
+        $this->assertSame(15, $result['late_minutes']);
+        $this->assertEqualsWithDelta(round(0.25 * $hourlyRate, 2), $result['tardiness'], 0.01);
+        // Basic is the on-time amount (8h after the 1h break), not hour-docked.
+        $this->assertEqualsWithDelta(round($hourlyRate * 8, 2), $result['basic'], 0.01);
+        // No OT or night diff here, so total = basic − tardiness.
+        $this->assertEqualsWithDelta($result['basic'] - $result['tardiness'], $result['total'], 0.01);
+    }
+
+    public function test_no_flat_penalty_is_applied_to_a_late_day(): void {
+        // The ₱75 late penalty is entered as an Authorized Deduction adjustment
+        // now — the calculator must not deduct it on its own.
+        $settings = $this->settings();
+        $settings->late_penalty_amount = 75;
+        $result = (new AttendancePayCalculator())->compute('08:15', '17:00', $settings, null, '08:00', '17:00');
+
+        $this->assertEqualsWithDelta($result['basic'] - $result['tardiness'], $result['total'], 0.01);
     }
 
     public function test_handles_a_shift_that_crosses_midnight(): void {

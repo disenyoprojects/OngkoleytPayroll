@@ -75,7 +75,11 @@ class AttendancePayCalculator {
             $breakHours = (float) ($settings->unpaid_break_hours ?? 0);
         }
 
-        $regWithinMin = (float) max(0, min($end, $shiftEndMin) - max($start, $shiftStartMin));
+        // Regular hours are measured from the SCHEDULED start, not the actual
+        // clock-in: a late arrival is paid as if on time and then charged back
+        // in full under Tardiness, so the payslip shows the lost time as a
+        // deduction line instead of silently shrinking the basic wage.
+        $regWithinMin = (float) max(0, min($end, $shiftEndMin) - $shiftStartMin);
         $regWithinHours = $regWithinMin / 60.0;
         $regularHours = $regWithinHours > $breakHours ? $regWithinHours - $breakHours : $regWithinHours;
 
@@ -109,15 +113,17 @@ class AttendancePayCalculator {
         // Night diff: +nd_multiplier of the applicable premium hourly rate.
         $nightDiff = round($nightDiffHours * $hourlyRate * $regularMult * (float) $settings->night_diff_multiplier, 2);
 
-        // Flat late penalty: any clock-in after the scheduled shift start incurs
-        // a fixed deduction, on top of the unpaid time already lost by starting
-        // late. It reduces take-home pay but NOT the 13th-month base (a penalty
-        // is not a reduction in earned basic salary).
+        // Tardiness: the peso value of the late minutes, charged at the same
+        // rate the regular hours were paid at (so it exactly cancels the time
+        // the employee did not work). Capped at the paid window in case of a
+        // clock-in past the end of the shift. Any flat penalty for being late
+        // is NOT computed here — it is entered as an Authorized Deduction
+        // adjustment so it shows as its own line on the payslip.
         $isLate = $start > $shiftStartMin;
-        $lateMinutes = $isLate ? (int) round($start - $shiftStartMin) : 0;
-        $latePenalty = $isLate ? round((float) ($settings->late_penalty_amount ?? 0), 2) : 0.0;
+        $lateMinutes = $isLate ? (int) round(min($start - $shiftStartMin, $regWithinMin)) : 0;
+        $tardiness = round($lateMinutes / 60.0 * $hourlyRate * $regularMult, 2);
 
-        $total = round($basic + $ot + $nightDiff - $latePenalty, 2);
+        $total = round($basic + $ot + $nightDiff - $tardiness, 2);
 
         // Un-premiumed base figures for the 13th-month base (PD 851): basic
         // salary only — the ordinary-rate wage, excluding holiday/rest premiums,
@@ -137,7 +143,7 @@ class AttendancePayCalculator {
             'base_ot' => $baseOt,
             'late' => $isLate,
             'late_minutes' => $lateMinutes,
-            'late_penalty' => $latePenalty,
+            'tardiness' => $tardiness,
             'total' => $total,
             'premium_label' => $premiumLabel,
             'premium_multiplier' => $regularMult,
@@ -149,7 +155,7 @@ class AttendancePayCalculator {
             'total_hours' => 0.0, 'regular_hours' => 0.0, 'ot_hours' => 0.0, 'night_diff_hours' => 0.0,
             'basic' => 0.0, 'ot' => 0.0, 'night_diff' => 0.0,
             'base_wage' => 0.0, 'base_ot' => 0.0,
-            'late' => false, 'late_minutes' => 0, 'late_penalty' => 0.0, 'total' => 0.0,
+            'late' => false, 'late_minutes' => 0, 'tardiness' => 0.0, 'total' => 0.0,
             'premium_label' => $label, 'premium_multiplier' => $mult,
         ];
     }

@@ -37,45 +37,30 @@ class StatutoryDeductionControllerTest extends TestCase {
         $philhealth = PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'philhealth')->firstOrFail();
         $this->assertSame('-12.63', $philhealth->amount);
 
-        // Monthly net = 505 (only day worked, all in this cutoff) -> "Below 5,250"
-        // bracket, employee share 250, split across the two cutoffs = 125.
+        // Cutoff net = 505 (only day worked) -> "Below 5,250" bracket, employee
+        // share 250, charged in full — the share is never halved.
         $sss = PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'sss')->firstOrFail();
-        $this->assertSame('-125.00', $sss->amount);
+        $this->assertSame('-250.00', $sss->amount);
     }
 
-    public function test_sss_is_assessed_once_on_the_combined_monthly_net_and_split_across_cutoffs(): void {
-        // Reproduces the client's worksheet: ~7,500 gross per cutoff (minus a
-        // little tardiness), monthly net ~14,955.81 -> 750 employee share,
-        // split evenly into 375 per cutoff.
+    public function test_sss_bracket_uses_the_cutoff_gross_less_tardiness(): void {
+        // Reproduces the client's worksheet: 13 days at ₱600/day = ₱7,800 gross,
+        // less 20 min tardiness (₱25.00) = ₱7,775.00 net, which sits in the
+        // ₱7,750–8,249.99 bracket -> ₱400 employee share for the cutoff.
         $admin = User::factory()->create();
-        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => null]);
-        // ~14-15 ordinary 8h days per cutoff at 505/day lands gross near 7,500,
-        // with one late day in each cutoff to create a small tardiness deduction.
-        foreach (range(1, 15) as $day) {
+        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => 600]);
+        foreach (range(1, 13) as $day) {
             AttendanceRecord::factory()->for($employee)->create([
                 'work_date' => sprintf('2026-07-%02d', $day),
                 'shift_start' => '08:00:00', 'shift_end' => '17:00:00',
-                'clock_in' => $day === 1 ? '08:05:00' : '08:00:00', 'clock_out' => '17:00:00',
-            ]);
-        }
-        foreach (range(16, 30) as $day) {
-            AttendanceRecord::factory()->for($employee)->create([
-                'work_date' => sprintf('2026-07-%02d', $day),
-                'shift_start' => '08:00:00', 'shift_end' => '17:00:00',
-                'clock_in' => $day === 16 ? '08:05:00' : '08:00:00', 'clock_out' => '17:00:00',
+                'clock_in' => $day === 1 ? '08:20:00' : '08:00:00', 'clock_out' => '17:00:00',
             ]);
         }
 
         $this->actingAs($admin)->postJson('/api/admin/payroll/period/statutory?month=2026-07&period=first')->assertOk();
-        $this->actingAs($admin)->postJson('/api/admin/payroll/period/statutory?month=2026-07&period=second')->assertOk();
 
-        $firstSss = PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'sss')
-            ->whereDate('date', '2026-07-15')->firstOrFail();
-        $secondSss = PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'sss')
-            ->whereDate('date', '2026-07-31')->firstOrFail();
-
-        $this->assertSame($firstSss->amount, $secondSss->amount);
-        $this->assertSame('-375.00', $firstSss->amount);
+        $sss = PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'sss')->firstOrFail();
+        $this->assertSame('-400.00', $sss->amount);
     }
 
     public function test_generate_uses_200_pagibig_and_full_sss_share_for_a_whole_month_period(): void {

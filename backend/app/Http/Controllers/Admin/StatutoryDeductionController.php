@@ -23,9 +23,9 @@ class StatutoryDeductionController extends Controller {
 
     /**
      * Auto-generate Pag-IBIG (flat ₱100/cutoff, ₱200/whole month), PhilHealth
-     * (2.5% of the period's basic wage), and SSS (bracket table, looked up
-     * once on the combined MONTHLY net earnings then split across the two
-     * cutoffs — matches how SSS is actually assessed) deduction adjustments
+     * (2.5% of the period's basic wage), and SSS (bracket table, looked up on
+     * the period's own net earnings — gross less tardiness/undertime — and
+     * charged in full, not halved) deduction adjustments
      * for every employee in scope. Skips an employee/category pair that
      * already has an adjustment dated in that window, so this is safe to
      * run more than once without double-charging.
@@ -63,10 +63,9 @@ class StatutoryDeductionController extends Controller {
                 }
             }
 
-            $monthlyNet = $this->monthlyNetEarnings($employee, $data['month'], $data['period'], $settings);
-            if ($monthlyNet > 0.0) {
-                $monthlyShare = $this->sss->employeeShareFor($monthlyNet);
-                $sssAmount = -round($data['period'] === 'whole' ? $monthlyShare : $monthlyShare / 2, 2);
+            $netEarnings = $this->sumOverWindow($employee, $window, $settings, 'total');
+            if ($netEarnings > 0.0) {
+                $sssAmount = -round($this->sss->employeeShareFor($netEarnings), 2);
                 if ($this->createIfMissing($employee, 'sss', $window, $sssAmount, 'SSS', $request)) {
                     $generated['sss']++;
                 } else {
@@ -109,21 +108,5 @@ class StatutoryDeductionController extends Controller {
 
                 return (float) ($pay[$payKey] ?? 0.0);
             });
-    }
-
-    /**
-     * Gross earnings less tardiness/undertime for the full calendar month
-     * (both cutoffs combined), regardless of which single cutoff was
-     * requested — SSS is assessed once per month, not per cutoff.
-     */
-    private function monthlyNetEarnings(Employee $employee, string $month, string $period, PayrollSetting $settings): float {
-        if ($period === 'whole') {
-            return $this->sumOverWindow($employee, PayslipPeriod::resolve($month, 'whole'), $settings, 'total');
-        }
-
-        $first = $this->sumOverWindow($employee, PayslipPeriod::resolve($month, 'first'), $settings, 'total');
-        $second = $this->sumOverWindow($employee, PayslipPeriod::resolve($month, 'second'), $settings, 'total');
-
-        return $first + $second;
     }
 }

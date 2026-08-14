@@ -114,7 +114,7 @@ export default function PayrollView({ isAdmin = true }) {
                         <div style={{ fontSize: 11, color: "#9A6B12" }}>{r.pay.premium_label}</div>
                       )}
                       {r.pay?.late && (
-                        <div style={{ fontSize: 11, color: "#C1521F" }}>{formatLateLabel(r.pay.late_minutes)} · −{formatPHP(r.pay.late_penalty)}</div>
+                        <div style={{ fontSize: 11, color: "#C1521F" }}>{formatLateLabel(r.pay.late_minutes)} · −{formatPHP(r.pay.tardiness)}</div>
                       )}
                     </td>
                   </tr>
@@ -207,7 +207,7 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true,
           {isAdmin && (
             <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
               <StatCard label={`Gross · ${data.period.label}`} value={formatPHP(data.totals.gross)} />
-              <StatCard label="Deductions" value={`−${formatPHP(data.totals.late_penalty + Math.max(0, -data.totals.adjustments))}`} />
+              <StatCard label="Deductions" value={`−${formatPHP(data.totals.tardiness + Math.max(0, -data.totals.adjustments))}`} />
               <StatCard label="Net to Release" value={formatPHP(data.totals.net_to_release)} />
             </div>
           )}
@@ -221,7 +221,7 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true,
                   <th style={numTh}>Basic</th>
                   <th style={numTh}>OT</th>
                   <th style={numTh}>Gross</th>
-                  <th style={numTh}>Late</th>
+                  <th style={numTh}>Tardiness</th>
                   <th style={numTh}>Allow./Ded.</th>
                   <th style={numTh}>Total Salary</th>
                   <th style={numTh}>Net to Release</th>
@@ -239,7 +239,7 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true,
                     <td style={numTd}>{formatPHP(r.basic)}</td>
                     <td style={numTd}>{r.ot ? formatPHP(r.ot) : "—"}</td>
                     <td style={numTd}>{formatPHP(r.gross)}</td>
-                    <td style={{ ...numTd, color: r.late_penalty ? "#C1521F" : undefined }}>{r.late_penalty ? `−${formatPHP(r.late_penalty)}` : "—"}</td>
+                    <td style={{ ...numTd, color: r.tardiness ? "#C1521F" : undefined }}>{r.tardiness ? `−${formatPHP(r.tardiness)}` : "—"}</td>
                     <td style={{ ...numTd, color: r.adjustments < 0 ? "#C1521F" : (r.adjustments > 0 ? "#3B7A57" : undefined) }}>
                       {r.adjustments ? `${r.adjustments < 0 ? "−" : "+"}${formatPHP(Math.abs(r.adjustments))}` : "—"}
                     </td>

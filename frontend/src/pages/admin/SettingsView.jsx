@@ -79,9 +79,6 @@ export default function SettingsView() {
         <Field label="Unpaid Break (hours) — deducted from worked hours">
           <input type="number" step="0.25" value={settings.unpaid_break_hours} onChange={(e) => set("unpaid_break_hours", e.target.value)} style={inputStyle} />
         </Field>
-        <Field label="Late Penalty (₱) — flat deduction for any late clock-in">
-          <input type="number" step="0.01" value={settings.late_penalty_amount} onChange={(e) => set("late_penalty_amount", e.target.value)} style={inputStyle} />
-        </Field>
         <Button variant="gold" onClick={save}>{saved ? "Saved ✓" : "Save Settings"}</Button>
       </div>
 
