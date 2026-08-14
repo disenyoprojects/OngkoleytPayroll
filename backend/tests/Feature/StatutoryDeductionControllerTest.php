@@ -89,11 +89,48 @@ class StatutoryDeductionControllerTest extends TestCase {
 
         $second->assertJson([
             'generated' => ['pagibig' => 0, 'philhealth' => 0, 'sss' => 0],
+            'updated' => ['pagibig' => 0, 'philhealth' => 0, 'sss' => 0],
             'skipped' => ['pagibig' => 1, 'philhealth' => 1, 'sss' => 1],
         ]);
         $this->assertSame(1, PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'pagibig')->count());
         $this->assertSame(1, PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'philhealth')->count());
         $this->assertSame(1, PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'sss')->count());
+    }
+
+    public function test_rerunning_corrects_an_amount_this_generator_wrote_earlier(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => null]);
+        $this->workedDay($employee, '2026-07-20');
+
+        $this->actingAs($admin)->postJson('/api/admin/payroll/period/statutory?month=2026-07&period=second')->assertOk();
+        $sss = PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'sss')->firstOrFail();
+        // Stand in for a row written by an older, wrong rule (the halved share).
+        $sss->update(['amount' => -125.00]);
+
+        $this->actingAs($admin)->postJson('/api/admin/payroll/period/statutory?month=2026-07&period=second')
+            ->assertOk()
+            ->assertJson(['updated' => ['sss' => 1]]);
+
+        $this->assertSame('-250.00', $sss->fresh()->amount);
+        // Still one row — corrected in place, not duplicated.
+        $this->assertSame(1, PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'sss')->count());
+    }
+
+    public function test_rerunning_leaves_a_hand_entered_row_alone(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => null]);
+        $this->workedDay($employee, '2026-07-20');
+        $manual = PayrollAdjustment::create([
+            'employee_id' => $employee->id, 'date' => '2026-07-20', 'label' => 'SSS',
+            'category' => 'sss', 'amount' => -180.00, 'paid' => false,
+            'reason' => 'Agreed with the employee', 'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)->postJson('/api/admin/payroll/period/statutory?month=2026-07&period=second')
+            ->assertOk()
+            ->assertJson(['skipped' => ['sss' => 1]]);
+
+        $this->assertSame('-180.00', $manual->fresh()->amount);
     }
 
     public function test_generate_skips_philhealth_and_sss_for_an_employee_with_no_pay_activity(): void {

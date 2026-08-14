@@ -3,6 +3,7 @@ import { apiClient, downloadAuthedFile, openAuthedPdf } from "../../api/client";
 import { formatPHP, formatTime12, formatLateLabel, FONT_DISPLAY } from "../../theme";
 import { Button, StatCard, tabBtnStyle, tableWrap, tableStyle, thStyle, tdStyle, inputStyle } from "../../components/ui";
 import PayslipView from "./PayslipView";
+import GenerateStatutoryButton from "../../components/GenerateStatutoryButton";
 
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 
@@ -162,23 +163,6 @@ const numTd = { ...tdStyle, textAlign: "right" };
 const numTh = { ...thStyle, textAlign: "right" };
 
 function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true, onGenerated }) {
-  const [generating, setGenerating] = useState(false);
-  const [notice, setNotice] = useState(null);
-
-  async function generateStatutory() {
-    setGenerating(true);
-    setNotice(null);
-    try {
-      const res = await apiClient.post(`/api/admin/payroll/period/statutory?month=${month}&period=${period}`);
-      const { generated, skipped } = res.data;
-      const totalSkipped = skipped.pagibig + skipped.philhealth + skipped.sss;
-      setNotice(`Generated ${generated.pagibig} Pag-IBIG, ${generated.philhealth} PhilHealth, ${generated.sss} SSS (${totalSkipped} already existed).`);
-      await onGenerated?.();
-    } finally {
-      setGenerating(false);
-    }
-  }
-
   return (
     <>
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
@@ -194,11 +178,8 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true,
             <Button variant="outline" onClick={() => openAuthedPdf(`/api/admin/payroll/period/payslips-pdf?month=${month}&period=${period}`)}>🖨 Print All Payslips</Button>
           </>
         )}
-        <Button variant="outline" disabled={generating} onClick={generateStatutory}>
-          {generating ? "Generating…" : "Generate SSS/Pag-IBIG/PhilHealth"}
-        </Button>
+        <GenerateStatutoryButton month={month} period={period} onGenerated={onGenerated} />
       </div>
-      {notice && <div style={{ fontSize: 12.5, color: "#7A6A57", marginBottom: 12 }}>{notice}</div>}
 
       {!data ? (
         <div>Loading...</div>

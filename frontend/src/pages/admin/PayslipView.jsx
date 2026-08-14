@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { apiClient, openAuthedPdf } from "../../api/client";
 import { formatPHP, formatTime12, formatLateLabel } from "../../theme";
 import { Button, inputStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
+import GenerateStatutoryButton from "../../components/GenerateStatutoryButton";
 
 function thisMonth() {
   const d = new Date();
@@ -92,6 +93,7 @@ export default function PayslipView() {
           {PERIODS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
         </select>
         <Button variant="outline" onClick={downloadPdf} disabled={!slip}>⬇ PDF</Button>
+        <GenerateStatutoryButton month={month} period={period} onGenerated={() => setReload((n) => n + 1)} />
       </div>
 
       {!slip && <div style={{ color: "#7A6A57", fontSize: 13 }}>Select a staff member to view their payslip.</div>}

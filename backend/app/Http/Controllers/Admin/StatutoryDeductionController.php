@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 class StatutoryDeductionController extends Controller {
     private const PAGIBIG_PER_CUTOFF = 100.0;
     private const PHILHEALTH_RATE = 0.025;
+    private const AUTO_REASON = 'Auto-generated statutory deduction';
 
     public function __construct(
         private AttendancePayCalculator $calculator,
@@ -26,9 +27,9 @@ class StatutoryDeductionController extends Controller {
      * (2.5% of the period's basic wage), and SSS (bracket table, looked up on
      * the period's own net earnings — gross less tardiness/undertime — and
      * charged in full, not halved) deduction adjustments
-     * for every employee in scope. Skips an employee/category pair that
-     * already has an adjustment dated in that window, so this is safe to
-     * run more than once without double-charging.
+     * for every employee in scope. Re-running is safe and is how a period is
+     * corrected: a row this generator wrote earlier is updated in place when
+     * the computed amount has changed, and one entered by hand is left alone.
      */
     public function generate(Request $request) {
         $data = $request->validate([
@@ -43,56 +44,61 @@ class StatutoryDeductionController extends Controller {
 
         $employees = Employee::when($branchId, fn ($q, $bid) => $q->where('branch_id', $bid))->get();
 
-        $generated = ['pagibig' => 0, 'philhealth' => 0, 'sss' => 0];
-        $skipped = ['pagibig' => 0, 'philhealth' => 0, 'sss' => 0];
+        $counts = [
+            'generated' => ['pagibig' => 0, 'philhealth' => 0, 'sss' => 0],
+            'updated' => ['pagibig' => 0, 'philhealth' => 0, 'sss' => 0],
+            'skipped' => ['pagibig' => 0, 'philhealth' => 0, 'sss' => 0],
+        ];
 
         foreach ($employees as $employee) {
-            if ($this->createIfMissing($employee, 'pagibig', $window, -$pagibigAmount, 'Pag-IBIG', $request)) {
-                $generated['pagibig']++;
-            } else {
-                $skipped['pagibig']++;
-            }
+            $outcome = $this->upsertAuto($employee, 'pagibig', $window, -$pagibigAmount, 'Pag-IBIG', $request);
+            $counts[$outcome]['pagibig']++;
 
             $baseWage = $this->sumOverWindow($employee, $window, $settings, 'base_wage');
             if ($baseWage > 0.0) {
                 $philhealthAmount = -round($baseWage * self::PHILHEALTH_RATE, 2);
-                if ($this->createIfMissing($employee, 'philhealth', $window, $philhealthAmount, 'PhilHealth', $request)) {
-                    $generated['philhealth']++;
-                } else {
-                    $skipped['philhealth']++;
-                }
+                $outcome = $this->upsertAuto($employee, 'philhealth', $window, $philhealthAmount, 'PhilHealth', $request);
+                $counts[$outcome]['philhealth']++;
             }
 
             $netEarnings = $this->sumOverWindow($employee, $window, $settings, 'total');
             if ($netEarnings > 0.0) {
                 $sssAmount = -round($this->sss->employeeShareFor($netEarnings), 2);
-                if ($this->createIfMissing($employee, 'sss', $window, $sssAmount, 'SSS', $request)) {
-                    $generated['sss']++;
-                } else {
-                    $skipped['sss']++;
-                }
+                $outcome = $this->upsertAuto($employee, 'sss', $window, $sssAmount, 'SSS', $request);
+                $counts[$outcome]['sss']++;
             }
         }
 
-        return response()->json(['generated' => $generated, 'skipped' => $skipped]);
+        return response()->json($counts);
     }
 
-    /** Creates the adjustment unless one for this employee/category already exists in the window. Returns whether it created one. */
-    private function createIfMissing(Employee $employee, string $category, array $window, float $amount, string $label, Request $request): bool {
-        $exists = PayrollAdjustment::where('employee_id', $employee->id)->where('category', $category)
-            ->whereDate('date', '>=', $window['from'])->whereDate('date', '<=', $window['to'])->exists();
+    /**
+     * Writes the employee/category adjustment for this window. A row this
+     * generator wrote earlier is corrected in place when the computed amount
+     * has moved (a rate or rule change, say); a hand-entered row is never
+     * touched. Returns 'generated', 'updated' or 'skipped'.
+     */
+    private function upsertAuto(Employee $employee, string $category, array $window, float $amount, string $label, Request $request): string {
+        $existing = PayrollAdjustment::where('employee_id', $employee->id)->where('category', $category)
+            ->whereDate('date', '>=', $window['from'])->whereDate('date', '<=', $window['to'])->first();
 
-        if ($exists) {
-            return false;
+        if ($existing) {
+            if ($existing->reason !== self::AUTO_REASON || round((float) $existing->amount, 2) === round($amount, 2)) {
+                return 'skipped';
+            }
+
+            $existing->update(['amount' => $amount]);
+
+            return 'updated';
         }
 
         PayrollAdjustment::create([
             'employee_id' => $employee->id, 'date' => $window['to'], 'label' => $label,
             'category' => $category, 'amount' => $amount, 'paid' => false,
-            'reason' => 'Auto-generated statutory deduction', 'created_by' => $request->user()->id,
+            'reason' => self::AUTO_REASON, 'created_by' => $request->user()->id,
         ]);
 
-        return true;
+        return 'generated';
     }
 
     /** Sum of a per-record pay figure (e.g. base_wage) across a date window. */
