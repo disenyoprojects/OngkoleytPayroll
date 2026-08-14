@@ -7,13 +7,12 @@ import { enqueueClock, onQueueChange, pendingActionFor, removeFromQueue } from "
 
 const STAFF_CACHE_KEY = "ongkoleyt_clock_staff_cache";
 
-// The day's six punches, in timesheet order. The employee taps the one that
-// matches what they are doing — the system never infers it from the tap count,
-// so a half day (Clock In, Clock Out) can't land in the break columns.
+// What this screen records: the shift pair and the overtime pair. Break times
+// are not punched here — an admin fills those in on the Attendance screen.
+// Only the punch that comes next is offered, so nothing has to be inferred
+// from how many taps have happened.
 const PUNCHES = [
   { action: "in", label: "Clock In", column: "clock_in", after: null },
-  { action: "break-out", label: "Break Out", column: "break_out", after: "clock_in" },
-  { action: "break-in", label: "Break In", column: "break_in", after: "break_out" },
   { action: "out", label: "Clock Out", column: "clock_out", after: "clock_in" },
   { action: "ot-in", label: "OT In", column: "ot_in", after: "clock_out" },
   { action: "ot-out", label: "OT Out", column: "ot_out", after: "ot_in" },
@@ -178,7 +177,7 @@ export default function ClockView() {
                 : recorded.map((p) => `${p.label} ${formatTime12(record[p.column])}`).join(" · ")}
             </div>
             {!unknown && available.length === 0 && (
-              <div style={{ fontSize: 13, color: COLOR.inkSoft, marginBottom: 16 }}>All punches recorded for today.</div>
+              <div style={{ fontSize: 13, color: COLOR.inkSoft, marginBottom: 16 }}>Done for today, overtime included.</div>
             )}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
               {available.map((p) => (

@@ -34,16 +34,13 @@ class ClockController extends Controller {
     }
 
     /**
-     * The day's six punches, in the order the paper timesheet reads them.
-     * Each maps to one column, and the employee picks the action at the
-     * kiosk rather than the system guessing from how many taps have
-     * happened — a half day is two taps and must not land in the break
-     * columns. Each punch names the one before it that has to exist.
+     * What the Clock In/Out screen records: the shift pair and the overtime
+     * pair. Break times are not punched here — an admin fills those in on the
+     * Attendance screen. Each punch names the one before it that must exist,
+     * so OT In is only possible once the shift has been clocked out.
      */
     private const PUNCHES = [
         'in' => ['column' => 'clock_in', 'after' => null, 'label' => 'Clock In'],
-        'break-out' => ['column' => 'break_out', 'after' => 'clock_in', 'label' => 'Break Out'],
-        'break-in' => ['column' => 'break_in', 'after' => 'break_out', 'label' => 'Break In'],
         'out' => ['column' => 'clock_out', 'after' => 'clock_in', 'label' => 'Clock Out'],
         'ot-in' => ['column' => 'ot_in', 'after' => 'clock_out', 'label' => 'OT In'],
         'ot-out' => ['column' => 'ot_out', 'after' => 'ot_in', 'label' => 'OT Out'],
