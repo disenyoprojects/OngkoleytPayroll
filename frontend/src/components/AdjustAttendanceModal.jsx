@@ -17,10 +17,16 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
   const [holidayType, setHolidayType] = useState(row.record.holiday_type || "");
   const [isRestDay, setIsRestDay] = useState(!!row.record.is_rest_day);
   const [absenceType, setAbsenceType] = useState(row.record.absence_type || "");
+  const [breakOut, setBreakOut] = useState((row.record.break_out || "").slice(0, 5));
+  const [breakIn, setBreakIn] = useState((row.record.break_in || "").slice(0, 5));
+  const [otIn, setOtIn] = useState((row.record.ot_in || "").slice(0, 5));
+  const [otOut, setOtOut] = useState((row.record.ot_out || "").slice(0, 5));
 
   async function save() {
     await apiClient.patch(`/api/admin/attendance/${row.record.id}/adjust`, {
       clock_in: clockIn, clock_out: clockOut, reason, details,
+      break_out: breakOut || null, break_in: breakIn || null,
+      ot_in: otIn || null, ot_out: otOut || null,
       shift_start: shiftStart, shift_end: shiftEnd,
       holiday_type: holidayType || null,
       is_rest_day: isRestDay,
@@ -43,6 +49,26 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
         <div>
           <label style={labelStyle}>Clock Out</label>
           <input type="time" value={clockOut} onChange={(e) => setClockOut(e.target.value)} style={inputStyle} />
+        </div>
+      </div>
+      <div style={rowStyle}>
+        <div>
+          <label style={labelStyle}>Break Out (Time 1 Out)</label>
+          <input type="time" value={breakOut} onChange={(e) => setBreakOut(e.target.value)} style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Break In (Time 2 In)</label>
+          <input type="time" value={breakIn} onChange={(e) => setBreakIn(e.target.value)} style={inputStyle} />
+        </div>
+      </div>
+      <div style={rowStyle}>
+        <div>
+          <label style={labelStyle}>OT In</label>
+          <input type="time" value={otIn} onChange={(e) => setOtIn(e.target.value)} style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>OT Out</label>
+          <input type="time" value={otOut} onChange={(e) => setOtOut(e.target.value)} style={inputStyle} />
         </div>
       </div>
       <div style={rowStyle}>

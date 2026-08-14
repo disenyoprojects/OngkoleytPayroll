@@ -30,6 +30,8 @@ class AttendanceAdminController extends Controller {
             'absence_type' => ['nullable', 'in:leave,sick_leave,half_day,absent,awol,travel,rest_day'],
             'break_out' => ['nullable', 'date_format:H:i'],
             'break_in' => ['nullable', 'date_format:H:i'],
+            'ot_in' => ['nullable', 'date_format:H:i'],
+            'ot_out' => ['nullable', 'date_format:H:i'],
         ]);
 
         if (AttendanceRecord::where('employee_id', $employee->id)->whereDate('work_date', $data['work_date'])->exists()) {
@@ -54,6 +56,8 @@ class AttendanceAdminController extends Controller {
             'absence_type' => $data['absence_type'] ?? null,
             'break_out' => $data['break_out'] ?? null,
             'break_in' => $data['break_in'] ?? null,
+            'ot_in' => $data['ot_in'] ?? null,
+            'ot_out' => $data['ot_out'] ?? null,
         ]);
 
         AuditLog::create([
@@ -82,6 +86,8 @@ class AttendanceAdminController extends Controller {
             'absence_type' => ['nullable', 'in:leave,sick_leave,half_day,absent,awol,travel,rest_day'],
             'break_out' => ['nullable', 'date_format:H:i'],
             'break_in' => ['nullable', 'date_format:H:i'],
+            'ot_in' => ['nullable', 'date_format:H:i'],
+            'ot_out' => ['nullable', 'date_format:H:i'],
         ]);
 
         $before = sprintf('%s → %s', $record->clock_in ?? '—', $record->clock_out ?? '—');
@@ -100,6 +106,8 @@ class AttendanceAdminController extends Controller {
             'absence_type' => array_key_exists('absence_type', $data) ? $data['absence_type'] : $record->absence_type,
             'break_out' => array_key_exists('break_out', $data) ? $data['break_out'] : $record->break_out,
             'break_in' => array_key_exists('break_in', $data) ? $data['break_in'] : $record->break_in,
+            'ot_in' => array_key_exists('ot_in', $data) ? $data['ot_in'] : $record->ot_in,
+            'ot_out' => array_key_exists('ot_out', $data) ? $data['ot_out'] : $record->ot_out,
         ]);
 
         AuditLog::create([

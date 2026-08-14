@@ -33,41 +33,83 @@ class ClockController extends Controller {
         return response()->json($record);
     }
 
-    public function clockIn(Request $request) {
-        $employee = $this->resolveEmployee($request);
-        $moment = $this->resolveMoment($request);
-        $workDate = $moment->toDateString();
+    /**
+     * The day's six punches, in the order the paper timesheet reads them.
+     * Each maps to one column, and the employee picks the action at the
+     * kiosk rather than the system guessing from how many taps have
+     * happened — a half day is two taps and must not land in the break
+     * columns. Each punch names the one before it that has to exist.
+     */
+    private const PUNCHES = [
+        'in' => ['column' => 'clock_in', 'after' => null, 'label' => 'Clock In'],
+        'break-out' => ['column' => 'break_out', 'after' => 'clock_in', 'label' => 'Break Out'],
+        'break-in' => ['column' => 'break_in', 'after' => 'break_out', 'label' => 'Break In'],
+        'out' => ['column' => 'clock_out', 'after' => 'clock_in', 'label' => 'Clock Out'],
+        'ot-in' => ['column' => 'ot_in', 'after' => 'clock_out', 'label' => 'OT In'],
+        'ot-out' => ['column' => 'ot_out', 'after' => 'ot_in', 'label' => 'OT Out'],
+    ];
 
-        if (AttendanceRecord::where('employee_id', $employee->id)->whereDate('work_date', $workDate)->exists()) {
-            throw ValidationException::withMessages(['clock_in' => ['Already clocked in today.']]);
+    public function punch(Request $request, string $action) {
+        if (! isset(self::PUNCHES[$action])) {
+            abort(404);
         }
 
-        $record = AttendanceRecord::create([
-            'employee_id' => $employee->id,
-            'work_date' => $workDate,
-            'clock_in' => $moment->format('H:i:s'),
-            'status' => 'pending',
-            'shift_start' => $employee->shift_start,
-            'shift_end' => $employee->shift_end,
-        ]);
+        $punch = self::PUNCHES[$action];
+        $employee = $this->resolveEmployee($request);
+        $moment = $this->resolveMoment($request);
+        $record = $this->openRecordFor($employee, $moment, $punch['column']);
+
+        if ($action === 'in') {
+            if ($record) {
+                throw ValidationException::withMessages(['clock_in' => ['Already clocked in today.']]);
+            }
+
+            return response()->json(AttendanceRecord::create([
+                'employee_id' => $employee->id,
+                'work_date' => $moment->toDateString(),
+                'clock_in' => $moment->format('H:i:s'),
+                'status' => 'pending',
+                'shift_start' => $employee->shift_start,
+                'shift_end' => $employee->shift_end,
+            ]));
+        }
+
+        if (! $record) {
+            throw ValidationException::withMessages([$punch['column'] => ['No clock-in found for today.']]);
+        }
+
+        if ($record->{$punch['column']}) {
+            throw ValidationException::withMessages([$punch['column'] => ["Already recorded {$punch['label']} today."]]);
+        }
+
+        if ($punch['after'] && ! $record->{$punch['after']}) {
+            throw ValidationException::withMessages([
+                $punch['column'] => ["{$punch['label']} needs an earlier punch first — ask an admin to adjust the entry."],
+            ]);
+        }
+
+        $record->update([$punch['column'] => $moment->format('H:i:s'), 'status' => 'pending']);
 
         return response()->json($record);
     }
 
-    public function clockOut(Request $request) {
-        $employee = $this->resolveEmployee($request);
-        $moment = $this->resolveMoment($request);
-        $workDate = $moment->toDateString();
+    /**
+     * The record this punch belongs to. Normally today's, but unloading can
+     * run past midnight — so an OT-out with nothing open today falls back to
+     * yesterday's record still waiting for one.
+     */
+    private function openRecordFor(Employee $employee, Carbon $moment, string $column): ?AttendanceRecord {
+        $record = AttendanceRecord::where('employee_id', $employee->id)
+            ->whereDate('work_date', $moment->toDateString())->first();
 
-        $record = AttendanceRecord::where('employee_id', $employee->id)->whereDate('work_date', $workDate)->first();
-
-        if (! $record || $record->clock_out) {
-            throw ValidationException::withMessages(['clock_out' => ['No open clock-in found for today.']]);
+        if ($record || $column !== 'ot_out') {
+            return $record;
         }
 
-        $record->update(['clock_out' => $moment->format('H:i:s'), 'status' => 'pending']);
-
-        return response()->json($record);
+        return AttendanceRecord::where('employee_id', $employee->id)
+            ->whereDate('work_date', $moment->copy()->subDay()->toDateString())
+            ->whereNotNull('ot_in')->whereNull('ot_out')
+            ->first();
     }
 
     private function resolveEmployee(Request $request): Employee {

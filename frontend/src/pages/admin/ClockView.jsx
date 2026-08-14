@@ -7,6 +7,24 @@ import { enqueueClock, onQueueChange, pendingActionFor, removeFromQueue } from "
 
 const STAFF_CACHE_KEY = "ongkoleyt_clock_staff_cache";
 
+// The day's six punches, in timesheet order. The employee taps the one that
+// matches what they are doing — the system never infers it from the tap count,
+// so a half day (Clock In, Clock Out) can't land in the break columns.
+const PUNCHES = [
+  { action: "in", label: "Clock In", column: "clock_in", after: null },
+  { action: "break-out", label: "Break Out", column: "break_out", after: "clock_in" },
+  { action: "break-in", label: "Break In", column: "break_in", after: "break_out" },
+  { action: "out", label: "Clock Out", column: "clock_out", after: "clock_in" },
+  { action: "ot-in", label: "OT In", column: "ot_in", after: "clock_out" },
+  { action: "ot-out", label: "OT Out", column: "ot_out", after: "ot_in" },
+];
+
+/** Punches still open for the day: not already recorded, and their prerequisite is. */
+function availablePunches(record) {
+  if (!record) return PUNCHES.filter((p) => p.after === null);
+  return PUNCHES.filter((p) => !record[p.column] && (p.after === null || record[p.after]));
+}
+
 function initialsOf(name) {
   const parts = name.trim().split(/\s+/);
   return parts.length === 1 ? parts[0].slice(0, 2).toUpperCase() : (parts[0][0] + parts[1][0]).toUpperCase();
@@ -93,9 +111,10 @@ export default function ClockView() {
     setBusy(true);
     const { employee } = selected;
     const clockedAt = new Date().toISOString();
+    const label = PUNCHES.find((p) => p.action === action)?.label ?? action;
     try {
       await apiClient.post(`/api/admin/clock/${action}`, { employee_id: employee.id, clocked_at: clockedAt });
-      showToast(`${employee.short_name} clocked ${action === "in" ? "in" : "out"}.`);
+      showToast(`${employee.short_name}: ${label} recorded.`);
       setSelected(null);
     } catch (e) {
       if (!e?.response) {
@@ -128,8 +147,8 @@ export default function ClockView() {
 
   if (selected) {
     const { employee, record, unknown, queued } = selected;
-    const clockedIn = record && record.clock_in && !record.clock_out;
-    const done = record && record.clock_out;
+    const available = unknown ? PUNCHES : availablePunches(record);
+    const recorded = record ? PUNCHES.filter((p) => record[p.column]) : [];
     return (
       <div style={{ minHeight: "60vh", display: "flex", flexDirection: "column", alignItems: "center", padding: "48px 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
@@ -155,19 +174,16 @@ export default function ClockView() {
             <div style={{ fontSize: 14, color: COLOR.inkSoft, marginBottom: 20, textAlign: "center" }}>
               {unknown
                 ? "Offline — today's status is unknown. Choose the action that actually happened:"
-                : done ? `Clocked in ${formatTime12(record.clock_in)}, out ${formatTime12(record.clock_out)} — done for today.`
-                : clockedIn ? `Clocked in at ${formatTime12(record.clock_in)}.`
-                : "Not clocked in yet today."}
+                : recorded.length === 0 ? "Not clocked in yet today."
+                : recorded.map((p) => `${p.label} ${formatTime12(record[p.column])}`).join(" · ")}
             </div>
-            <div style={{ display: "flex", gap: 12 }}>
-              {unknown ? (
-                <>
-                  <Button variant="gold" onClick={() => doClock("in")} disabled={busy}>Clock In</Button>
-                  <Button variant="gold" onClick={() => doClock("out")} disabled={busy}>Clock Out</Button>
-                </>
-              ) : !done && (clockedIn
-                ? <Button variant="gold" onClick={() => doClock("out")} disabled={busy}>Clock Out</Button>
-                : <Button variant="gold" onClick={() => doClock("in")} disabled={busy}>Clock In</Button>)}
+            {!unknown && available.length === 0 && (
+              <div style={{ fontSize: 13, color: COLOR.inkSoft, marginBottom: 16 }}>All punches recorded for today.</div>
+            )}
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+              {available.map((p) => (
+                <Button key={p.action} variant="gold" onClick={() => doClock(p.action)} disabled={busy}>{p.label}</Button>
+              ))}
               <Button variant="outline" onClick={() => setSelected(null)} disabled={busy}>Back</Button>
             </div>
           </>

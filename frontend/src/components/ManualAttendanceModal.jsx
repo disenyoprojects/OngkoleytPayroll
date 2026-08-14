@@ -13,6 +13,10 @@ export default function ManualAttendanceModal({ defaultDate, onCancel, onSaved }
   const [workDate, setWorkDate] = useState(defaultDate || today());
   const [clockIn, setClockIn] = useState("08:00");
   const [clockOut, setClockOut] = useState("17:00");
+  const [breakOut, setBreakOut] = useState("");
+  const [breakIn, setBreakIn] = useState("");
+  const [otIn, setOtIn] = useState("");
+  const [otOut, setOtOut] = useState("");
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [error, setError] = useState("");
@@ -28,6 +32,8 @@ export default function ManualAttendanceModal({ defaultDate, onCancel, onSaved }
     try {
       await apiClient.post(`/api/admin/employees/${employeeId}/attendance/manual`, {
         work_date: workDate, clock_in: clockIn, clock_out: clockOut, reason, details,
+        break_out: breakOut || null, break_in: breakIn || null,
+        ot_in: otIn || null, ot_out: otOut || null,
       });
       onSaved();
     } catch (err) {
@@ -66,6 +72,26 @@ export default function ManualAttendanceModal({ defaultDate, onCancel, onSaved }
         <div>
           <label style={labelStyle}>Clock Out</label>
           <input type="time" value={clockOut} onChange={(e) => setClockOut(e.target.value)} style={inputStyle} />
+        </div>
+      </div>
+      <div style={rowStyle}>
+        <div>
+          <label style={labelStyle}>Break Out (optional)</label>
+          <input type="time" value={breakOut} onChange={(e) => setBreakOut(e.target.value)} style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Break In (optional)</label>
+          <input type="time" value={breakIn} onChange={(e) => setBreakIn(e.target.value)} style={inputStyle} />
+        </div>
+      </div>
+      <div style={rowStyle}>
+        <div>
+          <label style={labelStyle}>OT In (optional)</label>
+          <input type="time" value={otIn} onChange={(e) => setOtIn(e.target.value)} style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>OT Out (optional)</label>
+          <input type="time" value={otOut} onChange={(e) => setOtOut(e.target.value)} style={inputStyle} />
         </div>
       </div>
       <div style={{ marginBottom: 16 }}>

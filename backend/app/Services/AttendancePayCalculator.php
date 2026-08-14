@@ -28,6 +28,8 @@ class AttendancePayCalculator {
                 'absence_type' => $record->absence_type,
                 'break_out' => $record->break_out,
                 'break_in' => $record->break_in,
+                'ot_in' => $record->ot_in,
+                'ot_out' => $record->ot_out,
             ],
         );
     }
@@ -99,12 +101,32 @@ class AttendancePayCalculator {
         }
 
         $otMin = (float) max(0, $end - max($shiftEndMin, $start));
-        $otHours = $otMin / 60.0;
+
+        // Second clock pair for overtime: staff clock out at the end of the
+        // shift, wait for the delivery truck, then clock back in to unload.
+        // The wait in between is not paid, and every minute of the pair is
+        // overtime whatever the clock says.
+        $otPairMin = 0.0;
+        if (! empty($day['ot_in']) && ! empty($day['ot_out'])) {
+            $otStart = $this->minutesOf($day['ot_in']);
+            $otEnd = $this->minutesOf($day['ot_out']);
+            if ($otEnd <= $otStart) {
+                $otEnd += 24 * 60; // unloading ran past midnight
+            }
+            $otPairMin = (float) ($otEnd - $otStart);
+        }
+
+        $otHours = ($otMin + $otPairMin) / 60.0;
 
         $dailyRate = $dailyRateOverride ?? (float) $settings->daily_basic_rate;
         $hourlyRate = $dailyRate / 8;
 
+        // Night differential is the 22:00–06:00 window only, over both the main
+        // span and the overtime pair — OT ending at 23:00 earns one hour of it.
         $nightDiffHours = $this->nightHours(max($start, $shiftStartMin), $end);
+        if ($otPairMin > 0) {
+            $nightDiffHours += $this->nightHours($otStart, $otEnd);
+        }
 
         // Regular pay at the day's premium multiplier.
         $basic = round($regularHours * $hourlyRate * $regularMult, 2);

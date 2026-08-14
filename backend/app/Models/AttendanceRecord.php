@@ -13,7 +13,7 @@ class AttendanceRecord extends Model {
 
     protected $fillable = [
         'employee_id', 'work_date', 'shift_start', 'shift_end', 'clock_in', 'clock_out',
-        'holiday_type', 'is_rest_day', 'absence_type', 'break_out', 'break_in',
+        'holiday_type', 'is_rest_day', 'absence_type', 'break_out', 'break_in', 'ot_in', 'ot_out',
         'status', 'adjusted', 'reason', 'details',
     ];
     protected $casts = [

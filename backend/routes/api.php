@@ -35,8 +35,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/attendance/today', [AttendanceDashboardController::class, 'today']);
     Route::get('/admin/clock/staff', [ClockController::class, 'staff']);
     Route::get('/admin/clock/status', [ClockController::class, 'status']);
-    Route::post('/admin/clock/in', [ClockController::class, 'clockIn']);
-    Route::post('/admin/clock/out', [ClockController::class, 'clockOut']);
+    // Six punches a day: in, break-out, break-in, out, ot-in, ot-out.
+    Route::post('/admin/clock/{action}', [ClockController::class, 'punch'])
+        ->where('action', 'in|out|break-out|break-in|ot-in|ot-out');
     Route::get('/admin/payroll/daily', [PayrollController::class, 'daily']);
     Route::get('/admin/payroll/weekly', [PayrollController::class, 'weekly']);
     Route::get('/admin/payroll/period', [PayrollController::class, 'period']);
