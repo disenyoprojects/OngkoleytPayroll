@@ -20,7 +20,7 @@ class PayrollPdfController extends Controller {
         $branchId = $this->branchFilter($request);
         $base = AttendanceRecord::with(['employee' => fn ($q) => $q->withTrashed()->with('branch')])
             ->whereNotNull('clock_out')
-            ->when($branchId, fn ($q, $bid) => $q->whereHas('employee', fn ($e) => $e->withTrashed()->where('branch_id', $bid)));
+            ->when($branchId !== null, fn ($q) => $q->whereHas('employee', fn ($e) => $e->withTrashed()->whereIn('branch_id', $branchId)));
 
         $records = $range === 'daily'
             ? (clone $base)->where('work_date', $date)->get()

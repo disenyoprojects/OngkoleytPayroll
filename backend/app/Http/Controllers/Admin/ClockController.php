@@ -12,9 +12,11 @@ use Illuminate\Validation\ValidationException;
 class ClockController extends Controller {
     /** Active staff for the clock-in screen. */
     public function staff(Request $request) {
+        $branchIds = $this->branchFilter($request);
+
         return response()->json(
             Employee::with('branch')
-                ->when($this->branchFilter($request), fn ($q, $bid) => $q->where('branch_id', $bid))
+                ->when($branchIds !== null, fn ($q) => $q->whereIn('branch_id', $branchIds))
                 ->orderBy('short_name')
                 ->get(['id', 'short_name', 'full_name', 'role', 'branch_id'])
         );

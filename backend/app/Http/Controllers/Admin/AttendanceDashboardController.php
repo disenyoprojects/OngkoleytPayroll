@@ -19,7 +19,7 @@ class AttendanceDashboardController extends Controller {
         $settings = PayrollSetting::current();
         $records = AttendanceRecord::with(['employee' => fn ($q) => $q->withTrashed()->with('branch')])
             ->where('work_date', $date)
-            ->when($branchId, fn ($q, $bid) => $q->whereHas('employee', fn ($e) => $e->withTrashed()->where('branch_id', $bid)))
+            ->when($branchId !== null, fn ($q) => $q->whereHas('employee', fn ($e) => $e->withTrashed()->whereIn('branch_id', $branchId)))
             ->get();
 
         $rows = $records->map(function (AttendanceRecord $record) use ($settings) {

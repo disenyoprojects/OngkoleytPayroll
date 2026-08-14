@@ -41,7 +41,7 @@ class StatutoryDeductionController extends Controller {
         $branchId = $this->branchFilter($request);
         $pagibigAmount = $data['period'] === 'whole' ? 200.0 : self::PAGIBIG_PER_CUTOFF;
 
-        $employees = Employee::when($branchId, fn ($q, $bid) => $q->where('branch_id', $bid))->get();
+        $employees = Employee::when($branchId !== null, fn ($q) => $q->whereIn('branch_id', $branchId))->get();
 
         $counts = [
             'generated' => ['pagibig' => 0, 'philhealth' => 0, 'sss' => 0],

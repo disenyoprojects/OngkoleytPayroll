@@ -134,8 +134,12 @@ export default function AdminApp() {
           <button key={key} onClick={() => setTab(key)} style={tabBtnStyle(activeTab === key)}>{label}</button>
         ))}
         <span style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
-          {!isAdmin && admin.branch && (
-            <span style={{ fontSize: 12.5, color: "#7A6A57" }}>{admin.branch} branch</span>
+          {!isAdmin && (admin.branches?.length || admin.branch) && (
+            <span style={{ fontSize: 12.5, color: "#7A6A57" }}>
+              {admin.branches?.length > 1
+                ? `${admin.branches.join(" · ")} branches`
+                : `${admin.branches?.[0] ?? admin.branch} branch`}
+            </span>
           )}
           <button onClick={logout} style={tabBtnStyle(false)}>Log Out</button>
         </span>

@@ -253,7 +253,10 @@ export default function EmployeesView({ isAdmin = true, myBranchId = null }) {
           ))}
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 12, marginBottom: 4 }}>Branch</div>
-            {isAdmin ? (
+            {/* A branch login only ever gets its own branches back from the
+                API, so the same picker serves both — it just has fewer
+                options. A single-branch login sees its one branch fixed. */}
+            {isAdmin || branches.length > 1 ? (
               <select value={editing.branch_id} onChange={(e) => set("branch_id", e.target.value)} style={inputStyle}>
                 <option value="">Select branch…</option>
                 {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}

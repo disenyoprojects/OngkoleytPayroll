@@ -12,16 +12,20 @@ use Illuminate\Validation\Rule;
 
 class EmployeeController extends Controller {
     public function index(Request $request) {
+        $branchIds = $this->branchFilter($request);
+
         return response()->json(
             Employee::with('branch')
-                ->when($this->branchFilter($request), fn ($q, $bid) => $q->where('branch_id', $bid))
+                ->when($branchIds !== null, fn ($q) => $q->whereIn('branch_id', $branchIds))
                 ->orderBy('short_name')->get()
         );
     }
 
     public function branches(Request $request) {
+        $branchIds = $this->branchFilter($request);
+
         return response()->json(
-            Branch::when($this->branchFilter($request), fn ($q, $bid) => $q->where('id', $bid))
+            Branch::when($branchIds !== null, fn ($q) => $q->whereIn('id', $branchIds))
                 ->orderBy('name')->get(['id', 'name'])
         );
     }
@@ -42,11 +46,9 @@ class EmployeeController extends Controller {
             'reason' => ['nullable', 'string'],
         ]);
 
-        // A branch login can only add staff to its own branch, regardless of
-        // what branch_id was submitted.
-        if ($scopedBranchId = $this->branchFilter($request)) {
-            $data['branch_id'] = $scopedBranchId;
-        }
+        // A branch login can only add staff to a branch it covers, regardless
+        // of what branch_id was submitted.
+        $data['branch_id'] = $this->confineBranch($request, $data['branch_id'] ?? null);
 
         return DB::transaction(function () use ($request, $data) {
             $employee = new Employee([
@@ -98,10 +100,10 @@ class EmployeeController extends Controller {
             'reason' => ['nullable', 'string'],
         ]);
 
-        // A branch login can't move an employee out of its own branch,
+        // A branch login can't move an employee outside the branches it covers,
         // regardless of what branch_id was submitted.
-        if ($scopedBranchId = $this->branchFilter($request)) {
-            $data['branch_id'] = $scopedBranchId;
+        if (array_key_exists('branch_id', $data)) {
+            $data['branch_id'] = $this->confineBranch($request, $data['branch_id']);
         }
 
         $oldRate = $employee->daily_basic_rate === null ? null : (float) $employee->daily_basic_rate;
@@ -148,8 +150,9 @@ class EmployeeController extends Controller {
     }
 
     public function separated(Request $request) {
+        $branchIds = $this->branchFilter($request);
         $query = Employee::onlyTrashed()->with('branch')
-            ->when($this->branchFilter($request), fn ($q, $bid) => $q->where('branch_id', $bid))
+            ->when($branchIds !== null, fn ($q) => $q->whereIn('branch_id', $branchIds))
             ->orderBy('short_name');
 
         $type = $request->query('type');

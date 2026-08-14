@@ -26,17 +26,39 @@ class User extends Authenticatable
         'branch_id',
     ];
 
+    /** The login's primary branch — the one named in the header after login. */
     public function branch() {
         return $this->belongsTo(Branch::class);
+    }
+
+    /** Every branch this login may see. One account can cover several sites. */
+    public function branches() {
+        return $this->belongsToMany(Branch::class);
     }
 
     public function isAdmin(): bool {
         return ($this->role ?? 'admin') === 'admin';
     }
 
-    /** Branch id a non-admin user is limited to, or null for admins (see everything). */
-    public function scopedBranchId(): ?int {
-        return $this->isAdmin() ? null : $this->branch_id;
+    /**
+     * Branch ids a non-admin login is limited to, or null for admins (who see
+     * everything). Falls back to the primary branch column when no branches
+     * have been attached, so a single-branch login works either way. Never
+     * returns an empty array for a branch login — an unattached one is scoped
+     * to nothing rather than silently to everything.
+     */
+    public function scopedBranchIds(): ?array {
+        if ($this->isAdmin()) {
+            return null;
+        }
+
+        $ids = $this->branches()->pluck('branches.id')->all();
+
+        if (! $ids && $this->branch_id !== null) {
+            $ids = [$this->branch_id];
+        }
+
+        return array_values(array_unique(array_map('intval', $ids)));
     }
 
     /**

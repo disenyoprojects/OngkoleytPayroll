@@ -14,8 +14,8 @@ class CreateAdmin extends Command
         {--name= : Display name for the login}
         {--email= : Login email (must be unique)}
         {--password= : Login password (min 8 chars)}
-        {--role=admin : "admin" (sees everything) or "branch" (one branch only)}
-        {--branch= : Branch name for a branch login (required when role=branch)}
+        {--role=admin : "admin" (sees everything) or "branch" (limited to the branches given)}
+        {--branch=* : Branch name for a branch login; repeat it for a login covering several branches}
         {--force : Update the login if the email already exists}';
 
     protected $description = 'Create (or reset) an admin or branch login for the payroll system';
@@ -45,16 +45,22 @@ class CreateAdmin extends Command
             return self::FAILURE;
         }
 
-        $branchId = null;
+        // A branch login may cover more than one site — pass --branch once per
+        // branch. The first one given is the primary (the name shown in the
+        // header after login).
+        $branchIds = [];
         if ($role === 'branch') {
-            $branchName = $this->option('branch') ?: $this->ask('Branch name');
-            $branch = Branch::where('name', $branchName)->first();
-            if (! $branch) {
-                $this->error("No branch named \"{$branchName}\". Existing: " . Branch::orderBy('name')->pluck('name')->implode(', '));
+            $names = $this->option('branch') ?: [$this->ask('Branch name')];
+            foreach ($names as $branchName) {
+                $branch = Branch::where('name', $branchName)->first();
+                if (! $branch) {
+                    $this->error("No branch named \"{$branchName}\". Existing: " . Branch::orderBy('name')->pluck('name')->implode(', '));
 
-                return self::FAILURE;
+                    return self::FAILURE;
+                }
+                $branchIds[] = $branch->id;
             }
-            $branchId = $branch->id;
+            $branchIds = array_values(array_unique($branchIds));
         }
 
         $existing = User::where('email', $email)->first();
@@ -69,18 +75,22 @@ class CreateAdmin extends Command
             'name' => $name,
             'password' => Hash::make($password),
             'role' => $role,
-            'branch_id' => $branchId,
+            'branch_id' => $branchIds[0] ?? null,
         ];
+
+        $scope = $branchIds ? ' (branches: ' . implode(', ', $this->option('branch')) . ')' : '';
 
         if ($existing) {
             $existing->update($attributes);
-            $this->info("Updated {$role} login: {$email}");
+            $existing->branches()->sync($branchIds);
+            $this->info("Updated {$role} login: {$email}{$scope}");
 
             return self::SUCCESS;
         }
 
-        User::create($attributes + ['email' => $email]);
-        $this->info("Created {$role} login: {$email}" . ($branchId ? " (branch: {$this->option('branch')})" : ''));
+        $user = User::create($attributes + ['email' => $email]);
+        $user->branches()->sync($branchIds);
+        $this->info("Created {$role} login: {$email}{$scope}");
 
         return self::SUCCESS;
     }

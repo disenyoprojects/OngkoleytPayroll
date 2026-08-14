@@ -54,7 +54,7 @@ class PayrollController extends Controller {
         $branchId = $this->branchFilter($request);
 
         $slips = Employee::withTrashed()->with('branch')
-            ->when($branchId, fn ($q, $bid) => $q->where('branch_id', $bid))
+            ->when($branchId !== null, fn ($q) => $q->whereIn('branch_id', $branchId))
             ->orderBy('employee_code')->get()
             ->map(fn (Employee $employee) => $payslips->buildPayslip($employee, $data['month'], $data['period']))
             ->filter(fn ($slip) => count($slip['lines']) > 0 || $slip['totals']['adjustments'] != 0.0)
@@ -66,11 +66,11 @@ class PayrollController extends Controller {
     }
 
     /** One row per employee with pay activity, plus grand totals for the window. */
-    private function buildRegister(string $month, string $period, PayslipController $payslips, ?int $branchId = null): array {
+    private function buildRegister(string $month, string $period, PayslipController $payslips, ?array $branchId = null): array {
         $window = PayslipPeriod::resolve($month, $period);
 
         $rows = Employee::withTrashed()->with('branch')
-            ->when($branchId, fn ($q, $bid) => $q->where('branch_id', $bid))
+            ->when($branchId !== null, fn ($q) => $q->whereIn('branch_id', $branchId))
             ->orderBy('employee_code')->get()
             ->map(function (Employee $employee) use ($payslips, $month, $period) {
                 $slip = $payslips->buildPayslip($employee, $month, $period);
@@ -124,7 +124,7 @@ class PayrollController extends Controller {
         $rows = AttendanceRecord::with(['employee' => fn ($q) => $q->withTrashed()->with('branch')])
             ->where('work_date', $date)
             ->whereNotNull('clock_out')
-            ->when($branchId, fn ($q, $bid) => $q->whereHas('employee', fn ($e) => $e->withTrashed()->where('branch_id', $bid)))
+            ->when($branchId !== null, fn ($q) => $q->whereHas('employee', fn ($e) => $e->withTrashed()->whereIn('branch_id', $branchId)))
             ->get()
             ->map(function (AttendanceRecord $record) use ($settings) {
                 $pay = $this->calculator->computeForRecord($record, $settings);
@@ -151,7 +151,7 @@ class PayrollController extends Controller {
         $records = AttendanceRecord::with(['employee' => fn ($q) => $q->withTrashed()->with('branch')])
             ->whereBetween('work_date', [$start->toDateString(), $end->toDateString()])
             ->whereNotNull('clock_out')
-            ->when($branchId, fn ($q, $bid) => $q->whereHas('employee', fn ($e) => $e->withTrashed()->where('branch_id', $bid)))
+            ->when($branchId !== null, fn ($q) => $q->whereHas('employee', fn ($e) => $e->withTrashed()->whereIn('branch_id', $branchId)))
             ->get()
             ->groupBy('employee_id');
 

@@ -35,7 +35,8 @@ class AdminSessionController extends Controller {
     }
 
     public function me(Request $request) {
-        $user = $request->user()->loadMissing('branch');
+        $user = $request->user()->loadMissing(['branch', 'branches']);
+        $branchIds = $user->scopedBranchIds();
 
         return response()->json([
             'id' => $user->id,
@@ -44,6 +45,10 @@ class AdminSessionController extends Controller {
             'role' => $user->isAdmin() ? 'admin' : 'branch',
             'branch_id' => $user->branch_id,
             'branch' => $user->branch?->name,
+            // Every branch this login covers — one account can span several
+            // sites, so the UI shows the group rather than a single name.
+            'branch_ids' => $branchIds,
+            'branches' => $branchIds === null ? null : $user->branches->pluck('name')->values(),
         ]);
     }
 }
