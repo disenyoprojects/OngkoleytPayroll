@@ -50,7 +50,7 @@ class PayslipController extends Controller {
             ->get();
 
         $lines = [];
-        $basic = $ot = $nightDiff = $tardiness = 0.0;
+        $basic = $ot = $nightDiff = $tardiness = $undertime = 0.0;
         // Split the day's regular pay into ordinary wage + holiday/rest premiums
         // so the payslip can itemise Basic Wage, Special Holiday (SH), etc.
         $baseWage = $sh = $rh = $restPremium = 0.0;
@@ -64,6 +64,7 @@ class PayslipController extends Controller {
             $ot += (float) $pay['ot'];
             $nightDiff += (float) $pay['night_diff'];
             $tardiness += (float) $pay['tardiness'];
+            $undertime += (float) $pay['undertime'];
 
             $baseWage += (float) $pay['base_wage'];
             $uplift = (float) $pay['basic'] - (float) $pay['base_wage']; // holiday/rest premium portion
@@ -86,6 +87,8 @@ class PayslipController extends Controller {
                 'late' => $pay['late'],
                 'late_minutes' => $pay['late_minutes'],
                 'tardiness' => $pay['tardiness'],
+                'undertime_minutes' => $pay['undertime_minutes'],
+                'undertime' => $pay['undertime'],
                 'day_pay' => $pay['total'],
             ];
         }
@@ -109,7 +112,7 @@ class PayslipController extends Controller {
 
         $adjustmentsTotal = round($adjustments->sum('amount'), 2);
         $paidTotal = round($adjustments->where('paid', true)->sum('amount'), 2);
-        $totalSalary = round($gross - $tardiness + $adjustmentsTotal, 2);
+        $totalSalary = round($gross - $tardiness - $undertime + $adjustmentsTotal, 2);
         $netToRelease = round($totalSalary - $paidTotal, 2);
 
         // Itemised earnings / deductions for the printable payslip. Net here
@@ -131,7 +134,7 @@ class PayslipController extends Controller {
 
         $deductions = [
             ['label' => 'Tardiness', 'amount' => round($tardiness, 2)],
-            ['label' => 'Undertime/Overbreak', 'amount' => 0.0],
+            ['label' => 'Undertime/Overbreak', 'amount' => round($undertime, 2)],
         ];
         foreach ($adjustments->where('amount', '<', 0) as $a) {
             $deductions[] = ['label' => $a['label'], 'amount' => round(abs((float) $a['amount']), 2)];
@@ -167,6 +170,7 @@ class PayslipController extends Controller {
                 'night_diff' => round($nightDiff, 2),
                 'gross' => $gross,
                 'tardiness' => round($tardiness, 2),
+                'undertime' => round($undertime, 2),
                 'adjustments' => $adjustmentsTotal,
                 'total_salary' => $totalSalary,
                 'paid' => $paidTotal,

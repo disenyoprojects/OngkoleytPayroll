@@ -74,6 +74,59 @@ class AttendancePayCalculatorTest extends TestCase {
         $this->assertEqualsWithDelta($result['basic'] - $result['tardiness'], $result['total'], 0.01);
     }
 
+    public function test_undertime_is_charged_for_an_early_clock_out(): void {
+        // Out at 16:00 on a 17:00 shift → 1h short. Basic still covers the full
+        // shift; the hour comes off under Undertime, so net is unchanged.
+        $result = (new AttendancePayCalculator())->compute('08:00', '16:00', $this->settings(), null, '08:00', '17:00');
+        $hourlyRate = 505 / 8;
+
+        $this->assertSame(60, $result['undertime_minutes']);
+        $this->assertEqualsWithDelta(round($hourlyRate, 2), $result['undertime'], 0.01);
+        $this->assertEqualsWithDelta(round($hourlyRate * 8, 2), $result['basic'], 0.01);
+        $this->assertEqualsWithDelta($result['basic'] - $result['undertime'], $result['total'], 0.01);
+        // Hours reported are the hours actually stood, not the grossed-up ones.
+        $this->assertEqualsWithDelta(7.0, $result['total_hours'], 0.01);
+    }
+
+    public function test_overbreak_beyond_the_allowance_is_charged_as_undertime(): void {
+        // 1h unpaid break is standard; a 12:00–13:30 break is 30 min over.
+        $result = (new AttendancePayCalculator())->compute(
+            '08:00', '17:00', $this->settings(), null, '08:00', '17:00',
+            ['break_out' => '12:00', 'break_in' => '13:30'],
+        );
+        $hourlyRate = 505 / 8;
+
+        $this->assertEqualsWithDelta(0.5, $result['overbreak_hours'], 0.001);
+        $this->assertEqualsWithDelta(round(0.5 * $hourlyRate, 2), $result['undertime'], 0.01);
+        $this->assertEqualsWithDelta(7.5, $result['total_hours'], 0.01);
+    }
+
+    public function test_a_shorter_than_standard_break_is_not_charged(): void {
+        $result = (new AttendancePayCalculator())->compute(
+            '08:00', '17:00', $this->settings(), null, '08:00', '17:00',
+            ['break_out' => '12:00', 'break_in' => '12:30'],
+        );
+
+        $this->assertSame(0.0, $result['undertime']);
+        // The half hour not taken is still worked and still paid.
+        $this->assertEqualsWithDelta(8.5, $result['total_hours'], 0.01);
+    }
+
+    public function test_night_differential_covers_the_hours_before_6am(): void {
+        // A 01:00–09:00 shift earns night differential from 01:00 to 06:00.
+        // Measuring only forward from 22:00 used to miss these hours entirely.
+        $result = (new AttendancePayCalculator())->compute('01:00', '09:00', $this->settings(), null, '01:00', '09:00');
+
+        $this->assertEqualsWithDelta(5.0, $result['night_diff_hours'], 0.01);
+    }
+
+    public function test_night_differential_spans_across_midnight(): void {
+        // 20:00–05:00 shift: the 22:00–05:00 stretch is night differential.
+        $result = (new AttendancePayCalculator())->compute('20:00', '05:00', $this->settings(), null, '20:00', '05:00');
+
+        $this->assertEqualsWithDelta(7.0, $result['night_diff_hours'], 0.01);
+    }
+
     public function test_handles_a_shift_that_crosses_midnight(): void {
         // Night shift 22:00-06:00. Clock 22:00-02:00 = 4h in-shift; less the 1h
         // unpaid break = 3h regular, no OT (before shift_end).

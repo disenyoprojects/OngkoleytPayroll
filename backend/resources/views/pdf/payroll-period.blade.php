@@ -33,7 +33,7 @@
             <tr>
                 <th>Staff</th><th>Branch</th><th class="r">Days</th>
                 <th class="r">Basic</th><th class="r">OT</th><th class="r">Gross</th>
-                <th class="r">Tardiness</th><th class="r">Allow./Ded.</th>
+                <th class="r">Late/UT</th><th class="r">Allow./Ded.</th>
                 <th class="r">Total Salary</th><th class="r">Net to Release</th>
             </tr>
         </thead>

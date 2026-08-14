@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 
 class StatutoryDeductionController extends Controller {
     private const PAGIBIG_PER_CUTOFF = 100.0;
-    private const PHILHEALTH_RATE = 0.025;
+    public const PHILHEALTH_RATE = 0.025;
     public const AUTO_REASON = 'Auto-generated statutory deduction';
 
     public function __construct(

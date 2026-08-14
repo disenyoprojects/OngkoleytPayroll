@@ -20,8 +20,9 @@ class AttendancePayCalculatorOverrideTest extends TestCase {
 
         $pay = $calc->compute('08:00', '16:00', $this->settings(), null);
 
-        // 8 regular hours at 505/8 = 63.125/hr => 505.00 basic
-        $this->assertSame(505.00, $pay['basic']);
+        // 08:00-16:00 against the default 08:00-17:00 shift and no break
+        // setting: 9h paid, 1h charged back as undertime => 8h at 505/8.
+        $this->assertSame(505.00, round($pay['total'], 2));
     }
 
     public function test_uses_override_rate_when_provided(): void {
@@ -29,7 +30,7 @@ class AttendancePayCalculatorOverrideTest extends TestCase {
 
         $pay = $calc->compute('08:00', '16:00', $this->settings(), 800.00);
 
-        // 8 regular hours at 800/8 = 100/hr => 800.00 basic
-        $this->assertSame(800.00, $pay['basic']);
+        // Same 8 net hours, now at 800/8 = 100/hr.
+        $this->assertSame(800.00, round($pay['total'], 2));
     }
 }

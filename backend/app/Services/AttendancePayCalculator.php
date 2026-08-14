@@ -68,25 +68,34 @@ class AttendancePayCalculator {
             $shiftEndMin += 24 * 60;
         }
 
-        // Break: actual window if both given, else the flat setting.
+        // Break: actual window if both given, else the flat setting. The basic
+        // wage accounts for the standard break only — a shorter break still
+        // benefits the employee, a longer one is charged back as Overbreak.
+        $standardBreakHours = (float) ($settings->unpaid_break_hours ?? 0);
         if (! empty($day['break_out']) && ! empty($day['break_in'])) {
-            $breakHours = max(0, ($this->minutesOf($day['break_in']) - $this->minutesOf($day['break_out'])) / 60.0);
+            $actualBreakHours = max(0, ($this->minutesOf($day['break_in']) - $this->minutesOf($day['break_out'])) / 60.0);
         } else {
-            $breakHours = (float) ($settings->unpaid_break_hours ?? 0);
+            $actualBreakHours = $standardBreakHours;
         }
+        $paidBreakHours = min($actualBreakHours, $standardBreakHours);
+        $overbreakHours = max(0.0, $actualBreakHours - $standardBreakHours);
 
-        // Regular hours are measured from the SCHEDULED start, not the actual
-        // clock-in: a late arrival is paid as if on time and then charged back
-        // in full under Tardiness, so the payslip shows the lost time as a
-        // deduction line instead of silently shrinking the basic wage.
-        $regWithinMin = (float) max(0, min($end, $shiftEndMin) - $shiftStartMin);
-        $regWithinHours = $regWithinMin / 60.0;
-        $regularHours = $regWithinHours > $breakHours ? $regWithinHours - $breakHours : $regWithinHours;
+        // Regular hours are the SCHEDULED shift, not the hours actually stood:
+        // the day is paid as if worked in full and the time missed at either
+        // end is charged back under Tardiness and Undertime, so the payslip
+        // itemises the loss instead of silently shrinking the basic wage. Net
+        // pay is identical either way.
+        $scheduledMin = (float) max(0, $shiftEndMin - $shiftStartMin);
+        $regularHours = max(0.0, $scheduledMin / 60.0 - $paidBreakHours);
 
-        // Half day caps paid regular at half the scheduled (post-break) hours.
+        $lateMin = (float) min(max(0, $start - $shiftStartMin), $scheduledMin);
+        $earlyMin = (float) min(max(0, $shiftEndMin - max($end, $shiftStartMin)), $scheduledMin - $lateMin);
+
+        // Half day is an agreed short day, not undertime: pay half the
+        // scheduled hours and don't charge the rest back.
         if ($absenceType === 'half_day') {
-            $scheduledHours = max(0, ($shiftEndMin - $shiftStartMin) / 60.0 - $breakHours);
-            $regularHours = min($regularHours, $scheduledHours / 2.0);
+            $regularHours = min($regularHours, ($scheduledMin / 60.0 - $paidBreakHours) / 2.0);
+            $earlyMin = 0.0;
         }
 
         $otMin = (float) max(0, $end - max($shiftEndMin, $start));
@@ -95,12 +104,7 @@ class AttendancePayCalculator {
         $dailyRate = $dailyRateOverride ?? (float) $settings->daily_basic_rate;
         $hourlyRate = $dailyRate / 8;
 
-        $paidStart = max($start, $shiftStartMin);
-        $nightStart = 22 * 60;
-        $nightEnd = 24 * 60 + 6 * 60;
-        $overlapStart = max($paidStart, $nightStart);
-        $overlapEnd = min($end, $nightEnd);
-        $nightDiffHours = (float) max(0, ($overlapEnd - $overlapStart) / 60.0);
+        $nightDiffHours = $this->nightHours(max($start, $shiftStartMin), $end);
 
         // Regular pay at the day's premium multiplier.
         $basic = round($regularHours * $hourlyRate * $regularMult, 2);
@@ -113,17 +117,19 @@ class AttendancePayCalculator {
         // Night diff: +nd_multiplier of the applicable premium hourly rate.
         $nightDiff = round($nightDiffHours * $hourlyRate * $regularMult * (float) $settings->night_diff_multiplier, 2);
 
-        // Tardiness: the peso value of the late minutes, charged at the same
-        // rate the regular hours were paid at (so it exactly cancels the time
-        // the employee did not work). Capped at the paid window in case of a
-        // clock-in past the end of the shift. Any flat penalty for being late
-        // is NOT computed here — it is entered as an Authorized Deduction
-        // adjustment so it shows as its own line on the payslip.
-        $isLate = $start > $shiftStartMin;
-        $lateMinutes = $isLate ? (int) round(min($start - $shiftStartMin, $regWithinMin)) : 0;
-        $tardiness = round($lateMinutes / 60.0 * $hourlyRate * $regularMult, 2);
+        // Time charged back, all at the same rate the regular hours were paid
+        // at so each exactly cancels the time not worked. Any flat penalty for
+        // being late is NOT computed here — it is entered as an Authorized
+        // Deduction adjustment so it shows as its own line on the payslip.
+        $chargeRate = $hourlyRate * $regularMult;
+        $isLate = $lateMin > 0;
+        $lateMinutes = (int) round($lateMin);
+        $undertimeMinutes = (int) round($earlyMin);
+        $tardiness = round($lateMin / 60.0 * $chargeRate, 2);
+        $undertime = round(($earlyMin / 60.0 + $overbreakHours) * $chargeRate, 2);
 
-        $total = round($basic + $ot + $nightDiff - $tardiness, 2);
+        $total = round($basic + $ot + $nightDiff - $tardiness - $undertime, 2);
+        $workedHours = max(0.0, $regularHours - $lateMin / 60.0 - $earlyMin / 60.0 - $overbreakHours);
 
         // Un-premiumed base figures for the 13th-month base (PD 851): basic
         // salary only — the ordinary-rate wage, excluding holiday/rest premiums,
@@ -132,7 +138,10 @@ class AttendancePayCalculator {
         $baseOt = round($otHours * $hourlyRate * (float) $settings->overtime_multiplier, 2);
 
         return [
-            'total_hours' => round($regularHours + $otHours, 4),
+            // Hours actually stood, for the attendance columns — the paid
+            // regular hours are grossed up to the schedule, so the time charged
+            // back as tardiness/undertime/overbreak comes off again here.
+            'total_hours' => round($workedHours + $otHours, 4),
             'regular_hours' => $regularHours,
             'ot_hours' => $otHours,
             'night_diff_hours' => $nightDiffHours,
@@ -144,6 +153,9 @@ class AttendancePayCalculator {
             'late' => $isLate,
             'late_minutes' => $lateMinutes,
             'tardiness' => $tardiness,
+            'undertime_minutes' => $undertimeMinutes,
+            'overbreak_hours' => round($overbreakHours, 4),
+            'undertime' => $undertime,
             'total' => $total,
             'premium_label' => $premiumLabel,
             'premium_multiplier' => $regularMult,
@@ -155,9 +167,28 @@ class AttendancePayCalculator {
             'total_hours' => 0.0, 'regular_hours' => 0.0, 'ot_hours' => 0.0, 'night_diff_hours' => 0.0,
             'basic' => 0.0, 'ot' => 0.0, 'night_diff' => 0.0,
             'base_wage' => 0.0, 'base_ot' => 0.0,
-            'late' => false, 'late_minutes' => 0, 'tardiness' => 0.0, 'total' => 0.0,
+            'late' => false, 'late_minutes' => 0, 'tardiness' => 0.0,
+            'undertime_minutes' => 0, 'overbreak_hours' => 0.0, 'undertime' => 0.0, 'total' => 0.0,
             'premium_label' => $label, 'premium_multiplier' => $mult,
         ];
+    }
+
+    /**
+     * Paid hours falling inside the 22:00–06:00 night differential window.
+     * The window is checked against every calendar day the paid span can
+     * touch, so the 00:00–06:00 half is still counted for a shift that begins
+     * after midnight — measuring only forward from 22:00 missed those hours.
+     */
+    private function nightHours(float $from, float $to): float {
+        $hours = 0.0;
+
+        foreach ([-1440, 0, 1440] as $dayOffset) {
+            $windowStart = $dayOffset + 22 * 60;
+            $windowEnd = $dayOffset + 30 * 60; // 06:00 the following morning
+            $hours += max(0, min($to, $windowEnd) - max($from, $windowStart)) / 60.0;
+        }
+
+        return $hours;
     }
 
     private function minutesOf(string $hhmm): int {

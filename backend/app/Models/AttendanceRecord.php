@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Observers\AttendanceRecordObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+#[ObservedBy([AttendanceRecordObserver::class])]
 class AttendanceRecord extends Model {
     use HasFactory;
 

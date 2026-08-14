@@ -117,6 +117,9 @@ export default function PayrollView({ isAdmin = true }) {
                       {r.pay?.late && (
                         <div style={{ fontSize: 11, color: "#C1521F" }}>{formatLateLabel(r.pay.late_minutes)} · −{formatPHP(r.pay.tardiness)}</div>
                       )}
+                      {r.pay?.undertime > 0 && (
+                        <div style={{ fontSize: 11, color: "#C1521F" }}>undertime · −{formatPHP(r.pay.undertime)}</div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -202,7 +205,7 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true,
                   <th style={numTh}>Basic</th>
                   <th style={numTh}>OT</th>
                   <th style={numTh}>Gross</th>
-                  <th style={numTh}>Tardiness</th>
+                  <th style={numTh}>Late/UT</th>
                   <th style={numTh}>Allow./Ded.</th>
                   <th style={numTh}>Total Salary</th>
                   <th style={numTh}>Net to Release</th>

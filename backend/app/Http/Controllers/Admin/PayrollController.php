@@ -87,7 +87,7 @@ class PayrollController extends Controller {
                     'ot' => $t['ot'],
                     'night_diff' => $t['night_diff'],
                     'gross' => $t['gross'],
-                    'tardiness' => $t['tardiness'],
+                    'tardiness' => round($t['tardiness'] + $t['undertime'], 2),
                     'allowances' => $t['adjustments'] >= 0 ? $t['adjustments'] : 0,
                     'adjustments' => $t['adjustments'],
                     'total_salary' => $t['total_salary'],

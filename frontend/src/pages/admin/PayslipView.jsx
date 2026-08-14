@@ -138,6 +138,9 @@ export default function PayslipView() {
                       {l.late && (
                         <div style={{ fontSize: 11, color: "#C1521F" }}>{formatLateLabel(l.late_minutes)} · −{formatPHP(l.tardiness)}</div>
                       )}
+                      {l.undertime > 0 && (
+                        <div style={{ fontSize: 11, color: "#C1521F" }}>{l.undertime_minutes ? `${l.undertime_minutes} min early` : "overbreak"} · −{formatPHP(l.undertime)}</div>
+                      )}
                     </td>
                   </tr>
                 ))}
