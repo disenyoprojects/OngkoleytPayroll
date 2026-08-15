@@ -18,6 +18,9 @@ const PUNCHES = [
   { action: "ot-out", label: "OT Out", column: "ot_out", after: "ot_in" },
 ];
 
+const SHIFT_PUNCHES = PUNCHES.filter((p) => !p.action.startsWith("ot-"));
+const OT_PUNCHES = PUNCHES.filter((p) => p.action.startsWith("ot-"));
+
 /** Punches still open for the day: not already recorded, and their prerequisite is. */
 function availablePunches(record) {
   if (!record) return PUNCHES.filter((p) => p.after === null);
@@ -173,18 +176,36 @@ export default function ClockView() {
             <div style={{ fontSize: 14, color: COLOR.inkSoft, marginBottom: 20, textAlign: "center" }}>
               {unknown
                 ? "Offline — today's status is unknown. Choose the action that actually happened:"
-                : recorded.length === 0 ? "Not clocked in yet today."
-                : recorded.map((p) => `${p.label} ${formatTime12(record[p.column])}`).join(" · ")}
+                : recorded.length === 0 ? "Not clocked in yet today." : "Today so far:"}
             </div>
             {!unknown && available.length === 0 && (
               <div style={{ fontSize: 13, color: COLOR.inkSoft, marginBottom: 16 }}>Done for today, overtime included.</div>
             )}
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-              {available.map((p) => (
-                <Button key={p.action} variant="gold" onClick={() => doClock(p.action)} disabled={busy}>{p.label}</Button>
-              ))}
-              <Button variant="outline" onClick={() => setSelected(null)} disabled={busy}>Back</Button>
-            </div>
+            {/* All four buttons are always on screen, so OT has its own pair
+                rather than the shift buttons changing label. Only the punch
+                that is actually next can be pressed. */}
+            {[["Shift", SHIFT_PUNCHES], ["Overtime", OT_PUNCHES]].map(([heading, group]) => (
+              <div key={heading} style={{ marginBottom: 14, textAlign: "center" }}>
+                <div style={{ fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", color: COLOR.inkSoft, marginBottom: 6 }}>{heading}</div>
+                <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+                  {group.map((p) => {
+                    const done = !unknown && record?.[p.column];
+                    const canPress = available.includes(p);
+                    return (
+                      <Button
+                        key={p.action}
+                        variant={canPress ? "gold" : "outline"}
+                        onClick={() => doClock(p.action)}
+                        disabled={busy || !canPress}
+                      >
+                        {done ? `${p.label} ✓ ${formatTime12(record[p.column])}` : p.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <Button variant="outline" onClick={() => setSelected(null)} disabled={busy}>Back</Button>
           </>
         )}
         {toast && <div style={{ position: "fixed", bottom: 24, right: 24, background: COLOR.espresso, color: COLOR.cream, padding: "12px 18px", borderRadius: 8, fontSize: 13 }}>{toast}</div>}
