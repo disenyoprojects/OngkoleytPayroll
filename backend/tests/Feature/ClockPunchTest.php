@@ -12,6 +12,16 @@ use Tests\TestCase;
 class ClockPunchTest extends TestCase {
     use RefreshDatabase;
 
+    /**
+     * A punch more than five minutes ahead of the server clock is rejected, so
+     * an evening punch would fail whenever the suite happens to run in the
+     * morning. Freeze "now" at the end of a fixed day instead.
+     */
+    protected function setUp(): void {
+        parent::setUp();
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-08-10 23:59:00'));
+    }
+
     private function employee(): Employee {
         return Employee::factory()->for(Branch::factory())->create([
             'shift_start' => '09:00:00', 'shift_end' => '18:00:00',
