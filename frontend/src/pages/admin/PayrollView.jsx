@@ -174,6 +174,7 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true,
         {data && data.rows.length > 0 && (
           <>
             <Button variant="outline" onClick={() => openAuthedPdf(`/api/admin/payroll/period/pdf?month=${month}&period=${period}`)}>🖨 Print Summary</Button>
+            <Button variant="outline" onClick={() => downloadAuthedFile(`/api/admin/payroll/period/export?month=${month}&period=${period}`, `payroll-summary-${month}-${period}.csv`)}>⬇ Summary (Excel)</Button>
             <Button variant="outline" onClick={() => openAuthedPdf(`/api/admin/payroll/period/payslips-pdf?month=${month}&period=${period}`)}>🖨 Print All Payslips</Button>
           </>
         )}

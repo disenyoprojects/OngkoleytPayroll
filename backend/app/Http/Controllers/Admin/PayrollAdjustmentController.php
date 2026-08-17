@@ -9,11 +9,17 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class PayrollAdjustmentController extends Controller {
-    private const CATEGORIES = ['cash_on_hand', 'allowance', 'bonus', 'deduction', 'sss', 'pagibig', 'philhealth', 'other'];
+    public const CATEGORIES = [
+        'cash_on_hand', 'allowance', 'rice_allowance', 'bonus',
+        'deduction', 'penalty_late', 'cash_advance', 'sss', 'pagibig', 'philhealth', 'other',
+    ];
 
     // Categories that always subtract, plus their default label if none is typed.
-    private const DEDUCTION_LABELS = [
-        'deduction' => 'Authorized Deduction', 'sss' => 'SSS', 'pagibig' => 'Pag-IBIG', 'philhealth' => 'PhilHealth',
+    // Penalty Late and Cash Advance are their own categories rather than
+    // free-text labels so the payroll summary can column them separately.
+    public const DEDUCTION_LABELS = [
+        'deduction' => 'Authorized Deduction', 'penalty_late' => 'Penalty Late', 'cash_advance' => 'Cash Advance',
+        'sss' => 'SSS', 'pagibig' => 'Pag-IBIG', 'philhealth' => 'PhilHealth',
     ];
 
     public function index(Request $request, Employee $employee) {

@@ -121,6 +121,14 @@ class PayslipController extends Controller {
 
         $adjustmentsTotal = round($adjustments->sum('amount'), 2);
         $paidTotal = round($adjustments->where('paid', true)->sum('amount'), 2);
+
+        // Per-category sums, so the payroll summary can give each its own
+        // column instead of collapsing everything into one figure. Deductions
+        // are reported positive — the sign is in the column heading.
+        $byCategory = fn (string $category) => round(abs($adjustments->where('category', $category)->sum('amount')), 2);
+        $penaltyLate = $byCategory('penalty_late');
+        $cashAdvance = $byCategory('cash_advance');
+        $otherAuthorised = $byCategory('deduction');
         $totalSalary = round($gross - $tardiness - $undertime + $adjustmentsTotal, 2);
         $netToRelease = round($totalSalary - $paidTotal, 2);
 
@@ -180,6 +188,18 @@ class PayslipController extends Controller {
                 'gross' => $gross,
                 'tardiness' => round($tardiness, 2),
                 'undertime' => round($undertime, 2),
+                'base_wage' => round($baseWage, 2),
+                'sh' => round($sh, 2),
+                'rh' => round($rh, 2),
+                'rest_premium' => round($restPremium, 2),
+                'rice_allowance' => $byCategory('rice_allowance'),
+                'penalty_late' => $penaltyLate,
+                'cash_advance' => $cashAdvance,
+                'other_authorised' => $otherAuthorised,
+                'auth_deductions' => round($penaltyLate + $cashAdvance + $otherAuthorised, 2),
+                'sss' => $byCategory('sss'),
+                'philhealth' => $byCategory('philhealth'),
+                'pagibig' => $byCategory('pagibig'),
                 'adjustments' => $adjustmentsTotal,
                 'total_salary' => $totalSalary,
                 'paid' => $paidTotal,

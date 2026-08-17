@@ -8,15 +8,21 @@ const PERIODS = [["first", "1–15"], ["second", "16–end"], ["whole", "Whole m
 const CATEGORIES = [
   ["cash_on_hand", "Cash on Hand"],
   ["allowance", "Allowance"],
+  ["rice_allowance", "Rice Allowance"],
   ["bonus", "Bonus"],
   ["deduction", "Authorized Deduction"],
+  ["penalty_late", "Penalty Late"],
+  ["cash_advance", "Cash Advance"],
   ["sss", "SSS"],
   ["pagibig", "Pag-IBIG"],
   ["philhealth", "PhilHealth"],
   ["other", "Other"],
 ];
 // Deduction categories that don't need a typed label — the name is the label.
-const DEFAULT_LABELS = { deduction: "Authorized Deduction", sss: "SSS", pagibig: "Pag-IBIG", philhealth: "PhilHealth" };
+const DEFAULT_LABELS = {
+  deduction: "Authorized Deduction", penalty_late: "Penalty Late", cash_advance: "Cash Advance",
+  rice_allowance: "Rice Allowance", sss: "SSS", pagibig: "Pag-IBIG", philhealth: "PhilHealth",
+};
 const BLANK_ADJ = { label: "", category: "cash_on_hand", amount: "", paid: true, date: "" };
 
 function signed(amount) {
