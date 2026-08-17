@@ -82,7 +82,11 @@ class PayrollController extends Controller {
                     'full_name' => $employee->full_name,
                     'branch' => $employee->branch?->name,
                     'separated' => $employee->trashed(),
-                    'days' => count($slip['lines']),
+                    // Days actually stood; 'entries' is every attendance row,
+                    // including the zero-pay ones, and only decides whether the
+                    // employee belongs on the register at all.
+                    'days' => $slip['slip']['days_worked'],
+                    'entries' => count($slip['lines']),
                     'basic' => $t['basic'],
                     'ot' => $t['ot'],
                     'night_diff' => $t['night_diff'],
@@ -96,7 +100,7 @@ class PayrollController extends Controller {
                 ];
             })
             // Only employees with pay or activity in the window.
-            ->filter(fn ($r) => $r['days'] > 0 || $r['adjustments'] != 0.0)
+            ->filter(fn ($r) => $r['entries'] > 0 || $r['adjustments'] != 0.0)
             ->values();
 
         return [

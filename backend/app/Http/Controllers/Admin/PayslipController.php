@@ -50,7 +50,7 @@ class PayslipController extends Controller {
             ->get();
 
         $lines = [];
-        $basic = $ot = $nightDiff = $tardiness = $undertime = 0.0;
+        $basic = $ot = $nightDiff = $tardiness = $undertime = $daysWorked = 0.0;
         // Split the day's regular pay into ordinary wage + holiday/rest premiums
         // so the payslip can itemise Basic Wage, Special Holiday (SH), etc.
         $baseWage = $sh = $rh = $restPremium = 0.0;
@@ -65,6 +65,15 @@ class PayslipController extends Controller {
             $nightDiff += (float) $pay['night_diff'];
             $tardiness += (float) $pay['tardiness'];
             $undertime += (float) $pay['undertime'];
+
+            // Days worked counts days actually stood, not attendance rows: an
+            // unworked rest day, a leave or an absence still carries a record
+            // but earns nothing, and a half day is half a day.
+            $daysWorked += match (true) {
+                in_array($record->absence_type, AttendancePayCalculator::NO_PAY_ABSENCES, true) => 0.0,
+                $record->absence_type === 'half_day' => 0.5,
+                default => 1.0,
+            };
 
             $baseWage += (float) $pay['base_wage'];
             $uplift = (float) $pay['basic'] - (float) $pay['base_wage']; // holiday/rest premium portion
@@ -157,7 +166,7 @@ class PayslipController extends Controller {
             'lines' => $lines,
             'adjustments' => $adjustments,
             'slip' => [
-                'days_worked' => count($lines),
+                'days_worked' => round($daysWorked, 2),
                 'earnings' => $earnings,
                 'deductions' => $deductions,
                 'gross_earnings' => $grossEarnings,
