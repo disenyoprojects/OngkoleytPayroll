@@ -77,11 +77,9 @@ export default function PayrollView({ isAdmin = true }) {
         <div>Loading...</div>
       ) : (
       <>
-      {isAdmin && (
-        <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
-          <StatCard label={`Total ${range === "daily" ? "Today" : "This Week"}`} value={formatPHP(data.total)} />
-        </div>
-      )}
+      <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
+        <StatCard label={`Total ${range === "daily" ? "Today" : "This Week"}`} value={formatPHP(data.total)} />
+      </div>
       <div style={tableWrap}>
         <table style={tableStyle}>
           {range === "daily" ? (
@@ -186,13 +184,13 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true,
         <div>Loading...</div>
       ) : (
         <>
-          {isAdmin && (
-            <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
-              <StatCard label={`Gross · ${data.period.label}`} value={formatPHP(data.totals.gross)} />
-              <StatCard label="Deductions" value={`−${formatPHP(data.totals.tardiness + Math.max(0, -data.totals.adjustments))}`} />
-              <StatCard label="Net to Release" value={formatPHP(data.totals.net_to_release)} />
-            </div>
-          )}
+          {/* Totals cover whatever the login can see: the owner gets the whole
+              company, a branch login gets its own branches summed. */}
+          <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
+            <StatCard label={`Gross · ${data.period.label}`} value={formatPHP(data.totals.gross)} />
+            <StatCard label="Deductions" value={`−${formatPHP(data.totals.tardiness + Math.max(0, -data.totals.adjustments))}`} />
+            <StatCard label="Net to Release" value={formatPHP(data.totals.net_to_release)} />
+          </div>
           <div style={tableWrap}>
             <table style={tableStyle}>
               <thead>

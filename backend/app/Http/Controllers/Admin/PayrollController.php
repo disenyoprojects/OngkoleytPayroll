@@ -37,9 +37,9 @@ class PayrollController extends Controller {
         ]);
 
         $register = $this->buildRegister($data['month'], $data['period'], $payslips, $this->branchFilter($request));
-        // Branch logins see per-person rows for their branch but not the grand total.
-        $showTotals = $request->user()->isAdmin();
-        $pdf = Pdf::loadView('pdf.payroll-period', ['register' => $register, 'showTotals' => $showTotals])->setPaper('a4', 'landscape');
+        // The total covers whatever the login can see — the whole company for
+        // the owner, its own branches for a branch login.
+        $pdf = Pdf::loadView('pdf.payroll-period', ['register' => $register])->setPaper('a4', 'landscape');
 
         return $pdf->stream("payroll-{$data['month']}-{$data['period']}.pdf");
     }
