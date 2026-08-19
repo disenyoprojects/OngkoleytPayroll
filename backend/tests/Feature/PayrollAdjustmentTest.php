@@ -23,6 +23,41 @@ class PayrollAdjustmentTest extends TestCase {
         return $employee;
     }
 
+    public function test_each_late_day_is_charged_the_flat_penalty_on_the_payslip(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create([
+            'shift_start' => '08:00:00', 'shift_end' => '17:00:00', 'daily_basic_rate' => null,
+        ]);
+        // Two late days out of three worked → 2 × ₱75.
+        foreach ([['2026-07-20', '08:10:00'], ['2026-07-21', '08:45:00'], ['2026-07-22', '08:00:00']] as [$date, $in]) {
+            AttendanceRecord::factory()->for($employee)->create([
+                'work_date' => $date, 'shift_start' => '08:00:00', 'shift_end' => '17:00:00',
+                'clock_in' => $in, 'clock_out' => '17:00:00',
+            ]);
+        }
+
+        $slip = $this->actingAs($admin)
+            ->getJson("/api/admin/employees/{$employee->id}/payslip?month=2026-07&period=second")
+            ->assertOk()->json();
+
+        $this->assertEquals(2, $slip['totals']['late_days']);
+        $this->assertEquals(150.0, $slip['totals']['penalty_late']);
+
+        // Gross still comes from the untouched rate formula: 3 days at ₱505.
+        $this->assertEquals(1515.0, $slip['totals']['gross']);
+        // The ₱150 comes off on top of the tardiness the minutes already cost.
+        $expected = round(1515.0 - $slip['totals']['tardiness'] - 150.0, 2);
+        $this->assertEquals($expected, $slip['totals']['total_salary']);
+
+        // It shows as its own payslip line, and the slip still balances.
+        $labels = array_column($slip['slip']['deductions'], 'label');
+        $this->assertContains('Penalty Lates (2 late days)', $labels);
+        $this->assertEquals(
+            round($slip['slip']['gross_earnings'] - $slip['slip']['total_deductions'], 2),
+            $slip['slip']['net'],
+        );
+    }
+
     public function test_paid_cash_adjustment_raises_total_but_not_net_to_release(): void {
         $admin = User::factory()->create();
         $employee = $this->workedEmployee();

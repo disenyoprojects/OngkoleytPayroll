@@ -128,14 +128,16 @@ class PayslipController extends Controller {
         // column instead of collapsing everything into one figure. Deductions
         // are reported positive — the sign is in the column heading.
         $byCategory = fn (string $category) => round(abs($adjustments->where('category', $category)->sum('amount')), 2);
-        // Penalty Lates: the flat charge every late day earns, reported for the
-        // summary column only — it is NOT withheld here, so pay is unchanged.
-        // Anything still entered by hand adds to it.
+        // Penalty Lates: a flat charge for every late day, on top of the
+        // tardiness already docked — tardiness only recovers the minutes not
+        // worked. It is withheld here rather than inside the day's pay so the
+        // rates and the tardiness formula stay exactly as they are; anything
+        // still entered by hand under Penalty Late adds to it.
         $latePenalty = round($lateDays * (float) $settings->late_penalty_amount, 2);
         $penaltyLate = round($latePenalty + $byCategory('penalty_late'), 2);
         $cashAdvance = $byCategory('cash_advance');
         $otherAuthorised = $byCategory('deduction');
-        $totalSalary = round($gross - $tardiness - $undertime + $adjustmentsTotal, 2);
+        $totalSalary = round($gross - $tardiness - $undertime - $latePenalty + $adjustmentsTotal, 2);
         $netToRelease = round($totalSalary - $paidTotal, 2);
 
         // Itemised earnings / deductions for the printable payslip. Net here
@@ -159,6 +161,12 @@ class PayslipController extends Controller {
             ['label' => 'Tardiness', 'amount' => round($tardiness, 2)],
             ['label' => 'Undertime/Overbreak', 'amount' => round($undertime, 2)],
         ];
+        if ($latePenalty > 0.005) {
+            $deductions[] = [
+                'label' => 'Penalty Lates (' . $lateDays . ' late ' . ($lateDays === 1 ? 'day' : 'days') . ')',
+                'amount' => $latePenalty,
+            ];
+        }
         foreach ($adjustments->where('amount', '<', 0) as $a) {
             $deductions[] = ['label' => $a['label'], 'amount' => round(abs((float) $a['amount']), 2)];
         }
@@ -200,6 +208,7 @@ class PayslipController extends Controller {
                 'rest_premium' => round($restPremium, 2),
                 'rice_allowance' => $byCategory('rice_allowance'),
                 'penalty_late' => $penaltyLate,
+                'late_days' => $lateDays,
                 'cash_advance' => $cashAdvance,
                 'other_authorised' => $otherAuthorised,
                 'auth_deductions' => round($penaltyLate + $cashAdvance + $otherAuthorised, 2),

@@ -134,9 +134,7 @@ class PayrollSummaryExportTest extends TestCase {
         $this->assertEqualsWithDelta(150.00, $row['H'], 0.001);  // and it totals into Auth. Ded.
     }
 
-    public function test_the_late_penalty_column_does_not_change_take_home_pay(): void {
-        // The penalty is reported for the summary only — it is not withheld,
-        // so Net Pay is the same as it would be without a late day.
+    public function test_the_late_penalty_comes_off_the_take_home_pay(): void {
         $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create([
             'daily_basic_rate' => 505, 'full_name' => 'Ruby Rose Anudon',
@@ -148,11 +146,14 @@ class PayrollSummaryExportTest extends TestCase {
 
         $row = $this->row($this->workbookFor($admin), 'Payroll Summary', 6);
         $hourly = 505 / 8;
+        $tardiness = round(0.5 * $hourly, 2);
 
         $this->assertEqualsWithDelta(75.00, $row['I'], 0.001);
-        // Only the half hour of tardiness comes off — the ₱75 does not.
-        $this->assertEqualsWithDelta(round(0.5 * $hourly, 2), $row['D'], 0.01);
-        $this->assertEqualsWithDelta(505.00 - round(0.5 * $hourly, 2), $row['R'], 0.01);
+        // Gross is untouched — the tardiness formula still charges the half hour...
+        $this->assertEqualsWithDelta(505.00, $row['Q'], 0.01);
+        $this->assertEqualsWithDelta($tardiness, $row['D'], 0.01);
+        // ...and the ₱75 comes off on top of it.
+        $this->assertEqualsWithDelta(505.00 - $tardiness - 75.00, $row['R'], 0.01);
     }
 
     public function test_the_total_row_sums_the_employees(): void {

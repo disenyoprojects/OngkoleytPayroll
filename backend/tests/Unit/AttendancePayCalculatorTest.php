@@ -65,8 +65,8 @@ class AttendancePayCalculatorTest extends TestCase {
     }
 
     public function test_no_flat_penalty_is_applied_to_a_late_day(): void {
-        // The ₱75 late penalty is entered as an Authorized Deduction adjustment
-        // now — the calculator must not deduct it on its own.
+        // The ₱75 late penalty is charged by the payslip, once per late day —
+        // the day's pay must not carry it, or it would be charged twice.
         $settings = $this->settings();
         $settings->late_penalty_amount = 75;
         $result = (new AttendancePayCalculator())->compute('08:15', '17:00', $settings, null, '08:00', '17:00');
