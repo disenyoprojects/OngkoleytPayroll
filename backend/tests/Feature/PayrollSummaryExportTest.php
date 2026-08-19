@@ -111,6 +111,39 @@ class PayrollSummaryExportTest extends TestCase {
         $this->assertEqualsWithDelta(205.00, $row['R'], 0.001);  // Net Pay
     }
 
+    public function test_a_generic_type_still_lands_in_its_own_column_when_the_label_says_so(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create([
+            'daily_basic_rate' => 505, 'full_name' => 'Jona Nicole Galvez',
+        ]);
+        AttendanceRecord::factory()->for($employee)->create([
+            'work_date' => '2026-08-03', 'shift_start' => '08:00:00', 'shift_end' => '17:00:00',
+            'clock_in' => '08:00:00', 'clock_out' => '17:00:00', 'status' => 'approved',
+        ]);
+
+        foreach ([
+            ['allowance', 'Rice Allowance', 920.00],
+            ['deduction', 'Late penalty', -75.00],
+            ['deduction', 'Authorized Deduction', -1470.00],
+        ] as [$category, $label, $amount]) {
+            PayrollAdjustment::create([
+                'employee_id' => $employee->id, 'date' => '2026-08-10', 'label' => $label,
+                'category' => $category, 'amount' => $amount, 'paid' => false,
+                'created_by' => $admin->id,
+            ]);
+        }
+
+        $row = $this->row($this->workbookFor($admin), 'Payroll Summary', 6);
+
+        // The label pulls each amount out of its generic bucket...
+        $this->assertEqualsWithDelta(75.00, $row['I'], 0.001);   // Penalty Lates
+        $this->assertEqualsWithDelta(920.00, $row['O'], 0.001);  // Rice Allowance
+        // ...without counting it twice: Total Auth. Ded. is still 75 + 1470.
+        $this->assertEqualsWithDelta(1545.00, $row['H'], 0.001);
+        // Net is untouched by the re-reading: 505 - 75 - 1470 + 920 = -120.00
+        $this->assertEqualsWithDelta(-120.00, $row['R'], 0.001);
+    }
+
     public function test_the_total_row_sums_the_employees(): void {
         $admin = User::factory()->create();
         $branch = Branch::factory()->create();

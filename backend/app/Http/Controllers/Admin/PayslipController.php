@@ -122,10 +122,29 @@ class PayslipController extends Controller {
         $adjustmentsTotal = round($adjustments->sum('amount'), 2);
         $paidTotal = round($adjustments->where('paid', true)->sum('amount'), 2);
 
-        // Per-category sums, so the payroll summary can give each its own
-        // column instead of collapsing everything into one figure. Deductions
-        // are reported positive — the sign is in the column heading.
-        $byCategory = fn (string $category) => round(abs($adjustments->where('category', $category)->sum('amount')), 2);
+        // Rice Allowance and Penalty Lates get their own summary columns, but
+        // they're easy to enter under the generic Allowance / Authorized
+        // Deduction type with only the label saying what they really are. Read
+        // the label as a fallback so those columns fill themselves instead of
+        // the amount hiding inside a lump sum.
+        $labelFallbacks = [
+            'allowance' => ['rice_allowance', '/\brice\b/i'],
+            'deduction' => ['penalty_late', '/\blate|\bpenalt/i'],
+        ];
+        // Each adjustment lands in exactly one bucket, so re-reading the label
+        // moves an amount between columns rather than counting it twice.
+        $bucket = function (array $a) use ($labelFallbacks): string {
+            [$target, $pattern] = $labelFallbacks[$a['category']] ?? [null, null];
+
+            return $target !== null && preg_match($pattern, (string) $a['label']) ? $target : $a['category'];
+        };
+
+        // Per-bucket sums, so the payroll summary can give each its own column
+        // instead of collapsing everything into one figure. Deductions are
+        // reported positive — the sign is in the column heading.
+        $byCategory = fn (string $category) => round(abs(
+            $adjustments->filter(fn (array $a) => $bucket($a) === $category)->sum('amount')
+        ), 2);
         $penaltyLate = $byCategory('penalty_late');
         $cashAdvance = $byCategory('cash_advance');
         $otherAuthorised = $byCategory('deduction');
