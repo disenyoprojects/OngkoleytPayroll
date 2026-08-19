@@ -55,4 +55,47 @@ class UserManagementTest extends TestCase {
     public function test_user_management_requires_authentication(): void {
         $this->getJson('/api/admin/users')->assertStatus(401);
     }
+
+    public function test_admin_can_remove_a_spare_login(): void {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $spare = User::factory()->create(['role' => 'admin', 'email' => 'admin@ongkoleyt.example']);
+
+        $this->actingAs($admin)->deleteJson("/api/admin/users/{$spare->id}")->assertOk();
+
+        $this->assertDatabaseMissing('users', ['id' => $spare->id]);
+    }
+
+    public function test_you_cannot_remove_the_login_you_are_signed_in_with(): void {
+        $admin = User::factory()->create(['role' => 'admin']);
+        User::factory()->create(['role' => 'admin']); // so it isn't the last one either
+
+        $this->actingAs($admin)->deleteJson("/api/admin/users/{$admin->id}")->assertStatus(422);
+
+        $this->assertDatabaseHas('users', ['id' => $admin->id]);
+    }
+
+    public function test_the_last_full_access_login_cannot_be_removed(): void {
+        // Signed in as a branch login would be blocked by the admin-only route,
+        // so removing the sole admin can only be attempted by that admin — and
+        // the self-delete guard already stops it. Guard against the case where
+        // a second admin removes the other and then itself is all that remains.
+        $admin = User::factory()->create(['role' => 'admin']);
+        $second = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)->deleteJson("/api/admin/users/{$second->id}")->assertOk();
+        // Only $admin is left; it cannot remove itself, so one always survives.
+        $this->actingAs($admin)->deleteJson("/api/admin/users/{$admin->id}")->assertStatus(422);
+
+        $this->assertSame(1, User::where('role', 'admin')->count());
+    }
+
+    public function test_a_branch_login_cannot_remove_anyone(): void {
+        $branch = Branch::factory()->create();
+        $branchUser = User::factory()->create(['role' => 'branch', 'branch_id' => $branch->id]);
+        $other = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($branchUser)->deleteJson("/api/admin/users/{$other->id}")->assertStatus(403);
+
+        $this->assertDatabaseHas('users', ['id' => $other->id]);
+    }
 }

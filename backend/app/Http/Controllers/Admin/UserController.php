@@ -31,4 +31,29 @@ class UserController extends Controller {
 
         return response()->json(['message' => "Password updated for {$user->email}."]);
     }
+
+    /**
+     * Delete a login. Two ways out of this leave nobody able to administer the
+     * system, so both are refused: removing yourself, and removing the last
+     * full-access login. Either would need a shell on the server to undo.
+     */
+    public function destroy(Request $request, User $user) {
+        if ($request->user()->id === $user->id) {
+            return response()->json([
+                'message' => 'You cannot remove the login you are signed in with.',
+            ], 422);
+        }
+
+        if ($user->isAdmin() && User::where('role', 'admin')->orWhereNull('role')->count() <= 1) {
+            return response()->json([
+                'message' => 'This is the last full-access login — removing it would lock everyone out.',
+            ], 422);
+        }
+
+        $email = $user->email;
+        $user->branches()->detach();
+        $user->delete();
+
+        return response()->json(['message' => "Removed the login {$email}."]);
+    }
 }
