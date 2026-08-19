@@ -140,9 +140,9 @@ class AttendancePayCalculator {
         $nightDiff = round($nightDiffHours * $hourlyRate * $regularMult * (float) $settings->night_diff_multiplier, 2);
 
         // Time charged back, all at the same rate the regular hours were paid
-        // at so each exactly cancels the time not worked. The flat penalty per
-        // late day is NOT computed here — the payslip applies it once over the
-        // period, which keeps these rates and the tardiness formula untouched.
+        // at so each exactly cancels the time not worked. Any flat penalty for
+        // being late is NOT computed here — it is entered as an Authorized
+        // Deduction adjustment so it shows as its own line on the payslip.
         $chargeRate = $hourlyRate * $regularMult;
         $isLate = $lateMin > 0;
         $lateMinutes = (int) round($lateMin);
