@@ -14,6 +14,7 @@ export default function SettingsView() {
   const [users, setUsers] = useState([]);
   const [pw, setPw] = useState({}); // userId -> new password typed
   const [pwMsg, setPwMsg] = useState({}); // userId -> { ok, text }
+  const [email, setEmail] = useState({}); // userId -> edited address, undefined = unchanged
 
   useEffect(() => {
     apiClient.get("/api/admin/settings").then((res) => setSettings(res.data));
@@ -33,6 +34,23 @@ export default function SettingsView() {
       setTimeout(() => setPwMsg((m) => ({ ...m, [user.id]: null })), 2500);
     } catch {
       setPwMsg((m) => ({ ...m, [user.id]: { ok: false, text: "Couldn't update — try again." } }));
+    }
+  }
+
+  async function changeEmail(user) {
+    const value = (email[user.id] ?? user.email).trim();
+    if (!value || value === user.email) return;
+    try {
+      const res = await apiClient.put(`/api/admin/users/${user.id}/email`, { email: value });
+      setUsers((list) => list.map((u) => (u.id === user.id ? { ...u, email: value } : u)));
+      setEmail((e) => ({ ...e, [user.id]: undefined }));
+      setPwMsg((m) => ({ ...m, [user.id]: { ok: true, text: res.data.message } }));
+      setTimeout(() => setPwMsg((m) => ({ ...m, [user.id]: null })), 3500);
+    } catch (e) {
+      setPwMsg((m) => ({
+        ...m,
+        [user.id]: { ok: false, text: e?.response?.data?.message || "That address is already in use." },
+      }));
     }
   }
 
@@ -143,7 +161,19 @@ export default function SettingsView() {
                     {u.role === "admin" ? "· full access" : "· branch only"}
                   </span>
                 </div>
-                <div style={{ fontSize: 12, color: "#7A6A57" }}>{u.email}</div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 3 }}>
+                  <input
+                    type="email"
+                    value={email[u.id] ?? u.email}
+                    onChange={(e) => setEmail((s) => ({ ...s, [u.id]: e.target.value }))}
+                    style={{ ...inputStyle, width: 210, fontSize: 12, padding: "5px 8px" }}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => changeEmail(u)}
+                    disabled={(email[u.id] ?? u.email).trim() === u.email}
+                  >Rename</Button>
+                </div>
               </div>
               <input
                 type="text"

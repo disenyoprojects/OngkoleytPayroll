@@ -62,6 +62,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/admin/settings', [PayrollSettingController::class, 'update']);
         Route::get('/admin/users', [UserController::class, 'index']);
         Route::put('/admin/users/{user}/password', [UserController::class, 'updatePassword']);
+        Route::put('/admin/users/{user}/email', [UserController::class, 'updateEmail']);
         Route::delete('/admin/users/{user}', [UserController::class, 'destroy']);
         Route::get('/admin/audit-log', [AuditLogController::class, 'index']);
     });

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 /** Admin-only management of the admin + branch logins (see routes: admin.only). */
 class UserController extends Controller {
@@ -30,6 +31,21 @@ class UserController extends Controller {
         $user->update(['password' => Hash::make($data['password'])]);
 
         return response()->json(['message' => "Password updated for {$user->email}."]);
+    }
+
+    /**
+     * Rename a login. The email is what you sign in with, so changing it takes
+     * effect on the next sign-in — including your own.
+     */
+    public function updateEmail(Request $request, User $user) {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+        ]);
+
+        $was = $user->email;
+        $user->update(['email' => $data['email']]);
+
+        return response()->json(['message' => "{$was} is now {$data['email']}."]);
     }
 
     /**

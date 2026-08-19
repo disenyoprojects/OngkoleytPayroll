@@ -56,6 +56,27 @@ class UserManagementTest extends TestCase {
         $this->getJson('/api/admin/users')->assertStatus(401);
     }
 
+    public function test_admin_can_rename_a_login(): void {
+        $admin = User::factory()->create(['role' => 'admin', 'email' => 'admin@ongkoleyt.ph']);
+
+        $this->actingAs($admin)
+            ->putJson("/api/admin/users/{$admin->id}/email", ['email' => 'owner@ongkoleyt.ph'])
+            ->assertOk();
+
+        $this->assertSame('owner@ongkoleyt.ph', $admin->fresh()->email);
+    }
+
+    public function test_renaming_to_an_address_already_in_use_is_refused(): void {
+        $admin = User::factory()->create(['role' => 'admin', 'email' => 'admin@ongkoleyt.ph']);
+        User::factory()->create(['role' => 'admin', 'email' => 'owner@ongkoleyt.ph']);
+
+        $this->actingAs($admin)
+            ->putJson("/api/admin/users/{$admin->id}/email", ['email' => 'owner@ongkoleyt.ph'])
+            ->assertStatus(422);
+
+        $this->assertSame('admin@ongkoleyt.ph', $admin->fresh()->email);
+    }
+
     public function test_admin_can_remove_a_spare_login(): void {
         $admin = User::factory()->create(['role' => 'admin']);
         $spare = User::factory()->create(['role' => 'admin', 'email' => 'admin@ongkoleyt.example']);
