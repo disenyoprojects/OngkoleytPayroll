@@ -51,6 +51,7 @@ class PayslipController extends Controller {
 
         $lines = [];
         $basic = $ot = $nightDiff = $tardiness = $undertime = $daysWorked = 0.0;
+        $lateDays = 0;
         // Split the day's regular pay into ordinary wage + holiday/rest premiums
         // so the payslip can itemise Basic Wage, Special Holiday (SH), etc.
         $baseWage = $sh = $rh = $restPremium = 0.0;
@@ -65,6 +66,7 @@ class PayslipController extends Controller {
             $nightDiff += (float) $pay['night_diff'];
             $tardiness += (float) $pay['tardiness'];
             $undertime += (float) $pay['undertime'];
+            $lateDays += $pay['late'] ? 1 : 0;
 
             // Days worked counts days actually stood, not attendance rows: an
             // unworked rest day, a leave or an absence still carries a record
@@ -122,30 +124,15 @@ class PayslipController extends Controller {
         $adjustmentsTotal = round($adjustments->sum('amount'), 2);
         $paidTotal = round($adjustments->where('paid', true)->sum('amount'), 2);
 
-        // Rice Allowance and Penalty Lates get their own summary columns, but
-        // they're easy to enter under the generic Allowance / Authorized
-        // Deduction type with only the label saying what they really are. Read
-        // the label as a fallback so those columns fill themselves instead of
-        // the amount hiding inside a lump sum.
-        $labelFallbacks = [
-            'allowance' => ['rice_allowance', '/\brice\b/i'],
-            'deduction' => ['penalty_late', '/\blate|\bpenalt/i'],
-        ];
-        // Each adjustment lands in exactly one bucket, so re-reading the label
-        // moves an amount between columns rather than counting it twice.
-        $bucket = function (array $a) use ($labelFallbacks): string {
-            [$target, $pattern] = $labelFallbacks[$a['category']] ?? [null, null];
-
-            return $target !== null && preg_match($pattern, (string) $a['label']) ? $target : $a['category'];
-        };
-
-        // Per-bucket sums, so the payroll summary can give each its own column
-        // instead of collapsing everything into one figure. Deductions are
-        // reported positive — the sign is in the column heading.
-        $byCategory = fn (string $category) => round(abs(
-            $adjustments->filter(fn (array $a) => $bucket($a) === $category)->sum('amount')
-        ), 2);
-        $penaltyLate = $byCategory('penalty_late');
+        // Per-category sums, so the payroll summary can give each its own
+        // column instead of collapsing everything into one figure. Deductions
+        // are reported positive — the sign is in the column heading.
+        $byCategory = fn (string $category) => round(abs($adjustments->where('category', $category)->sum('amount')), 2);
+        // Penalty Lates: the flat charge every late day earns, reported for the
+        // summary column only — it is NOT withheld here, so pay is unchanged.
+        // Anything still entered by hand adds to it.
+        $latePenalty = round($lateDays * (float) $settings->late_penalty_amount, 2);
+        $penaltyLate = round($latePenalty + $byCategory('penalty_late'), 2);
         $cashAdvance = $byCategory('cash_advance');
         $otherAuthorised = $byCategory('deduction');
         $totalSalary = round($gross - $tardiness - $undertime + $adjustmentsTotal, 2);

@@ -111,37 +111,48 @@ class PayrollSummaryExportTest extends TestCase {
         $this->assertEqualsWithDelta(205.00, $row['R'], 0.001);  // Net Pay
     }
 
-    public function test_a_generic_type_still_lands_in_its_own_column_when_the_label_says_so(): void {
+    public function test_every_late_day_adds_the_flat_penalty_to_the_column(): void {
         $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create([
             'daily_basic_rate' => 505, 'full_name' => 'Jona Nicole Galvez',
         ]);
-        AttendanceRecord::factory()->for($employee)->create([
-            'work_date' => '2026-08-03', 'shift_start' => '08:00:00', 'shift_end' => '17:00:00',
-            'clock_in' => '08:00:00', 'clock_out' => '17:00:00', 'status' => 'approved',
-        ]);
-
+        // Two late days and one on time — ₱75 apiece, so ₱150.
         foreach ([
-            ['allowance', 'Rice Allowance', 920.00],
-            ['deduction', 'Late penalty', -75.00],
-            ['deduction', 'Authorized Deduction', -1470.00],
-        ] as [$category, $label, $amount]) {
-            PayrollAdjustment::create([
-                'employee_id' => $employee->id, 'date' => '2026-08-10', 'label' => $label,
-                'category' => $category, 'amount' => $amount, 'paid' => false,
-                'created_by' => $admin->id,
+            ['2026-08-03', '08:20:00'],
+            ['2026-08-04', '08:01:00'],
+            ['2026-08-05', '08:00:00'],
+        ] as [$date, $clockIn]) {
+            AttendanceRecord::factory()->for($employee)->create([
+                'work_date' => $date, 'shift_start' => '08:00:00', 'shift_end' => '17:00:00',
+                'clock_in' => $clockIn, 'clock_out' => '17:00:00', 'status' => 'approved',
             ]);
         }
 
         $row = $this->row($this->workbookFor($admin), 'Payroll Summary', 6);
 
-        // The label pulls each amount out of its generic bucket...
-        $this->assertEqualsWithDelta(75.00, $row['I'], 0.001);   // Penalty Lates
-        $this->assertEqualsWithDelta(920.00, $row['O'], 0.001);  // Rice Allowance
-        // ...without counting it twice: Total Auth. Ded. is still 75 + 1470.
-        $this->assertEqualsWithDelta(1545.00, $row['H'], 0.001);
-        // Net is untouched by the re-reading: 505 - 75 - 1470 + 920 = -120.00
-        $this->assertEqualsWithDelta(-120.00, $row['R'], 0.001);
+        $this->assertEqualsWithDelta(150.00, $row['I'], 0.001);  // Penalty Lates
+        $this->assertEqualsWithDelta(150.00, $row['H'], 0.001);  // and it totals into Auth. Ded.
+    }
+
+    public function test_the_late_penalty_column_does_not_change_take_home_pay(): void {
+        // The penalty is reported for the summary only — it is not withheld,
+        // so Net Pay is the same as it would be without a late day.
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create([
+            'daily_basic_rate' => 505, 'full_name' => 'Ruby Rose Anudon',
+        ]);
+        AttendanceRecord::factory()->for($employee)->create([
+            'work_date' => '2026-08-03', 'shift_start' => '08:00:00', 'shift_end' => '17:00:00',
+            'clock_in' => '08:30:00', 'clock_out' => '17:00:00', 'status' => 'approved',
+        ]);
+
+        $row = $this->row($this->workbookFor($admin), 'Payroll Summary', 6);
+        $hourly = 505 / 8;
+
+        $this->assertEqualsWithDelta(75.00, $row['I'], 0.001);
+        // Only the half hour of tardiness comes off — the ₱75 does not.
+        $this->assertEqualsWithDelta(round(0.5 * $hourly, 2), $row['D'], 0.01);
+        $this->assertEqualsWithDelta(505.00 - round(0.5 * $hourly, 2), $row['R'], 0.01);
     }
 
     public function test_the_total_row_sums_the_employees(): void {
