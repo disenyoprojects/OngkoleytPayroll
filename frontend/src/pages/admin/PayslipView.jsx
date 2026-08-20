@@ -94,7 +94,6 @@ export default function PayslipView() {
           {PERIODS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
         </select>
         <Button variant="outline" onClick={downloadPdf} disabled={!slip}>⬇ PDF</Button>
-        <GenerateStatutoryButton month={month} period={period} onGenerated={() => setReload((n) => n + 1)} />
       </div>
 
       {!slip && <div style={{ color: "#7A6A57", fontSize: 13 }}>Select a staff member to view their payslip.</div>}
@@ -206,7 +205,12 @@ export default function PayslipView() {
             <div style={{ color: "#7A6A57", fontSize: 12, marginTop: 8 }}>Tip: pick the type and enter a positive amount. <b>SSS, Pag-IBIG, PhilHealth</b> and <b>Authorized Deduction</b> are subtracted automatically (type any amount you want — nothing is fixed); allowances/bonuses are added. For <b>Other</b>, type your own label. "Already paid" is added to Total Salary but subtracted from what's still handed over.</div>
           </div>
 
-          <div style={{ fontWeight: 700, fontSize: 14, margin: "20px 0 8px" }}>Payslip preview</div>
+          {/* The generator sits with the preview: it is what fills the SSS,
+              Pag-IBIG and PhilHealth lines shown just below. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", margin: "20px 0 8px" }}>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Payslip preview</div>
+            <GenerateStatutoryButton month={month} period={period} onGenerated={() => setReload((n) => n + 1)} />
+          </div>
           <PayslipDocument slip={slip} />
         </div>
       )}
