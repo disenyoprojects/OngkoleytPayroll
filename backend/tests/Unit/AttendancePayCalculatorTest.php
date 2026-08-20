@@ -101,15 +101,32 @@ class AttendancePayCalculatorTest extends TestCase {
         $this->assertEqualsWithDelta(7.5, $result['total_hours'], 0.01);
     }
 
-    public function test_a_shorter_than_standard_break_is_not_charged(): void {
+    public function test_a_shorter_than_standard_break_earns_nothing_extra(): void {
+        // Back from break after 30 min instead of the standard hour.
         $result = (new AttendancePayCalculator())->compute(
             '08:00', '17:00', $this->settings(), null, '08:00', '17:00',
             ['break_out' => '12:00', 'break_in' => '12:30'],
         );
+        $hourlyRate = 505 / 8;
 
+        // Nothing is charged back — but the half hour not taken is not paid
+        // either. The day is worth its scheduled hours, no more.
         $this->assertSame(0.0, $result['undertime']);
-        // The half hour not taken is still worked and still paid.
-        $this->assertEqualsWithDelta(8.5, $result['total_hours'], 0.01);
+        $this->assertEqualsWithDelta(8.0, $result['total_hours'], 0.01);
+        $this->assertEqualsWithDelta(round($hourlyRate * 8, 2), $result['basic'], 0.01);
+    }
+
+    public function test_the_day_pays_the_flat_daily_rate_when_the_shift_is_stood_in_full(): void {
+        // An 11:00–20:00 shift is 9h clock-to-clock, less the 1h break = 8h,
+        // which is exactly the daily rate however long the break actually ran.
+        foreach ([['12:00', '13:00'], ['12:00', '12:48'], []] as $break) {
+            $day = $break === [] ? [] : ['break_out' => $break[0], 'break_in' => $break[1]];
+            $result = (new AttendancePayCalculator())->compute(
+                '11:00', '20:00', $this->settings(), null, '11:00', '20:00', $day,
+            );
+
+            $this->assertEqualsWithDelta(505.00, $result['total'], 0.01);
+        }
     }
 
     public function test_night_differential_covers_the_hours_before_6am(): void {

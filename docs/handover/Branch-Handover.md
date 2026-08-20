@@ -15,14 +15,13 @@ see all of them throughout the system.
 
 ### Branch accounts
 
-| Branch | Email | Password |
+| Branches covered | Email | Password |
 |---|---|---|
-| Mabini | — | _set on handover_ |
-| Bodega | — | _set on handover_ |
-| Diego | — | _set on handover_ |
-| Bonifacio | — | _set on handover_ |
-| Kanto Craving/Brew | — | _set on handover_ |
-| Admin Office | — | _set on handover_ |
+| Mabini · Diego · Diego Silang · Bonifacio · Admin Office | mabini@ongkoleyt.ph | `mabini123` |
+| Kanto Craving/Brew | kanto@ongkoleyt.ph | `kanto123` |
+| Bodega | bodega@ongkoleyt.ph | `bodega123` |
+| La Trinidad | latrinidad@ongkoleyt.ph | `latrinidad123` |
+| La Union | launion@ongkoleyt.ph | `launion123` |
 
 > **Use your own branch's login.** Everything done under a login is recorded
 > against it, so work done on someone else's account shows as theirs —
@@ -68,14 +67,19 @@ OT Out. The overtime pair is separate on purpose — the wait between clocking
 out and starting to unload is not paid, and every minute of the overtime pair
 counts as overtime whatever the clock says.
 
-Each employee taps their own **PIN**. PINs are personal: one person clocking
-in for another puts wrong hours into someone's pay.
+To clock someone, search their name, tap it, then tap the button for what
+they are doing.
+
+> **Clock the right person.** Names sit next to each other in the list and are
+> easy to mistap. A wrong tap puts someone else's hours into their pay, and it
+> will not be obvious until the payroll comes out.
 
 ---
 
 ## 4. Daily routine
 
-**Through the day:** make sure everyone clocks in and out on their own PIN.
+**Through the day:** make sure everyone is clocked in and out under their own
+name.
 
 **End of day:** open Attendance and check the day.
 
@@ -121,7 +125,18 @@ owner with the employee's name, the amount, the date and what it is for.
 Your branch's staff list, with their shift times.
 
 Tell the owner when someone **joins**, **leaves**, or **changes shift**. New
-staff need a PIN before they can clock in at all.
+staff must be added before they can be clocked in at all, and their shift
+times are what late and undertime are measured against.
+
+---
+
+## 9. IT support
+
+**Disenyo Digitals** — Jennifer Fuentes Castro
++63 906 571 3298 · jenncastro@destinevents.biz
+
+For system errors or anything else on the technical side. Password resets go
+to the owner first.
 
 ---
 

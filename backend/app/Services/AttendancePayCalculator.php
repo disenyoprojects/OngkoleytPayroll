@@ -70,16 +70,17 @@ class AttendancePayCalculator {
             $shiftEndMin += 24 * 60;
         }
 
-        // Break: actual window if both given, else the flat setting. The basic
-        // wage accounts for the standard break only — a shorter break still
-        // benefits the employee, a longer one is charged back as Overbreak.
+        // Break: actual window if both given, else the flat setting. The full
+        // standard break always comes out of the day, whether or not it was
+        // taken — a day is worth its scheduled hours and coming back early
+        // does not earn extra. A longer break is charged back as Overbreak.
         $standardBreakHours = (float) ($settings->unpaid_break_hours ?? 0);
         if (! empty($day['break_out']) && ! empty($day['break_in'])) {
             $actualBreakHours = max(0, ($this->minutesOf($day['break_in']) - $this->minutesOf($day['break_out'])) / 60.0);
         } else {
             $actualBreakHours = $standardBreakHours;
         }
-        $paidBreakHours = min($actualBreakHours, $standardBreakHours);
+        $paidBreakHours = $standardBreakHours;
         $overbreakHours = max(0.0, $actualBreakHours - $standardBreakHours);
 
         // Regular hours are the SCHEDULED shift, not the hours actually stood:

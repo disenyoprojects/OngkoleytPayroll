@@ -19,18 +19,17 @@ log.
 
 | Email | Password | Access |
 |---|---|---|
-| owner@ongkoleyt.ph | _set on handover_ | Owner · full access |
+| owner@ongkoleyt.ph | `owner2026` | Everything |
 
 ### Branch accounts
 
-| Branch | Email | Password |
+| Branches covered | Email | Password |
 |---|---|---|
-| Mabini | — | _set on handover_ |
-| Bodega | — | _set on handover_ |
-| Diego | — | _set on handover_ |
-| Bonifacio | — | _set on handover_ |
-| Kanto Craving/Brew | — | _set on handover_ |
-| Admin Office | — | _set on handover_ |
+| Mabini · Diego · Diego Silang · Bonifacio · Admin Office | mabini@ongkoleyt.ph | `mabini123` |
+| Kanto Craving/Brew | kanto@ongkoleyt.ph | `kanto123` |
+| Bodega | bodega@ongkoleyt.ph | `bodega123` |
+| La Trinidad | latrinidad@ongkoleyt.ph | `latrinidad123` |
+| La Union | launion@ongkoleyt.ph | `launion123` |
 
 ### Logins being removed
 
@@ -44,10 +43,19 @@ mail.
 - admin@ongkoleyt.test
 - owner@ongkoleyt.example
 
-> **Setting the passwords.** Existing passwords cannot be looked up — the
-> system stores them scrambled, so they can only be reset, never read back.
-> Set each one on the Settings screen, write it into the table above, and
-> keep this document where the branch guides are not kept.
+> **If a password is forgotten.** Passwords cannot be looked up — the system
+> stores them scrambled, so they can only be reset, never read back. Reset
+> any login from the Settings screen, or, if nobody can sign in at all, from
+> the server shell:
+
+```
+php artisan admin:create --name="Owner" \
+  --email="owner@ongkoleyt.ph" \
+  --password="a-new-password" --force
+```
+
+Whenever a password here is changed, change it in this document too, or the
+next person to need it will be locked out.
 
 **To change your password:** Settings → Logins & Passwords → type a new
 password (8 characters minimum) → Update.
@@ -92,16 +100,16 @@ that point on.
 
 ## 4. Employees
 
-Add each employee with their **branch**, **shift start and end**, and **PIN**
-for the time clock. Leave the daily rate blank to use the company default, or
-fill it in to override for that person.
+Add each employee with their **branch** and **shift start and end**. Leave the
+daily rate blank to use the company default, or fill it in to override for
+that person.
 
-Two things worth doing properly:
+The shift times matter more than they look: late and undertime are measured
+against them, so a wrong shift start makes someone late every day on paper.
 
-- **Real PINs.** Never leave a demo PIN such as `1234` in place — anyone who
-  knows it can clock in as that employee.
-- **Separations.** Separate an employee rather than deleting them. Their past
-  payroll stays intact and they drop off the current register.
+> **Separate, don't delete.** Separating an employee keeps their past payroll
+> intact and drops them off the current register. Deleting them would take
+> their history with it.
 
 ---
 
@@ -230,3 +238,12 @@ branch login, add `--role=branch --branch="Branch Name"`, repeating
 `--branch` for each branch it should cover.
 
 Full deployment instructions are in `DEPLOYMENT.md`.
+
+---
+
+## 11. IT support
+
+**Disenyo Digitals** — Jennifer Fuentes Castro
++63 906 571 3298 · jenncastro@destinevents.biz
+
+For login resets, system errors, or anything else on the technical side.

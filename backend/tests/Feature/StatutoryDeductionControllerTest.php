@@ -63,6 +63,57 @@ class StatutoryDeductionControllerTest extends TestCase {
         $this->assertSame('-400.00', $sss->amount);
     }
 
+    public function test_sss_bracket_includes_allowances_and_bonuses(): void {
+        // Reproduces Ruby Rose Anudon's Aug 1–15 cutoff: ten 11:00–20:00 days
+        // at ₱505 = ₱5,050, plus a ₱3,000 rice allowance. Wages alone would sit
+        // in the ₱5,749.99 bracket (₱275); with the allowance the compensation
+        // is ₱8,050, which is the ₱8,249.99 bracket -> ₱400.
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => 505]);
+        foreach (range(1, 10) as $day) {
+            AttendanceRecord::factory()->for($employee)->create([
+                'work_date' => sprintf('2026-08-%02d', $day),
+                'shift_start' => '11:00:00', 'shift_end' => '20:00:00',
+                'clock_in' => '11:00:00', 'clock_out' => '20:00:00', 'status' => 'approved',
+            ]);
+        }
+        PayrollAdjustment::create([
+            'employee_id' => $employee->id, 'date' => '2026-08-10', 'label' => 'Rice Allowance',
+            'category' => 'rice_allowance', 'amount' => 3000.00, 'paid' => false,
+            'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)->postJson('/api/admin/payroll/period/statutory?month=2026-08&period=first')->assertOk();
+
+        $sss = PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'sss')->firstOrFail();
+        $this->assertSame('-400.00', $sss->amount);
+
+        // PhilHealth stays on the basic wage only — ten flat days, no break credit.
+        $philhealth = PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'philhealth')->firstOrFail();
+        $this->assertSame('-126.25', $philhealth->amount);
+    }
+
+    public function test_a_deduction_does_not_lower_the_sss_bracket(): void {
+        // Deductions come out of the pay, not out of the compensation the
+        // bracket is read from — and the generator's own rows must not feed back.
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => 505]);
+        foreach (range(1, 11) as $day) {
+            $this->workedDay($employee, sprintf('2026-08-%02d', $day));
+        }
+        PayrollAdjustment::create([
+            'employee_id' => $employee->id, 'date' => '2026-08-10', 'label' => 'Cash Advance',
+            'category' => 'cash_advance', 'amount' => -2000.00, 'paid' => false,
+            'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)->postJson('/api/admin/payroll/period/statutory?month=2026-08&period=first')->assertOk();
+
+        // 11 days x 505 = 5,555 -> the 5,749.99 bracket, untouched by the -2,000.
+        $sss = PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'sss')->firstOrFail();
+        $this->assertSame('-275.00', $sss->amount);
+    }
+
     public function test_generate_uses_200_pagibig_and_full_sss_share_for_a_whole_month_period(): void {
         $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => null]);

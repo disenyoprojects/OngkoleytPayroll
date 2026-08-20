@@ -60,7 +60,12 @@ class StatutoryDeductionController extends Controller {
                 $counts[$outcome]['philhealth']++;
             }
 
-            $netEarnings = $this->earnings->sum($employee, $window, $settings, 'total');
+            // The SSS bracket is looked up on everything the employee earns in
+            // the period — wages less tardiness/undertime, plus allowances and
+            // bonuses. Deductions are not netted off: they are taken out of
+            // the pay, not out of the compensation the bracket is read from.
+            $netEarnings = $this->earnings->sum($employee, $window, $settings, 'total')
+                + $this->positiveAdjustments($employee, $window);
             if ($netEarnings > 0.0) {
                 $sssAmount = -round($this->sss->employeeShareFor($netEarnings), 2);
                 $outcome = $this->upsertAuto($employee, 'sss', $window, $sssAmount, 'SSS', $request);
@@ -69,6 +74,17 @@ class StatutoryDeductionController extends Controller {
         }
 
         return response()->json($counts);
+    }
+
+    /**
+     * Allowances, bonuses and anything else added to the period's pay. Only
+     * positive rows count, so the statutory deductions this generator writes
+     * cannot feed back into the bracket they were looked up from.
+     */
+    private function positiveAdjustments(Employee $employee, array $window): float {
+        return round((float) PayrollAdjustment::where('employee_id', $employee->id)
+            ->whereDate('date', '>=', $window['from'])->whereDate('date', '<=', $window['to'])
+            ->where('amount', '>', 0)->sum('amount'), 2);
     }
 
     /**
