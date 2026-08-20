@@ -19,6 +19,7 @@ class PayrollSettingController extends Controller {
             'overtime_multiplier' => ['required', 'numeric', 'min:1'],
             'night_diff_multiplier' => ['required', 'numeric', 'min:0'],
             'unpaid_break_hours' => ['required', 'numeric', 'min:0'],
+            'minimum_overtime_minutes' => ['sometimes', 'integer', 'min:0', 'max:480'],
             // Retained for historical settings rows; no longer applied to pay —
             // a late penalty is now entered as an Authorized Deduction.
             'late_penalty_amount' => ['sometimes', 'numeric', 'min:0'],

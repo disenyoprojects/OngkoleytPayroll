@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class PayrollSetting extends Model {
     protected $fillable = [
         'daily_basic_rate', 'standard_working_days_per_month', 'overtime_multiplier',
-        'night_diff_multiplier', 'unpaid_break_hours', 'late_penalty_amount',
+        'night_diff_multiplier', 'unpaid_break_hours', 'minimum_overtime_minutes', 'late_penalty_amount',
         'period_start', 'period_end', 'release_date',
         'minimum_months', 'included_earnings', 'employment_types_included',
     ];

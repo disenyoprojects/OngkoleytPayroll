@@ -109,6 +109,10 @@ export default function SettingsView() {
         <Field label="Night Differential Multiplier">
           <input type="number" step="0.01" value={settings.night_diff_multiplier} onChange={(e) => set("night_diff_multiplier", e.target.value)} style={inputStyle} />
         </Field>
+        <Field label="Minimum Overtime (minutes) — a day's overtime below this is not paid">
+          <input type="number" min="0" style={inputStyle} value={settings.minimum_overtime_minutes ?? 5}
+            onChange={(e) => set("minimum_overtime_minutes", e.target.value === "" ? "" : Number(e.target.value))} />
+        </Field>
         <Field label="Unpaid Break (hours) — deducted from worked hours">
           <input type="number" step="0.25" value={settings.unpaid_break_hours} onChange={(e) => set("unpaid_break_hours", e.target.value)} style={inputStyle} />
         </Field>

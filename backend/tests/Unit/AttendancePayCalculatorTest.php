@@ -74,6 +74,45 @@ class AttendancePayCalculatorTest extends TestCase {
         $this->assertEqualsWithDelta($result['basic'] - $result['tardiness'], $result['total'], 0.01);
     }
 
+    public function test_overtime_below_the_minimum_is_not_paid(): void {
+        // Ruby Rose on 2026-08-13: out at 20:03 on a shift ending 20:00. Three
+        // minutes is under the five-minute minimum, so the day pays flat.
+        $result = (new AttendancePayCalculator())->compute(
+            '11:00', '20:03', $this->settings(), null, '11:00', '20:00',
+        );
+
+        $this->assertSame(0.0, $result['ot_hours']);
+        $this->assertSame(0.0, $result['ot']);
+        $this->assertEqualsWithDelta(505.00, $result['total'], 0.01);
+    }
+
+    public function test_overtime_at_or_above_the_minimum_is_paid_in_full(): void {
+        // 2026-08-11: out at 20:09. Nine minutes clears the minimum, and the
+        // whole nine are paid — the minimum is a threshold, not a deduction.
+        $result = (new AttendancePayCalculator())->compute(
+            '11:00', '20:09', $this->settings(), null, '11:00', '20:00',
+        );
+        $otRate = 505 / 8 * 1.25;
+
+        $this->assertEqualsWithDelta(0.15, $result['ot_hours'], 0.001);
+        $this->assertEqualsWithDelta(round(0.15 * $otRate, 2), $result['ot'], 0.01);
+    }
+
+    public function test_short_overtime_does_not_accumulate_across_days(): void {
+        // Each day is judged on its own, so three minutes on many days stays
+        // unpaid rather than adding up into a payable stretch.
+        $settings = $this->settings();
+        $total = 0.0;
+        foreach (range(1, 10) as $ignored) {
+            $result = (new AttendancePayCalculator())->compute(
+                '11:00', '20:03', $settings, null, '11:00', '20:00',
+            );
+            $total += (float) $result['ot'];
+        }
+
+        $this->assertSame(0.0, $total);
+    }
+
     public function test_undertime_is_charged_for_an_early_clock_out(): void {
         // Out at 16:00 on a 17:00 shift → 1h short. Basic still covers the full
         // shift; the hour comes off under Undertime, so net is unchanged.

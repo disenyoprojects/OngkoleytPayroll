@@ -117,6 +117,16 @@ class AttendancePayCalculator {
             $otPairMin = (float) ($otEnd - $otStart);
         }
 
+        // A few minutes past the shift end is not overtime. The minimum is
+        // judged on the day's overtime as a whole and the day is dropped
+        // outright when it falls short — three minutes on each of ten days
+        // never accumulates into a payable half hour.
+        $minimumOtMin = (float) ($settings->minimum_overtime_minutes ?? 0);
+        if ($otMin + $otPairMin < $minimumOtMin) {
+            $otMin = 0.0;
+            $otPairMin = 0.0;
+        }
+
         $otHours = ($otMin + $otPairMin) / 60.0;
 
         $dailyRate = $dailyRateOverride ?? (float) $settings->daily_basic_rate;
