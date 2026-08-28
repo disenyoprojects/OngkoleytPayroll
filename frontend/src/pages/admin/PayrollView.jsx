@@ -1,9 +1,33 @@
 import { useEffect, useState } from "react";
 import { apiClient, downloadAuthedFile, openAuthedPdf } from "../../api/client";
-import { formatPHP, formatTime12, formatLateLabel, phThisMonth as thisMonth, FONT_DISPLAY } from "../../theme";
+import { formatPHP, formatTime12, formatLateLabel, phThisMonth as thisMonth, phToday, FONT_DISPLAY } from "../../theme";
 import { Button, StatCard, tabBtnStyle, tableWrap, tableStyle, thStyle, tdStyle, inputStyle } from "../../components/ui";
 import PayslipView from "./PayslipView";
 import GenerateStatutoryButton from "../../components/GenerateStatutoryButton";
+
+// Calendar math on YYYY-MM-DD strings. The Date is built at UTC midnight from
+// an explicit date, so it carries no time-of-day the browser's timezone could
+// roll over — unlike deriving "today" from a real timestamp, which must go
+// through phToday().
+function addDays(ymd, days) {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Monday of the week containing a date — the week the backend's weekly range starts on. */
+function mondayOf(ymd) {
+  const dow = new Date(`${ymd}T00:00:00Z`).getUTCDay();
+  return addDays(ymd, -((dow + 6) % 7)); // Sunday (0) closes a week, it doesn't open one
+}
+
+function formatDayLabel(ymd) {
+  return new Date(`${ymd}T00:00:00Z`).toLocaleDateString("en-PH", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatWeekLabel(start) {
+  return `${formatDayLabel(start)} – ${formatDayLabel(addDays(start, 6))}`;
+}
 
 export default function PayrollView({ isAdmin = true }) {
   const [range, setRange] = useState("daily");
@@ -11,6 +35,11 @@ export default function PayrollView({ isAdmin = true }) {
   // Track which range the loaded data belongs to, so the daily/weekly table is
   // never rendered against the other range's data shape during a switch.
   const [dataRange, setDataRange] = useState(null);
+
+  // Which day / week the daily and weekly tables are looking at. Both start on
+  // "now" but can be walked backwards to review any past period.
+  const [day, setDay] = useState(phToday);
+  const [weekStart, setWeekStart] = useState(() => mondayOf(phToday()));
 
   // Semi-monthly (all-staff) register controls + data.
   const [month, setMonth] = useState(thisMonth());
@@ -21,12 +50,14 @@ export default function PayrollView({ isAdmin = true }) {
     if (range === "payslip" || range === "semi") return;
     let cancelled = false;
     setData(null);
-    const endpoint = range === "daily" ? "/api/admin/payroll/daily" : "/api/admin/payroll/weekly";
+    const endpoint = range === "daily"
+      ? `/api/admin/payroll/daily?date=${day}`
+      : `/api/admin/payroll/weekly?start=${weekStart}`;
     apiClient.get(endpoint).then((res) => {
       if (!cancelled) { setData(res.data); setDataRange(range); }
     });
     return () => { cancelled = true; };
-  }, [range]);
+  }, [range, day, weekStart]);
 
   function reloadPeriod() {
     return apiClient.get(`/api/admin/payroll/period?month=${month}&period=${period}`).then((res) => setPeriodData(res.data));
@@ -42,11 +73,30 @@ export default function PayrollView({ isAdmin = true }) {
     return () => { cancelled = true; };
   }, [range, month, period]);
 
+  // Both export endpoints take a single `date`: the day for daily, the week's
+  // first day for weekly. Passing the viewed period keeps the file in step with
+  // the table on screen instead of always exporting the current one.
+  const viewedDate = range === "daily" ? day : weekStart;
+
   function download(kind) {
-    const path = `/api/admin/payroll/${kind}?range=${range}`;
-    if (kind === "export") downloadAuthedFile(path, `payroll-${range}.csv`);
+    const path = `/api/admin/payroll/${kind}?range=${range}&date=${viewedDate}`;
+    if (kind === "export") downloadAuthedFile(path, `payroll-${range}-${viewedDate}.csv`);
     else openAuthedPdf(path);
   }
+
+  function stepPeriod(direction) {
+    if (range === "daily") setDay((d) => addDays(d, direction));
+    else setWeekStart((w) => addDays(w, direction * 7));
+  }
+
+  function jumpTo(ymd) {
+    if (!ymd) return;
+    if (range === "daily") setDay(ymd);
+    else setWeekStart(mondayOf(ymd));
+  }
+
+  const today = phToday();
+  const atLatest = range === "daily" ? day >= today : weekStart >= mondayOf(today);
 
   return (
     <div>
@@ -66,6 +116,26 @@ export default function PayrollView({ isAdmin = true }) {
         )}
       </div>
 
+      {(range === "daily" || range === "weekly") && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
+          <Button variant="outline" onClick={() => stepPeriod(-1)}>‹ Prev</Button>
+          <input
+            type="date"
+            value={viewedDate}
+            max={today}
+            onChange={(e) => jumpTo(e.target.value)}
+            style={{ ...inputStyle, width: 170 }}
+          />
+          <Button variant="outline" onClick={() => stepPeriod(1)} disabled={atLatest}>Next ›</Button>
+          {!atLatest && (
+            <Button variant="ghost" onClick={() => jumpTo(today)}>{range === "daily" ? "Today" : "This week"}</Button>
+          )}
+          <span style={{ color: "#7A6A57", fontSize: 13 }}>
+            {range === "daily" ? formatDayLabel(day) : formatWeekLabel(weekStart)}
+          </span>
+        </div>
+      )}
+
       {range === "payslip" ? (
         <PayslipView />
       ) : range === "semi" ? (
@@ -78,7 +148,10 @@ export default function PayrollView({ isAdmin = true }) {
       ) : (
       <>
       <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>
-        <StatCard label={`Total ${range === "daily" ? "Today" : "This Week"}`} value={formatPHP(data.total)} />
+        <StatCard
+          label={range === "daily" ? `Total · ${formatDayLabel(day)}` : `Total · ${formatWeekLabel(weekStart)}`}
+          value={formatPHP(data.total)}
+        />
       </div>
       <div style={tableWrap}>
         <table style={tableStyle}>
