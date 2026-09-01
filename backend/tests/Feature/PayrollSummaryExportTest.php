@@ -67,7 +67,7 @@ class PayrollSummaryExportTest extends TestCase {
 
         $this->assertSame([
             'Employee', 'Branch', 'NSD', 'Late', 'SH', 'RH', 'UT',
-            'Total Auth. Ded.', 'Penalty Lates', 'CA etc', 'SSS', 'PhilHealth', 'Pag-IBIG',
+            'Penalty Lates', 'CA etc', 'Total Auth. Ded.', 'SSS', 'PhilHealth', 'Pag-IBIG',
             'Days Worked', 'Rice Allowance', 'Daily Rate', 'Gross', 'Net Pay',
         ], array_values($this->row($book, 'Payroll Summary', 5)));
     }
@@ -99,9 +99,9 @@ class PayrollSummaryExportTest extends TestCase {
         $row = $this->row($this->workbookFor($admin), 'Payroll Summary', 6);
 
         $this->assertSame('Ruby Rose Anudon', $row['A']);
-        $this->assertEqualsWithDelta(350.00, $row['H'], 0.001);  // Total Auth. Ded. = penalty + CA
-        $this->assertEqualsWithDelta(100.00, $row['I'], 0.001);  // Penalty Lates
-        $this->assertEqualsWithDelta(250.00, $row['J'], 0.001);  // CA etc
+        $this->assertEqualsWithDelta(100.00, $row['H'], 0.001);  // Penalty Lates
+        $this->assertEqualsWithDelta(250.00, $row['I'], 0.001);  // CA etc
+        $this->assertEqualsWithDelta(350.00, $row['J'], 0.001);  // Total Auth. Ded. = penalty + CA
         $this->assertEqualsWithDelta(250.00, $row['K'], 0.001);  // SSS
         $this->assertEqualsWithDelta(1.00, $row['N'], 0.001);    // Days Worked
         $this->assertEqualsWithDelta(300.00, $row['O'], 0.001);  // Rice Allowance
@@ -138,10 +138,10 @@ class PayrollSummaryExportTest extends TestCase {
         $row = $this->row($this->workbookFor($admin), 'Payroll Summary', 6);
 
         // The label pulls each amount out of its generic bucket...
-        $this->assertEqualsWithDelta(450.00, $row['I'], 0.001);  // Penalty Lates
+        $this->assertEqualsWithDelta(450.00, $row['H'], 0.001);  // Penalty Lates
         $this->assertEqualsWithDelta(920.00, $row['O'], 0.001);  // Rice Allowance
         // ...without counting it twice: Total Auth. Ded. is still 450 + 1470.
-        $this->assertEqualsWithDelta(1920.00, $row['H'], 0.001);
+        $this->assertEqualsWithDelta(1920.00, $row['J'], 0.001);
         // Net is untouched by the re-reading: 505 - 450 - 1470 + 920 = -495.00
         $this->assertEqualsWithDelta(-495.00, $row['R'], 0.001);
     }

@@ -77,9 +77,11 @@ class PayrollSummaryWorkbook {
             'E' => ['SH', self::BAND_TIME],
             'F' => ['RH', self::BAND_TIME],
             'G' => ['UT', self::BAND_TIME],
-            'H' => ['Total Auth. Ded.', self::BAND_DEDUCTION],
-            'I' => ['Penalty Lates', self::BAND_DEDUCTION],
-            'J' => ['CA etc', self::BAND_DEDUCTION],
+            // The total sits to the RIGHT of the two columns it sums, the way
+            // the client reads the sheet: late deduction, CA, then the total.
+            'H' => ['Penalty Lates', self::BAND_DEDUCTION],
+            'I' => ['CA etc', self::BAND_DEDUCTION],
+            'J' => ['Total Auth. Ded.', self::BAND_DEDUCTION],
             'K' => ['SSS', self::BAND_STATUTORY],
             'L' => ['PhilHealth', self::BAND_STATUTORY],
             'M' => ['Pag-IBIG', self::BAND_STATUTORY],
@@ -161,7 +163,7 @@ class PayrollSummaryWorkbook {
 
         foreach ([
             'A' => 26, 'B' => 19, 'C' => 9.5, 'D' => 9.5, 'E' => 8, 'F' => 8, 'G' => 10,
-            'H' => 12.5, 'I' => 11, 'J' => 9.5, 'K' => 10, 'L' => 11, 'M' => 10,
+            'H' => 11, 'I' => 9.5, 'J' => 12.5, 'K' => 10, 'L' => 11, 'M' => 10,
             'N' => 11.5, 'O' => 11.5, 'P' => 10.5, 'Q' => 12, 'R' => 12,
         ] as $letter => $width) {
             $sheet->getColumnDimension($letter)->setWidth($width);
@@ -188,9 +190,9 @@ class PayrollSummaryWorkbook {
             'E' => $t['sh'],
             'F' => $t['rh'],
             'G' => $t['undertime'],
-            'H' => $t['auth_deductions'],
-            'I' => $t['penalty_late'],
-            'J' => $t['cash_advance'],
+            'H' => $t['penalty_late'],
+            'I' => $t['cash_advance'],
+            'J' => $t['auth_deductions'],
             'K' => $t['sss'],
             'L' => $t['philhealth'],
             'M' => $t['pagibig'],

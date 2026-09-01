@@ -172,8 +172,20 @@ class PayslipController extends Controller {
             ['label' => 'Tardiness', 'amount' => round($tardiness, 2)],
             ['label' => 'Undertime/Overbreak', 'amount' => round($undertime, 2)],
         ];
+        // The late penalty is not itemised to the employee: it prints under the
+        // one "Authorized Deduction" line together with any other authorised
+        // deduction, so the payslip shows a single figure the office stands
+        // behind. The summary workbook still breaks it out into its own column.
+        $authorised = 0.0;
         foreach ($adjustments->where('amount', '<', 0) as $a) {
+            if (in_array($bucket($a), ['penalty_late', 'deduction'], true)) {
+                $authorised += abs((float) $a['amount']);
+                continue;
+            }
             $deductions[] = ['label' => $a['label'], 'amount' => round(abs((float) $a['amount']), 2)];
+        }
+        if ($authorised > 0.005) {
+            $deductions[] = ['label' => 'Authorized Deduction', 'amount' => round($authorised, 2)];
         }
         foreach ($adjustments->filter(fn ($a) => $a['amount'] > 0 && $a['paid']) as $a) {
             $deductions[] = ['label' => $a['label'] . ' (paid in cash)', 'amount' => round((float) $a['amount'], 2)];

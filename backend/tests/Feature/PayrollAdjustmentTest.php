@@ -148,4 +148,42 @@ class PayrollAdjustmentTest extends TestCase {
         $employee = $this->workedEmployee();
         $this->postJson("/api/admin/employees/{$employee->id}/adjustments", [])->assertStatus(401);
     }
+
+    /** The employee's slip shows one "Authorized Deduction"; the office sheet keeps the breakdown. */
+    public function test_the_late_penalty_prints_as_an_authorized_deduction_on_the_payslip(): void {
+        $admin = User::factory()->create();
+        $employee = $this->workedEmployee();
+
+        foreach ([
+            ['penalty_late', 'Penalty Late', 75],
+            ['deduction', 'Authorized Deduction', 500],
+            ['cash_advance', 'Cash Advance', 1000],
+        ] as [$category, $label, $amount]) {
+            $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/adjustments", [
+                'date' => '2026-07-20', 'label' => $label, 'category' => $category,
+                'amount' => $amount, 'paid' => false,
+            ])->assertCreated();
+        }
+
+        $slip = $this->actingAs($admin)
+            ->getJson("/api/admin/employees/{$employee->id}/payslip?month=2026-07&period=second")
+            ->assertOk()->json();
+
+        $labels = array_column($slip['slip']['deductions'], 'label');
+        $this->assertNotContains('Penalty Late', $labels);
+        // The 75 is folded into the 500, printed as one line.
+        $this->assertContains('Authorized Deduction', $labels);
+        $this->assertSame(1, count(array_keys($labels, 'Authorized Deduction', true)));
+        $authorised = collect($slip['slip']['deductions'])->firstWhere('label', 'Authorized Deduction');
+        $this->assertEqualsWithDelta(575.00, $authorised['amount'], 0.001);
+        // The cash advance keeps its own line — only the penalty is folded in.
+        $this->assertContains('Cash Advance', $labels);
+
+        // The office columns still break it out, and no pay figure moved:
+        // 505 gross − 75 − 500 − 1000 = −1070.
+        $this->assertEqualsWithDelta(75.00, $slip['totals']['penalty_late'], 0.001);
+        $this->assertEqualsWithDelta(1000.00, $slip['totals']['cash_advance'], 0.001);
+        $this->assertEqualsWithDelta(1575.00, $slip['totals']['auth_deductions'], 0.001);
+        $this->assertEqualsWithDelta(-1070.00, $slip['totals']['net_to_release'], 0.001);
+    }
 }
