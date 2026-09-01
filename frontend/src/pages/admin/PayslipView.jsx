@@ -3,7 +3,6 @@ import { apiClient, openAuthedPdf } from "../../api/client";
 import { formatPHP, formatTime12, formatLateLabel, phThisMonth as thisMonth } from "../../theme";
 import { Button, inputStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 import GenerateStatutoryButton from "../../components/GenerateStatutoryButton";
-import GeneratePenaltyLatesButton from "../../components/GeneratePenaltyLatesButton";
 
 const PERIODS = [["first", "1–15"], ["second", "16–end"], ["whole", "Whole month"]];
 const CATEGORIES = [
@@ -262,7 +261,6 @@ export default function PayslipView() {
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", margin: "20px 0 8px" }}>
             <div style={{ fontWeight: 700, fontSize: 14 }}>Payslip preview</div>
             <GenerateStatutoryButton month={month} period={period} onGenerated={() => setReload((n) => n + 1)} />
-            <GeneratePenaltyLatesButton month={month} period={period} onGenerated={() => setReload((n) => n + 1)} />
           </div>
           <PayslipDocument slip={slip} />
         </div>

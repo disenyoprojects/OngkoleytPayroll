@@ -132,6 +132,46 @@ class PayrollAdjustmentTest extends TestCase {
         $this->assertEquals(0.0, $slip['totals']['adjustments']);
     }
 
+    /** Correcting a typed amount without deleting and re-entering the row. */
+    public function test_edit_changes_the_amount_and_keeps_the_deduction_sign(): void {
+        $admin = User::factory()->create();
+        $employee = $this->workedEmployee();
+
+        $id = $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/adjustments", [
+            'date' => '2026-07-20', 'label' => 'Penalty Late', 'category' => 'penalty_late',
+            'amount' => 525, 'paid' => false,
+        ])->assertCreated()->json('id');
+
+        // Typed positive, as the form does — it must still subtract.
+        $this->actingAs($admin)->patchJson("/api/admin/adjustments/{$id}", ['amount' => 150])->assertOk();
+
+        $slip = $this->actingAs($admin)
+            ->getJson("/api/admin/employees/{$employee->id}/payslip?month=2026-07&period=second")
+            ->assertOk()->json();
+        $this->assertEqualsWithDelta(150.00, $slip['totals']['penalty_late'], 0.001);
+        $this->assertEqualsWithDelta(355.00, $slip['totals']['net_to_release'], 0.001); // 505 − 150
+    }
+
+    /** Setting an entry to 0 cancels it while keeping the record of the day. */
+    public function test_edit_to_zero_cancels_the_charge(): void {
+        $admin = User::factory()->create();
+        $employee = $this->workedEmployee();
+
+        $id = $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/adjustments", [
+            'date' => '2026-07-20', 'label' => 'Penalty Late', 'category' => 'penalty_late',
+            'amount' => 75, 'paid' => false,
+        ])->assertCreated()->json('id');
+
+        $this->actingAs($admin)->patchJson("/api/admin/adjustments/{$id}", ['amount' => 0])->assertOk();
+
+        $slip = $this->actingAs($admin)
+            ->getJson("/api/admin/employees/{$employee->id}/payslip?month=2026-07&period=second")
+            ->assertOk()->json();
+        $this->assertEqualsWithDelta(0.0, $slip['totals']['penalty_late'], 0.001);
+        $this->assertEqualsWithDelta(505.00, $slip['totals']['net_to_release'], 0.001);
+        $this->assertCount(1, $slip['adjustments']); // the row is still there
+    }
+
     public function test_delete_removes_the_adjustment(): void {
         $admin = User::factory()->create();
         $employee = $this->workedEmployee();
@@ -147,6 +187,8 @@ class PayrollAdjustmentTest extends TestCase {
     public function test_adjustment_endpoints_require_authentication(): void {
         $employee = $this->workedEmployee();
         $this->postJson("/api/admin/employees/{$employee->id}/adjustments", [])->assertStatus(401);
+        $this->patchJson('/api/admin/adjustments/1', ['amount' => 10])->assertStatus(401);
+        $this->deleteJson('/api/admin/adjustments/1')->assertStatus(401);
     }
 
     /**
