@@ -120,7 +120,13 @@ class PayslipController extends Controller {
             ])->values();
 
         $adjustmentsTotal = round($adjustments->sum('amount'), 2);
-        $paidTotal = round($adjustments->where('paid', true)->sum('amount'), 2);
+        // "Already paid" means money handed over in cash, so only an amount that
+        // ADDS to pay can carry it. On a deduction the flag would subtract a
+        // negative and hand back the very amount being withheld — a ₱75 penalty
+        // ticked "paid" used to raise Net to Release by ₱75 and disagree with
+        // the payslip. Ignoring it here also neutralises rows already saved
+        // that way, so no data has to be corrected by hand.
+        $paidTotal = round($adjustments->where('paid', true)->where('amount', '>', 0)->sum('amount'), 2);
 
         // Rice Allowance and Penalty Lates get their own summary columns, but
         // they're easy to enter under the generic Allowance / Authorized

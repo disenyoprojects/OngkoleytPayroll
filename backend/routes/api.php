@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\PayrollExportController;
 use App\Http\Controllers\Admin\PayrollPdfController;
 use App\Http\Controllers\Admin\PayrollSettingController;
 use App\Http\Controllers\Admin\PayrollSummaryExportController;
+use App\Http\Controllers\Admin\PenaltyLateController;
 use App\Http\Controllers\Admin\StatutoryDeductionController;
 use App\Http\Controllers\Admin\ThirteenthMonthController;
 use App\Http\Controllers\Admin\ThirteenthMonthPayslipController;
@@ -45,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/payroll/period/payslips-pdf', [PayrollController::class, 'periodPayslipsPdf']);
     Route::get('/admin/payroll/period/export', [PayrollSummaryExportController::class, 'export']);
     Route::post('/admin/payroll/period/statutory', [StatutoryDeductionController::class, 'generate']);
+    Route::post('/admin/payroll/period/penalty-lates', [PenaltyLateController::class, 'generate']);
     Route::get('/admin/payroll/export', [PayrollExportController::class, 'export']);
     Route::get('/admin/payroll/pdf', [PayrollPdfController::class, 'export']);
     // Company-wide sections — full admins only (branch logins get 403).
@@ -79,6 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/employees/{employee}/payslip/pdf', [PayslipController::class, 'pdf'])->withTrashed();
     Route::get('/admin/employees/{employee}/adjustments', [PayrollAdjustmentController::class, 'index'])->withTrashed();
     Route::post('/admin/employees/{employee}/adjustments', [PayrollAdjustmentController::class, 'store'])->withTrashed();
+    Route::patch('/admin/adjustments/{adjustment}', [PayrollAdjustmentController::class, 'update']);
     Route::delete('/admin/adjustments/{adjustment}', [PayrollAdjustmentController::class, 'destroy']);
     Route::get('/admin/branches', [EmployeeController::class, 'branches']);
 });

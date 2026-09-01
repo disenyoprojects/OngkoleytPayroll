@@ -75,6 +75,39 @@ class PayrollAdjustmentController extends Controller {
         return response()->json($adjustment, 201);
     }
 
+    /**
+     * Change an adjustment's amount after the fact — the office deciding a
+     * generated late penalty was excused (set it to 0) or should be charged at
+     * a different figure. The sign still follows the category, so the amount is
+     * typed positive here as it is on entry. Editing clears the auto-generated
+     * marker: from then on the row is the office's, and a re-run of the
+     * generator leaves it as it stands.
+     */
+    public function update(Request $request, PayrollAdjustment $adjustment) {
+        $adjustment->loadMissing('employee');
+        if ($adjustment->employee) {
+            $this->assertBranchAccess($request, $adjustment->employee);
+        }
+
+        $data = $request->validate([
+            'amount' => ['required', 'numeric'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $amount = match (true) {
+            array_key_exists($adjustment->category, self::DEDUCTION_LABELS) => -abs($data['amount']),
+            $adjustment->category === 'other' => $data['amount'],
+            default => abs($data['amount']),
+        };
+
+        $adjustment->update([
+            'amount' => $amount,
+            'reason' => $data['reason'] ?? null,
+        ]);
+
+        return response()->json($adjustment->fresh());
+    }
+
     public function destroy(Request $request, PayrollAdjustment $adjustment) {
         $adjustment->loadMissing('employee');
         if ($adjustment->employee) {

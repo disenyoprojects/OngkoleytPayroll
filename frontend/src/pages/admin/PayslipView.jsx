@@ -3,6 +3,7 @@ import { apiClient, openAuthedPdf } from "../../api/client";
 import { formatPHP, formatTime12, formatLateLabel, phThisMonth as thisMonth } from "../../theme";
 import { Button, inputStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 import GenerateStatutoryButton from "../../components/GenerateStatutoryButton";
+import GeneratePenaltyLatesButton from "../../components/GeneratePenaltyLatesButton";
 
 const PERIODS = [["first", "1–15"], ["second", "16–end"], ["whole", "Whole month"]];
 const CATEGORIES = [
@@ -23,6 +24,12 @@ const DEFAULT_LABELS = {
   deduction: "Authorized Deduction", penalty_late: "Penalty Late", cash_advance: "Cash Advance",
   rice_allowance: "Rice Allowance", sss: "SSS", pagibig: "Pag-IBIG", philhealth: "PhilHealth",
 };
+// Categories that always subtract. "Already paid" means cash handed over, so it
+// cannot apply to these — ticking it on a deduction would hand back the very
+// amount being withheld. The checkbox is hidden for them and never sent.
+const DEDUCTION_CATEGORIES = ["deduction", "penalty_late", "cash_advance", "sss", "pagibig", "philhealth"];
+const isDeduction = (category) => DEDUCTION_CATEGORIES.includes(category);
+
 const BLANK_ADJ = { label: "", category: "cash_on_hand", amount: "", paid: true, date: "" };
 
 function signed(amount) {
@@ -38,6 +45,8 @@ export default function PayslipView() {
   const [reload, setReload] = useState(0);
   const [adj, setAdj] = useState(BLANK_ADJ);
   const [adjError, setAdjError] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editAmount, setEditAmount] = useState("");
 
   useEffect(() => {
     apiClient.get("/api/admin/employees").then((res) => setStaff(res.data));
@@ -66,7 +75,7 @@ export default function PayslipView() {
         label: adj.label,
         category: adj.category,
         amount: Number(adj.amount),
-        paid: adj.paid,
+        paid: isDeduction(adj.category) ? false : adj.paid,
       });
       setAdj(BLANK_ADJ);
       setReload((n) => n + 1);
@@ -78,6 +87,19 @@ export default function PayslipView() {
   async function removeAdjustment(id) {
     await apiClient.delete(`/api/admin/adjustments/${id}`);
     setReload((n) => n + 1);
+  }
+
+  // Editing an amount in place: how a generated late penalty gets excused
+  // (set it to 0) or charged at a different figure.
+  async function saveEdit(id) {
+    setAdjError(null);
+    try {
+      await apiClient.patch(`/api/admin/adjustments/${id}`, { amount: Number(editAmount) });
+      setEditingId(null);
+      setReload((n) => n + 1);
+    } catch (e) {
+      setAdjError(e?.response?.data?.message || "Couldn't save that amount.");
+    }
   }
 
   const setAdjField = (k, v) => setAdj((a) => ({ ...a, [k]: v }));
@@ -169,9 +191,37 @@ export default function PayslipView() {
                       <td style={tdStyle}>{a.label}</td>
                       <td style={tdStyle}>{a.date}</td>
                       <td style={tdStyle}>{(CATEGORIES.find(([v]) => v === a.category) || [null, a.category])[1]}</td>
-                      <td style={tdStyle}>{a.paid ? <span style={{ color: "#3F6B45" }}>Paid ✓</span> : "To pay"}</td>
-                      <td style={{ ...tdStyle, textAlign: "right" }}>{signed(a.amount)}</td>
-                      <td style={{ ...tdStyle, textAlign: "right" }}><Button small variant="outline" onClick={() => removeAdjustment(a.id)}>Remove</Button></td>
+                      {/* A deduction is withheld, never "paid" — rows saved with
+                          the old pre-ticked box must not keep claiming it. */}
+                      <td style={tdStyle}>
+                        {isDeduction(a.category) ? "Withheld"
+                          : a.paid ? <span style={{ color: "#3F6B45" }}>Paid ✓</span> : "To pay"}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        {editingId === a.id ? (
+                          <input
+                            type="number" step="0.01" min="0" autoFocus
+                            value={editAmount}
+                            onChange={(e) => setEditAmount(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") saveEdit(a.id); if (e.key === "Escape") setEditingId(null); }}
+                            style={{ ...inputStyle, width: 100, height: 30, textAlign: "right" }}
+                          />
+                        ) : signed(a.amount)}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "right", whiteSpace: "nowrap" }}>
+                        {editingId === a.id ? (
+                          <>
+                            <Button small variant="gold" onClick={() => saveEdit(a.id)}>Save</Button>{" "}
+                            <Button small variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
+                          </>
+                        ) : (
+                          <>
+                            {/* 0 excuses a generated late penalty without losing the record of the day. */}
+                            <Button small variant="outline" onClick={() => { setEditingId(a.id); setEditAmount(String(Math.abs(a.amount))); }}>Edit</Button>{" "}
+                            <Button small variant="outline" onClick={() => removeAdjustment(a.id)}>Remove</Button>
+                          </>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -195,14 +245,16 @@ export default function PayslipView() {
                 {CATEGORIES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
               </select>
               <input type="date" value={adj.date || slip.period.from} min={slip.period.from} max={slip.period.to} onChange={(e) => setAdjField("date", e.target.value)} style={{ ...inputStyle, width: "auto" }} />
-              <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13 }}>
-                <input type="checkbox" checked={adj.paid} onChange={(e) => setAdjField("paid", e.target.checked)} />
-                Already paid (cash on hand)
-              </label>
+              {!isDeduction(adj.category) && (
+                <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13 }}>
+                  <input type="checkbox" checked={adj.paid} onChange={(e) => setAdjField("paid", e.target.checked)} />
+                  Already paid (cash on hand)
+                </label>
+              )}
               <Button variant="gold" onClick={addAdjustment} disabled={adj.amount === "" || (!adj.label && !DEFAULT_LABELS[adj.category])}>Add</Button>
             </div>
             {adjError && <div style={{ color: "#C1521F", fontSize: 12, marginTop: 8 }}>{adjError}</div>}
-            <div style={{ color: "#7A6A57", fontSize: 12, marginTop: 8 }}>Tip: pick the type and enter a positive amount. <b>SSS, Pag-IBIG, PhilHealth</b> and <b>Authorized Deduction</b> are subtracted automatically (type any amount you want — nothing is fixed); allowances/bonuses are added. For <b>Other</b>, type your own label. "Already paid" is added to Total Salary but subtracted from what's still handed over.</div>
+            <div style={{ color: "#7A6A57", fontSize: 12, marginTop: 8 }}>Tip: pick the type and enter a positive amount. <b>SSS, Pag-IBIG, PhilHealth</b> and <b>Authorized Deduction</b> are subtracted automatically (type any amount you want — nothing is fixed); allowances/bonuses are added. For <b>Other</b>, type your own label. "Already paid" applies only to allowances and bonuses — it adds them to Total Salary but subtracts them from what's still handed over. Deductions are always withheld, so the box doesn't appear for them.</div>
           </div>
 
           {/* The generator sits with the preview: it is what fills the SSS,
@@ -210,6 +262,7 @@ export default function PayslipView() {
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", margin: "20px 0 8px" }}>
             <div style={{ fontWeight: 700, fontSize: 14 }}>Payslip preview</div>
             <GenerateStatutoryButton month={month} period={period} onGenerated={() => setReload((n) => n + 1)} />
+            <GeneratePenaltyLatesButton month={month} period={period} onGenerated={() => setReload((n) => n + 1)} />
           </div>
           <PayslipDocument slip={slip} />
         </div>

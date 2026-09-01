@@ -20,8 +20,9 @@ class PayrollSettingController extends Controller {
             'night_diff_multiplier' => ['required', 'numeric', 'min:0'],
             'unpaid_break_hours' => ['required', 'numeric', 'min:0'],
             'minimum_overtime_minutes' => ['sometimes', 'integer', 'min:0', 'max:480'],
-            // Retained for historical settings rows; no longer applied to pay —
-            // a late penalty is now entered as an Authorized Deduction.
+            // What the Generate Penalty Lates button charges per late day. It is
+            // not applied to pay on its own — it writes an adjustment the office
+            // can still excuse or change.
             'late_penalty_amount' => ['sometimes', 'numeric', 'min:0'],
             'period_start' => ['required', 'date'],
             'period_end' => ['required', 'date'],

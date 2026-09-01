@@ -149,6 +149,49 @@ class PayrollAdjustmentTest extends TestCase {
         $this->postJson("/api/admin/employees/{$employee->id}/adjustments", [])->assertStatus(401);
     }
 
+    /**
+     * A deduction ticked "already paid" used to cancel itself out of Net to
+     * Release: the register handed over ₱75 more than the payslip showed.
+     */
+    public function test_a_deduction_marked_paid_does_not_raise_net_to_release(): void {
+        $admin = User::factory()->create();
+        $employee = $this->workedEmployee();
+
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/adjustments", [
+            'date' => '2026-07-20', 'label' => 'Penalty Late', 'category' => 'penalty_late',
+            'amount' => 75, 'paid' => true,
+        ])->assertCreated();
+
+        $slip = $this->actingAs($admin)
+            ->getJson("/api/admin/employees/{$employee->id}/payslip?month=2026-07&period=second")
+            ->assertOk()->json();
+
+        // One 8h day at ₱505, less the ₱75 penalty, however the flag is set.
+        $this->assertEqualsWithDelta(0.0, $slip['totals']['paid'], 0.001);
+        $this->assertEqualsWithDelta(430.00, $slip['totals']['net_to_release'], 0.001);
+        // And the two documents agree, which is the point.
+        $this->assertEqualsWithDelta($slip['slip']['net'], $slip['totals']['net_to_release'], 0.001);
+    }
+
+    /** An allowance handed over in cash still nets out — the flag keeps working where it belongs. */
+    public function test_a_paid_allowance_still_nets_out(): void {
+        $admin = User::factory()->create();
+        $employee = $this->workedEmployee();
+
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/adjustments", [
+            'date' => '2026-07-20', 'label' => 'Rice Allowance', 'category' => 'rice_allowance',
+            'amount' => 300, 'paid' => true,
+        ])->assertCreated();
+
+        $slip = $this->actingAs($admin)
+            ->getJson("/api/admin/employees/{$employee->id}/payslip?month=2026-07&period=second")
+            ->assertOk()->json();
+
+        $this->assertEqualsWithDelta(300.00, $slip['totals']['paid'], 0.001);
+        $this->assertEqualsWithDelta(805.00, $slip['totals']['total_salary'], 0.001);
+        $this->assertEqualsWithDelta(505.00, $slip['totals']['net_to_release'], 0.001);
+    }
+
     /** The employee's slip shows one "Authorized Deduction"; the office sheet keeps the breakdown. */
     public function test_the_late_penalty_prints_as_an_authorized_deduction_on_the_payslip(): void {
         $admin = User::factory()->create();
