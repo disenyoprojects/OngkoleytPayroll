@@ -6,11 +6,18 @@ import AttendanceLogModal from "../../components/AttendanceLogModal";
 
 const EMPLOYMENT_TYPES = ["regular", "probationary", "fixed_term", "seasonal"];
 
+// Monday first — how the roster is read here. Values match Carbon/date('w').
+const WEEK = [
+  [1, "Monday"], [2, "Tuesday"], [3, "Wednesday"], [4, "Thursday"],
+  [5, "Friday"], [6, "Saturday"], [0, "Sunday"],
+];
+const BLANK_WEEK = Object.fromEntries(WEEK.map(([d]) => [d, { start: "", end: "" }]));
+
 const BLANK = {
   employee_code: "", full_name: "", short_name: "", role: "",
   branch_id: "", employment_type: "regular", hire_date: "",
   resignation_date: "", shift_start: "08:00", shift_end: "17:00",
-  daily_basic_rate: "",
+  daily_basic_rate: "", day_shifts: BLANK_WEEK,
 };
 
 export default function EmployeesView({ isAdmin = true, myBranchId = null }) {
@@ -66,6 +73,13 @@ export default function EmployeesView({ isAdmin = true, myBranchId = null }) {
       resignation_date: emp.resignation_date ? String(emp.resignation_date).slice(0, 10) : "",
       shift_start: emp.shift_start ? String(emp.shift_start).slice(0, 5) : "08:00",
       shift_end: emp.shift_end ? String(emp.shift_end).slice(0, 5) : "17:00",
+      day_shifts: {
+        ...BLANK_WEEK,
+        ...Object.fromEntries((emp.day_shifts ?? []).map((s) => [s.day_of_week, {
+          start: String(s.shift_start).slice(0, 5),
+          end: String(s.shift_end).slice(0, 5),
+        }])),
+      },
       daily_basic_rate: rate,
       reason: "",
     });
@@ -75,11 +89,27 @@ export default function EmployeesView({ isAdmin = true, myBranchId = null }) {
     setEditing((e) => ({ ...e, [field]: value }));
   }
 
+  function setDayShift(day, side, value) {
+    setEditing((e) => ({
+      ...e,
+      day_shifts: { ...e.day_shifts, [day]: { ...e.day_shifts[day], [side]: value } },
+    }));
+  }
+
   async function save() {
     setError(null);
     const payload = { ...editing };
     if (payload.daily_basic_rate === "") payload.daily_basic_rate = null;
     if (payload.resignation_date === "") payload.resignation_date = null;
+    // Only days with both times set are sent; the rest fall back to the default
+    // shift, and the API removes any row they previously had.
+    payload.day_shifts = WEEK
+      .filter(([d]) => editing.day_shifts?.[d]?.start && editing.day_shifts?.[d]?.end)
+      .map(([d]) => ({
+        day_of_week: d,
+        shift_start: editing.day_shifts[d].start,
+        shift_end: editing.day_shifts[d].end,
+      }));
     try {
       if (editing.id) {
         await apiClient.put(`/api/admin/employees/${editing.id}`, payload);
@@ -273,13 +303,50 @@ export default function EmployeesView({ isAdmin = true, myBranchId = null }) {
           </div>
           <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, marginBottom: 4 }}>Shift Start</div>
+              <div style={{ fontSize: 12, marginBottom: 4 }}>Default Shift Start</div>
               <input type="time" value={editing.shift_start} onChange={(e) => set("shift_start", e.target.value)} style={inputStyle} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, marginBottom: 4 }}>Shift End</div>
+              <div style={{ fontSize: 12, marginBottom: 4 }}>Default Shift End</div>
               <input type="time" value={editing.shift_end} onChange={(e) => set("shift_end", e.target.value)} style={inputStyle} />
             </div>
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, marginBottom: 2 }}>Shift Per Day</div>
+            <div style={{ fontSize: 11.5, color: "#7A6A57", marginBottom: 8 }}>
+              For staff whose hours differ by day. Leave a day blank to use the default shift above.
+            </div>
+            {WEEK.map(([day, name]) => {
+              const row = editing.day_shifts?.[day] ?? { start: "", end: "" };
+              const partial = Boolean(row.start) !== Boolean(row.end);
+              return (
+                <div key={day} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                  <div style={{ width: 84, fontSize: 12.5 }}>{name}</div>
+                  <input
+                    type="time" value={row.start} aria-label={`${name} shift start`}
+                    onChange={(e) => setDayShift(day, "start", e.target.value)}
+                    style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
+                  />
+                  <span style={{ fontSize: 12, color: "#7A6A57" }}>–</span>
+                  <input
+                    type="time" value={row.end} aria-label={`${name} shift end`}
+                    onChange={(e) => setDayShift(day, "end", e.target.value)}
+                    style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
+                  />
+                  <button
+                    type="button" title={`Clear ${name}`} aria-label={`Clear ${name}`}
+                    onClick={() => { setDayShift(day, "start", ""); setDayShift(day, "end", ""); }}
+                    style={{
+                      width: 26, height: 26, lineHeight: 1, border: "1px solid #E3D9C6",
+                      background: "transparent", borderRadius: 6, cursor: "pointer",
+                      color: row.start || row.end ? "#7A6A57" : "#CFC4B0",
+                    }}
+                  >×</button>
+                  {partial && <span style={{ fontSize: 11, color: "#C1521F", whiteSpace: "nowrap" }}>set both</span>}
+                </div>
+              );
+            })}
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 12, marginBottom: 4 }}>Daily Basic Rate (₱) — blank = use global rate</div>

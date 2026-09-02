@@ -61,13 +61,17 @@ class ClockController extends Controller {
                 throw ValidationException::withMessages(['clock_in' => ['Already clocked in today.']]);
             }
 
+            // Stamp the shift the employee actually stands on this weekday, not
+            // their default one — the day is judged for lateness against it.
+            $shift = $employee->shiftFor($moment);
+
             return response()->json(AttendanceRecord::create([
                 'employee_id' => $employee->id,
                 'work_date' => $moment->toDateString(),
                 'clock_in' => $moment->format('H:i:s'),
                 'status' => 'pending',
-                'shift_start' => $employee->shift_start,
-                'shift_end' => $employee->shift_end,
+                'shift_start' => $shift['start'],
+                'shift_end' => $shift['end'],
             ]));
         }
 

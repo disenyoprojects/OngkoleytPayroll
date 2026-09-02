@@ -15,7 +15,7 @@ class EmployeeController extends Controller {
         $branchIds = $this->branchFilter($request);
 
         return response()->json(
-            Employee::with('branch')
+            Employee::with(['branch', 'dayShifts'])
                 ->when($branchIds !== null, fn ($q) => $q->whereIn('branch_id', $branchIds))
                 ->orderBy('short_name')->get()
         );
@@ -42,6 +42,13 @@ class EmployeeController extends Controller {
             'resignation_date' => ['nullable', 'date'],
             'shift_start' => ['nullable', 'date_format:H:i'],
             'shift_end' => ['nullable', 'date_format:H:i'],
+            // Weekly shift pattern. A weekday sent with both times set overrides
+            // the default shift for that day; sent blank, or left out, it falls
+            // back to the default. Sunday = 0 through Saturday = 6.
+            'day_shifts' => ['nullable', 'array'],
+            'day_shifts.*.day_of_week' => ['required', 'integer', 'between:0,6'],
+            'day_shifts.*.shift_start' => ['nullable', 'date_format:H:i', 'required_with:day_shifts.*.shift_end'],
+            'day_shifts.*.shift_end' => ['nullable', 'date_format:H:i', 'required_with:day_shifts.*.shift_start'],
             'daily_basic_rate' => ['nullable', 'numeric', 'min:0'],
             'reason' => ['nullable', 'string'],
         ]);
@@ -65,6 +72,7 @@ class EmployeeController extends Controller {
                 'daily_basic_rate' => $data['daily_basic_rate'] ?? null,
             ]);
             $employee->save();
+            $this->syncDayShifts($employee, $data);
 
             if (($data['daily_basic_rate'] ?? null) !== null) {
                 AuditLog::create([
@@ -78,7 +86,7 @@ class EmployeeController extends Controller {
                 ]);
             }
 
-            return response()->json($employee->load('branch'), 201);
+            return response()->json($employee->load(['branch', 'dayShifts']), 201);
         });
     }
 
@@ -96,6 +104,13 @@ class EmployeeController extends Controller {
             'resignation_date' => ['nullable', 'date'],
             'shift_start' => ['nullable', 'date_format:H:i'],
             'shift_end' => ['nullable', 'date_format:H:i'],
+            // Weekly shift pattern. A weekday sent with both times set overrides
+            // the default shift for that day; sent blank, or left out, it falls
+            // back to the default. Sunday = 0 through Saturday = 6.
+            'day_shifts' => ['nullable', 'array'],
+            'day_shifts.*.day_of_week' => ['required', 'integer', 'between:0,6'],
+            'day_shifts.*.shift_start' => ['nullable', 'date_format:H:i', 'required_with:day_shifts.*.shift_end'],
+            'day_shifts.*.shift_end' => ['nullable', 'date_format:H:i', 'required_with:day_shifts.*.shift_start'],
             'daily_basic_rate' => ['nullable', 'numeric', 'min:0'],
             'reason' => ['nullable', 'string'],
         ]);
@@ -129,6 +144,7 @@ class EmployeeController extends Controller {
                 'daily_basic_rate' => $newRate,
             ]);
             $employee->save();
+            $this->syncDayShifts($employee, $data);
 
             if ($rateChanged) {
                 AuditLog::create([
@@ -145,13 +161,43 @@ class EmployeeController extends Controller {
                 ]);
             }
 
-            return response()->json($employee->load('branch'));
+            return response()->json($employee->load(['branch', 'dayShifts']));
         });
+    }
+
+    /**
+     * Replace the employee's weekly shift pattern with what was submitted.
+     *
+     * Omitting `day_shifts` entirely leaves the pattern alone, so a caller that
+     * knows nothing about it (an older client, a partial update) cannot wipe it
+     * by accident. Sending it replaces the lot: a weekday with both times set
+     * is stored, and one sent blank is removed so that day falls back to the
+     * employee's default shift.
+     */
+    private function syncDayShifts(Employee $employee, array $data): void {
+        if (! array_key_exists('day_shifts', $data)) {
+            return;
+        }
+
+        $keep = [];
+        foreach ($data['day_shifts'] ?? [] as $shift) {
+            if (empty($shift['shift_start']) || empty($shift['shift_end'])) {
+                continue; // blank pair = no override for this weekday
+            }
+            $day = (int) $shift['day_of_week'];
+            $employee->dayShifts()->updateOrCreate(
+                ['day_of_week' => $day],
+                ['shift_start' => $shift['shift_start'], 'shift_end' => $shift['shift_end']],
+            );
+            $keep[] = $day;
+        }
+
+        $employee->dayShifts()->whereNotIn('day_of_week', $keep ?: [-1])->delete();
     }
 
     public function separated(Request $request) {
         $branchIds = $this->branchFilter($request);
-        $query = Employee::onlyTrashed()->with('branch')
+        $query = Employee::onlyTrashed()->with(['branch', 'dayShifts'])
             ->when($branchIds !== null, fn ($q) => $q->whereIn('branch_id', $branchIds))
             ->orderBy('short_name');
 
@@ -224,7 +270,7 @@ class EmployeeController extends Controller {
                 'detail' => "Restored employee {$employee->employee_code} ({$employee->full_name})",
             ]);
 
-            return response()->json($employee->load('branch'));
+            return response()->json($employee->load(['branch', 'dayShifts']));
         });
     }
 }

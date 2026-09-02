@@ -40,6 +40,11 @@ class AttendanceAdminController extends Controller {
             ]);
         }
 
+        // Unstated shift times come from the employee's pattern for that
+        // weekday, so a missed Saturday is backfilled with the Saturday shift
+        // rather than whatever the default happens to be.
+        $shift = $employee->shiftFor($data['work_date']);
+
         $record = AttendanceRecord::create([
             'employee_id' => $employee->id,
             'work_date' => $data['work_date'],
@@ -49,8 +54,8 @@ class AttendanceAdminController extends Controller {
             'adjusted' => true,
             'reason' => $data['reason'],
             'details' => $data['details'] ?? null,
-            'shift_start' => $data['shift_start'] ?? $employee->shift_start,
-            'shift_end' => $data['shift_end'] ?? $employee->shift_end,
+            'shift_start' => $data['shift_start'] ?? $shift['start'],
+            'shift_end' => $data['shift_end'] ?? $shift['end'],
             'holiday_type' => $data['holiday_type'] ?? null,
             'is_rest_day' => (bool) ($data['is_rest_day'] ?? false),
             'absence_type' => $data['absence_type'] ?? null,

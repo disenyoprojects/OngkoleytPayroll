@@ -28,6 +28,32 @@ class Employee extends Model {
         return $this->hasMany(AttendanceRecord::class);
     }
 
+    public function dayShifts() {
+        return $this->hasMany(EmployeeDayShift::class);
+    }
+
+    /**
+     * The shift this employee stands on a given date: the weekly pattern's row
+     * for that weekday, else the employee's default shift. Callers that resolve
+     * many dates should eager-load `dayShifts` — the loaded collection is used
+     * in preference to a query so a payslip does not fire one per day.
+     *
+     * @return array{start: ?string, end: ?string}
+     */
+    public function shiftFor($date): array {
+        $default = ['start' => $this->shift_start, 'end' => $this->shift_end];
+        if (! $date) {
+            return $default;
+        }
+
+        $dayOfWeek = (int) \Illuminate\Support\Carbon::parse($date)->dayOfWeek;
+        $row = $this->relationLoaded('dayShifts')
+            ? $this->dayShifts->firstWhere('day_of_week', $dayOfWeek)
+            : $this->dayShifts()->where('day_of_week', $dayOfWeek)->first();
+
+        return $row ? ['start' => $row->shift_start, 'end' => $row->shift_end] : $default;
+    }
+
     public function earnings() {
         return $this->hasMany(EmployeeEarning::class);
     }

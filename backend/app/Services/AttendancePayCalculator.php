@@ -22,8 +22,13 @@ class AttendancePayCalculator {
     public function computeForRecord(\App\Models\AttendanceRecord $record, PayrollSetting $settings): ?array {
         $employee = $record->employee;
         $rate = $employee?->daily_basic_rate === null ? null : (float) $employee->daily_basic_rate;
-        $shiftStart = $record->shift_start ?: ($employee?->shift_start);
-        $shiftEnd = $record->shift_end ?: ($employee?->shift_end);
+
+        // The record's own shift wins; it is stamped at clock-in and is what an
+        // admin edits. Failing that, the employee's pattern for that weekday,
+        // then their default shift.
+        $shift = $employee?->shiftFor($record->work_date) ?? ['start' => null, 'end' => null];
+        $shiftStart = $record->shift_start ?: $shift['start'];
+        $shiftEnd = $record->shift_end ?: $shift['end'];
 
         return $this->compute(
             $record->clock_in,
