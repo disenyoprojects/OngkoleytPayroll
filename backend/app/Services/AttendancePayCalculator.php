@@ -11,10 +11,13 @@ class AttendancePayCalculator {
 
     /**
      * Prior-day statuses that forfeit the regular-holiday premium under the
-     * company rule below. Deliberately only the two unpaid-absence codes: a
-     * rest day, a leave, or a travel day leaves the premium intact.
+     * company rule below. 'rest_day' was added on management's instruction of
+     * 2026-09-02, over the objection noted there: it makes every regular
+     * holiday that falls the day after a rest day forfeit for the whole
+     * roster, not just for an employee who actually missed work. Leave, sick
+     * leave and travel still leave the premium intact.
      */
-    public const HOLIDAY_FORFEITING_ABSENCES = ['absent', 'awol'];
+    public const HOLIDAY_FORFEITING_ABSENCES = ['absent', 'awol', 'rest_day'];
 
     public function computeForRecord(\App\Models\AttendanceRecord $record, PayrollSetting $settings): ?array {
         $employee = $record->employee;
@@ -43,18 +46,26 @@ class AttendancePayCalculator {
     }
 
     /**
-     * COMPANY POLICY, NOT DOLE. Management directed that an unpaid absence on
+     * COMPANY POLICY, NOT DOLE. Management directed that a non-working day on
      * the calendar day immediately before a regular holiday forfeits that
-     * holiday's premium even when the employee reported for work.
+     * holiday's premium even when the employee reported for work on the
+     * holiday itself — and, as of 2026-09-02, that a scheduled rest day counts
+     * as such a day.
      *
-     * The statutory rule is the opposite: both the DOLE Handbook on Workers'
-     * Statutory Monetary Benefits (2024), p.18 §E.1, and the Supreme Court in
-     * Nippon Paint Philippines, Inc. v. NIPPEA (G.R. No. 229396, 30 June 2021)
-     * withhold holiday pay only "if he/she has not worked on such regular
-     * holiday" — an employee who renders service is paid 200% regardless of the
-     * preceding day. Set on management's written instruction; the deviation is
-     * surfaced on the payslip through the premium label rather than hidden in
-     * the multiplier, so it stays visible and is reversible from this one spot.
+     * The statutory rule is the opposite on both points. The DOLE Handbook on
+     * Workers' Statutory Monetary Benefits (2024) p.18 §E.1 and the Supreme
+     * Court in Nippon Paint Philippines, Inc. v. NIPPEA (G.R. No. 229396,
+     * 30 June 2021) withhold holiday pay only "if he/she has not worked on
+     * such regular holiday" — an employee who renders service is paid 200%
+     * whatever the preceding day held. And §E.3 is express that a rest day is
+     * not an absence at all: where the preceding day "is a non-work day in the
+     * establishment or the scheduled rest day of the employee, he/she shall
+     * not be deemed to be on leave of absence on that day."
+     *
+     * Both conflicts were raised with management, which elected to proceed.
+     * The deviation is surfaced on the payslip through the premium label
+     * rather than hidden in the multiplier, so it stays visible and is
+     * reversible from this one spot.
      */
     private function holidayForfeitedFor(\App\Models\AttendanceRecord $record): bool {
         if ($record->holiday_type !== 'regular' || ! $record->work_date) {

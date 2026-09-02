@@ -77,13 +77,9 @@ class HolidayForfeitureTest extends TestCase {
         $this->assertSame('Regular Holiday', $pay['premium_label']);
     }
 
-    /**
-     * The narrow trigger management chose. A rest day is not an absence (DOLE
-     * Handbook p.18 §E.3) and leave/sick/travel are excluded too, so a Monday
-     * holiday after an ordinary Sunday keeps its premium for the whole roster.
-     */
-    public function test_only_absent_and_awol_forfeit_the_premium(): void {
-        foreach (['rest_day', 'leave', 'sick_leave', 'travel'] as $type) {
+    /** Leave, sick leave and travel are still outside the trigger. */
+    public function test_leave_sick_leave_and_travel_keep_the_premium(): void {
+        foreach (['leave', 'sick_leave', 'travel'] as $type) {
             $employee = $this->employee();
             $this->priorDay($employee, $type);
             $pay = $this->pay($this->record($employee, '2026-08-31', ['holiday_type' => 'regular']));
@@ -91,8 +87,10 @@ class HolidayForfeitureTest extends TestCase {
             $this->assertFalse($pay['holiday_forfeited'], "{$type} must not forfeit the premium");
             $this->assertSame(1108.48, $pay['total'], "{$type} must keep the 200%");
         }
+    }
 
-        foreach (['absent', 'awol'] as $type) {
+    public function test_absent_awol_and_rest_day_forfeit_the_premium(): void {
+        foreach (['absent', 'awol', 'rest_day'] as $type) {
             $employee = $this->employee();
             $this->priorDay($employee, $type);
             $pay = $this->pay($this->record($employee, '2026-08-31', ['holiday_type' => 'regular']));
@@ -100,6 +98,23 @@ class HolidayForfeitureTest extends TestCase {
             $this->assertTrue($pay['holiday_forfeited'], "{$type} must forfeit the premium");
             $this->assertSame(552.34, $pay['total']);
         }
+    }
+
+    /**
+     * Ruby Rose's actual Aug 2026 record, and the reason the rule was widened:
+     * Aug 30 is a Sunday carrying the "Rest Day" status, so under management's
+     * instruction of 2026-09-02 the Aug 31 premium is forfeited. DOLE Handbook
+     * p.18 §E.3 says the opposite — a rest day is not an absence — so this test
+     * exists to make the divergence explicit and greppable.
+     */
+    public function test_a_rest_day_before_the_holiday_now_forfeits_the_premium(): void {
+        $employee = $this->employee();
+        $this->priorDay($employee, 'rest_day');
+        $pay = $this->pay($this->record($employee, '2026-08-31', ['holiday_type' => 'regular']));
+
+        $this->assertTrue($pay['holiday_forfeited']);
+        $this->assertSame(552.34, $pay['total']);
+        $this->assertSame('Holiday Premium Forfeited', $pay['premium_label']);
     }
 
     /** Special days are premium pay under Art. 93, outside the holiday-pay rule. */
