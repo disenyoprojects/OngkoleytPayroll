@@ -9,6 +9,13 @@ class AttendancePayCalculator {
     private const DEFAULT_SHIFT_END = '17:00';
     public const NO_PAY_ABSENCES = ['absent', 'awol', 'travel', 'leave', 'sick_leave', 'rest_day'];
 
+    /**
+     * Prior-day statuses that forfeit the regular-holiday premium under the
+     * company rule below. Deliberately only the two unpaid-absence codes: a
+     * rest day, a leave, or a travel day leaves the premium intact.
+     */
+    public const HOLIDAY_FORFEITING_ABSENCES = ['absent', 'awol'];
+
     public function computeForRecord(\App\Models\AttendanceRecord $record, PayrollSetting $settings): ?array {
         $employee = $record->employee;
         $rate = $employee?->daily_basic_rate === null ? null : (float) $employee->daily_basic_rate;
@@ -30,8 +37,36 @@ class AttendancePayCalculator {
                 'break_in' => $record->break_in,
                 'ot_in' => $record->ot_in,
                 'ot_out' => $record->ot_out,
+                'holiday_forfeited' => $this->holidayForfeitedFor($record),
             ],
         );
+    }
+
+    /**
+     * COMPANY POLICY, NOT DOLE. Management directed that an unpaid absence on
+     * the calendar day immediately before a regular holiday forfeits that
+     * holiday's premium even when the employee reported for work.
+     *
+     * The statutory rule is the opposite: both the DOLE Handbook on Workers'
+     * Statutory Monetary Benefits (2024), p.18 §E.1, and the Supreme Court in
+     * Nippon Paint Philippines, Inc. v. NIPPEA (G.R. No. 229396, 30 June 2021)
+     * withhold holiday pay only "if he/she has not worked on such regular
+     * holiday" — an employee who renders service is paid 200% regardless of the
+     * preceding day. Set on management's written instruction; the deviation is
+     * surfaced on the payslip through the premium label rather than hidden in
+     * the multiplier, so it stays visible and is reversible from this one spot.
+     */
+    private function holidayForfeitedFor(\App\Models\AttendanceRecord $record): bool {
+        if ($record->holiday_type !== 'regular' || ! $record->work_date) {
+            return false; // Only regular holidays carry the forfeitable premium.
+        }
+
+        $previous = \App\Models\AttendanceRecord::where('employee_id', $record->employee_id)
+            ->whereDate('work_date', $record->work_date->copy()->subDay())
+            ->first();
+
+        return $previous !== null
+            && in_array($previous->absence_type, self::HOLIDAY_FORFEITING_ABSENCES, true);
     }
 
     public function compute(
@@ -50,12 +85,28 @@ class AttendancePayCalculator {
         $holidayType = $day['holiday_type'] ?? null;
         $isRestDay = (bool) ($day['is_rest_day'] ?? false);
         $absenceType = $day['absence_type'] ?? null;
-        $premiumLabel = DoleRates::label($holidayType, $isRestDay);
-        $regularMult = DoleRates::regularMultiplier($holidayType, $isRestDay);
+
+        // Company policy (see holidayForfeitedFor): the regular-holiday premium
+        // is dropped, so the day rates as an ordinary one. Any rest-day premium
+        // survives — that is a separate benefit under Art. 93 and is not what
+        // management asked to withhold.
+        $holidayForfeited = $holidayType === 'regular' && (bool) ($day['holiday_forfeited'] ?? false);
+        $paidHolidayType = $holidayForfeited ? null : $holidayType;
+
+        $premiumLabel = DoleRates::label($paidHolidayType, $isRestDay);
+        $regularMult = DoleRates::regularMultiplier($paidHolidayType, $isRestDay);
+        // Deliberately avoids the words "Regular Holiday": PayslipController
+        // buckets the premium uplift by matching that phrase first, which would
+        // file a forfeited rest day's 30% under the Regular Holiday earnings line.
+        if ($holidayForfeited) {
+            $premiumLabel = $premiumLabel === 'Ordinary'
+                ? 'Holiday Premium Forfeited'
+                : $premiumLabel . ' + Holiday Premium Forfeited';
+        }
 
         // No-pay absence statuses short-circuit to a zeroed result.
         if (in_array($absenceType, self::NO_PAY_ABSENCES, true)) {
-            return $this->zeroed($premiumLabel, $regularMult);
+            return $this->zeroed($premiumLabel, $regularMult, $holidayForfeited);
         }
 
         $start = $this->minutesOf($clockIn);
@@ -142,7 +193,7 @@ class AttendancePayCalculator {
         // Regular pay at the day's premium multiplier.
         $basic = round($regularHours * $hourlyRate * $regularMult, 2);
         // OT: ordinary is hourly*ot_multiplier; premium days are 130% of the premium hourly rate.
-        $isPremiumDay = $holidayType !== null || $isRestDay;
+        $isPremiumDay = $paidHolidayType !== null || $isRestDay;
         $otRate = $isPremiumDay
             ? $hourlyRate * $regularMult * 1.30
             : $hourlyRate * (float) $settings->overtime_multiplier;
@@ -192,10 +243,11 @@ class AttendancePayCalculator {
             'total' => $total,
             'premium_label' => $premiumLabel,
             'premium_multiplier' => $regularMult,
+            'holiday_forfeited' => $holidayForfeited,
         ];
     }
 
-    private function zeroed(string $label, float $mult): array {
+    private function zeroed(string $label, float $mult, bool $holidayForfeited = false): array {
         return [
             'total_hours' => 0.0, 'regular_hours' => 0.0, 'ot_hours' => 0.0, 'night_diff_hours' => 0.0,
             'basic' => 0.0, 'ot' => 0.0, 'night_diff' => 0.0,
@@ -203,6 +255,7 @@ class AttendancePayCalculator {
             'late' => false, 'late_minutes' => 0, 'tardiness' => 0.0,
             'undertime_minutes' => 0, 'overbreak_hours' => 0.0, 'undertime' => 0.0, 'total' => 0.0,
             'premium_label' => $label, 'premium_multiplier' => $mult,
+            'holiday_forfeited' => $holidayForfeited,
         ];
     }
 
