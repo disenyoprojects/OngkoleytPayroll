@@ -3,6 +3,7 @@ import { apiClient, openAuthedPdf } from "../../api/client";
 import { formatPHP, formatTime12, formatLateLabel, phThisMonth as thisMonth } from "../../theme";
 import { Button, inputStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 import GenerateStatutoryButton from "../../components/GenerateStatutoryButton";
+import StatutoryWarning from "../../components/StatutoryWarning";
 
 const PERIODS = [["first", "1–15"], ["second", "16–end"], ["whole", "Whole month"]];
 const CATEGORIES = [
@@ -262,6 +263,9 @@ export default function PayslipView() {
             <div style={{ fontWeight: 700, fontSize: 14 }}>Payslip preview</div>
             <GenerateStatutoryButton month={month} period={period} onGenerated={() => setReload((n) => n + 1)} />
           </div>
+          {/* Without this the payslip below is indistinguishable from one where
+              the employee genuinely owes nothing. */}
+          <StatutoryWarning missing={slip.statutory_missing} />
           <PayslipDocument slip={slip} />
         </div>
       )}

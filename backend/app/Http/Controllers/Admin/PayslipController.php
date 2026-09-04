@@ -9,6 +9,7 @@ use App\Models\PayrollAdjustment;
 use App\Models\PayrollSetting;
 use App\Services\AttendancePayCalculator;
 use App\Services\PayslipPeriod;
+use App\Services\StatutoryCoverage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
@@ -210,6 +211,10 @@ class PayslipController extends Controller {
             'period' => $window,
             'lines' => $lines,
             'adjustments' => $adjustments,
+            // Empty unless the period earned something and a statutory row is
+            // absent — the screens warn on it so a forgotten Generate stops
+            // looking like an ordinary payslip.
+            'statutory_missing' => app(StatutoryCoverage::class)->missingFor($employee, $window, $settings),
             'slip' => [
                 'days_worked' => round($daysWorked, 2),
                 'earnings' => $earnings,

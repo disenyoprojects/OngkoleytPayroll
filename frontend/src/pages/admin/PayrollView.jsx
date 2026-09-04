@@ -4,6 +4,7 @@ import { formatPHP, formatTime12, formatLateLabel, phThisMonth as thisMonth, phT
 import { Button, StatCard, tabBtnStyle, tableWrap, tableStyle, thStyle, tdStyle, inputStyle } from "../../components/ui";
 import PayslipView from "./PayslipView";
 import GenerateStatutoryButton from "../../components/GenerateStatutoryButton";
+import StatutoryWarning from "../../components/StatutoryWarning";
 
 // Calendar math on YYYY-MM-DD strings. The Date is built at UTC midnight from
 // an explicit date, so it carries no time-of-day the browser's timezone could
@@ -258,6 +259,13 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true,
         <div>Loading...</div>
       ) : (
         <>
+          {/* The register below shows no SSS/Pag-IBIG/PhilHealth at all until
+              the generator has run, which is indistinguishable from a period
+              where nothing is owed. Say so, with the button to hand. */}
+          <StatutoryWarning count={data.statutory_ungenerated}>
+            <GenerateStatutoryButton month={month} period={period} onGenerated={onGenerated} />
+          </StatutoryWarning>
+
           {/* Totals cover whatever the login can see: the owner gets the whole
               company, a branch login gets its own branches summed. */}
           <div style={{ display: "flex", gap: 16, marginBottom: 22, flexWrap: "wrap" }}>

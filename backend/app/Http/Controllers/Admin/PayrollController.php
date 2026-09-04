@@ -97,6 +97,7 @@ class PayrollController extends Controller {
                     'total_salary' => $t['total_salary'],
                     'paid' => $t['paid'],
                     'net_to_release' => $t['net_to_release'],
+                    'statutory_missing' => $slip['statutory_missing'],
                 ];
             })
             // Only employees with pay or activity in the window.
@@ -106,6 +107,10 @@ class PayrollController extends Controller {
         return [
             'period' => $window,
             'rows' => $rows,
+            // How many on this register are missing a statutory deduction, so
+            // the screen can say the Generate step has not been run rather
+            // than quietly showing everyone a payslip with none.
+            'statutory_ungenerated' => $rows->filter(fn ($r) => count($r['statutory_missing']) > 0)->count(),
             'totals' => [
                 'days' => $rows->sum('days'),
                 'basic' => round($rows->sum('basic'), 2),
