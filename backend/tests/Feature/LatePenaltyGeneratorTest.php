@@ -116,6 +116,34 @@ class LatePenaltyGeneratorTest extends TestCase {
         $this->assertSame(-525.00, round((float) $rows->first()->amount, 2));
     }
 
+    /**
+     * Rows the previous generator (44653a1) wrote are still in the database —
+     * reverting it removed the button, not the data. They are one row per late
+     * day, typed penalty_late, labelled "Penalty Late (Aug 7)", and carry their
+     * own reason string. Adding to them would charge the same days twice, so
+     * they count as somebody else's and the period is left alone.
+     */
+    public function test_it_leaves_rows_from_the_old_generator_alone(): void {
+        $admin = User::factory()->create();
+        $employee = $this->employee();
+        $this->attendance($employee, ['17|09:20:00', '18|09:05:00']);
+
+        foreach ([['17', 'Aug 17'], ['18', 'Aug 18']] as [$day, $name]) {
+            PayrollAdjustment::create([
+                'employee_id' => $employee->id, 'date' => "2026-08-{$day}",
+                'label' => "Penalty Late ({$name})", 'category' => 'penalty_late',
+                'amount' => -75.00, 'paid' => false,
+                'reason' => 'Auto-generated late penalty', 'created_by' => $admin->id,
+            ]);
+        }
+
+        $this->generate($admin);
+
+        $rows = $this->penaltyRows($employee);
+        $this->assertCount(2, $rows, 'no third row may be added on top of the old two');
+        $this->assertSame(-150.00, round((float) $rows->sum('amount'), 2));
+    }
+
     /** An unrelated authorized deduction must not block the penalty. */
     public function test_an_ordinary_authorized_deduction_does_not_block_it(): void {
         $admin = User::factory()->create();
