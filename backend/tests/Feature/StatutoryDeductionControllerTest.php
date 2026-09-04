@@ -33,9 +33,13 @@ class StatutoryDeductionControllerTest extends TestCase {
         $pagibig = PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'pagibig')->firstOrFail();
         $this->assertSame('-100.00', $pagibig->amount);
 
-        // 8h ordinary day at 505/day => hourly 63.125, base_wage 505.00, PhilHealth 2.5% = 12.63.
+        // One 8h day at 505/day is a month's basic of 505, far below PhilHealth's
+        // 10,000 income floor, so the premium is computed on the floor: 10,000 x
+        // 2.5% = 250.00 for the month, and with nothing taken in the first cutoff
+        // the whole of it falls here. It is not 2.5% of the 505 (12.63) — that
+        // was the un-floored figure this test asserted before.
         $philhealth = PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'philhealth')->firstOrFail();
-        $this->assertSame('-12.63', $philhealth->amount);
+        $this->assertSame('-250.00', $philhealth->amount);
 
         // Cutoff net = 505 (only day worked) -> "Below 5,250" bracket, employee
         // share 250, charged in full — the share is never halved.

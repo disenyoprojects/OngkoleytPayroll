@@ -8,17 +8,18 @@ use App\Models\PayrollAdjustment;
 use App\Models\PayrollSetting;
 use App\Services\PayslipPeriod;
 use App\Services\PeriodEarnings;
+use App\Services\PhilHealthPeriodContribution;
 use App\Services\SssPeriodContribution;
 use Illuminate\Http\Request;
 
 class StatutoryDeductionController extends Controller {
     private const PAGIBIG_PER_CUTOFF = 100.0;
-    public const PHILHEALTH_RATE = 0.025;
     public const AUTO_REASON = 'Auto-generated statutory deduction';
 
     public function __construct(
         private PeriodEarnings $earnings,
         private SssPeriodContribution $contribution,
+        private PhilHealthPeriodContribution $philhealth,
     ) {}
 
     /**
@@ -53,9 +54,11 @@ class StatutoryDeductionController extends Controller {
             $outcome = $this->upsertAuto($employee, 'pagibig', $window, -$pagibigAmount, 'Pag-IBIG', $request);
             $counts[$outcome]['pagibig']++;
 
-            $baseWage = $this->earnings->sum($employee, $window, $settings, 'base_wage');
-            if ($baseWage > 0.0) {
-                $philhealthAmount = -round($baseWage * self::PHILHEALTH_RATE, 2);
+            // PhilHealth: 2.5% of basic, but the income floor and ceiling are
+            // monthly, so the month settles in the second cutoff. See
+            // PhilHealthPeriodContribution.
+            if ($this->earnings->sum($employee, $window, $settings, 'base_wage') > 0.0) {
+                $philhealthAmount = -$this->philhealth->forPeriod($employee, $data['month'], $data['period'], $settings);
                 $outcome = $this->upsertAuto($employee, 'philhealth', $window, $philhealthAmount, 'PhilHealth', $request);
                 $counts[$outcome]['philhealth']++;
             }

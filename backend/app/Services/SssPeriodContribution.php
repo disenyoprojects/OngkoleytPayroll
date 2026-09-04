@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Employee;
-use App\Models\PayrollAdjustment;
 use App\Models\PayrollSetting;
 
 /**
@@ -53,17 +52,6 @@ class SssPeriodContribution {
 
         // Never hand money back: if the first cutoff already took more than the
         // month turned out to be worth, the second simply takes nothing.
-        return max(0.0, round($monthly - $this->deductedInFirstCutoff($employee, $month), 2));
-    }
-
-    /** SSS already taken in the first half of the month, as a positive amount. */
-    public function deductedInFirstCutoff(Employee $employee, string $month): float {
-        $first = PayslipPeriod::resolve($month, 'first');
-
-        return round(abs((float) PayrollAdjustment::where('employee_id', $employee->id)
-            ->where('category', 'sss')
-            ->whereDate('date', '>=', $first['from'])
-            ->whereDate('date', '<=', $first['to'])
-            ->sum('amount')), 2);
+        return max(0.0, round($monthly - $this->earnings->deductedInFirstCutoff($employee, $month, 'sss'), 2));
     }
 }

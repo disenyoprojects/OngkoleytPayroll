@@ -9,6 +9,7 @@ use App\Models\PayrollAdjustment;
 use App\Models\PayrollSetting;
 use App\Services\PayslipPeriod;
 use App\Services\PeriodEarnings;
+use App\Services\PhilHealthPeriodContribution;
 use App\Services\SssPeriodContribution;
 
 /**
@@ -25,6 +26,7 @@ class AttendanceRecordObserver {
     public function __construct(
         private PeriodEarnings $earnings,
         private SssPeriodContribution $contribution,
+        private PhilHealthPeriodContribution $philhealth,
     ) {}
 
     public function saved(AttendanceRecord $record): void {
@@ -70,7 +72,7 @@ class AttendanceRecordObserver {
             // an edit here and a re-run there land on the same number.
             $amount = $row->category === 'sss'
                 ? -$this->contribution->forPeriod($employee, $month, $period, $settings)
-                : -round($this->earnings->sum($employee, $window, $settings, 'base_wage') * StatutoryDeductionController::PHILHEALTH_RATE, 2);
+                : -$this->philhealth->forPeriod($employee, $month, $period, $settings);
 
             if (round((float) $row->amount, 2) !== $amount) {
                 $row->update(['amount' => $amount]);

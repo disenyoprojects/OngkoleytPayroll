@@ -46,6 +46,23 @@ class PeriodEarnings {
     }
 
     /**
+     * What a statutory category already took in the first half of the month, as
+     * a positive amount. Both SSS and PhilHealth settle on the month and net
+     * off the first cutoff, and both read that figure from the adjustment rows
+     * rather than recomputing it — so a first half corrected by hand is
+     * honoured and the month still collects its proper total.
+     */
+    public function deductedInFirstCutoff(Employee $employee, string $month, string $category): float {
+        $first = PayslipPeriod::resolve($month, 'first');
+
+        return round(abs((float) PayrollAdjustment::where('employee_id', $employee->id)
+            ->where('category', $category)
+            ->whereDate('date', '>=', $first['from'])
+            ->whereDate('date', '<=', $first['to'])
+            ->sum('amount')), 2);
+    }
+
+    /**
      * Allowances, bonuses and the like within the window. Only positive rows
      * count, so the statutory deductions themselves cannot feed back into the
      * bracket they were looked up from.
