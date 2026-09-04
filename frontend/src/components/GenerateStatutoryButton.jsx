@@ -2,12 +2,13 @@ import { useState } from "react";
 import { apiClient } from "../api/client";
 import { Button } from "./ui";
 
-const sum = (bucket) => bucket.pagibig + bucket.philhealth + bucket.sss;
+const sum = (bucket) => Object.values(bucket ?? {}).reduce((t, n) => t + (n ?? 0), 0);
 
 /**
- * Runs the SSS / Pag-IBIG / PhilHealth generator for a month + period and
- * reports what it did underneath itself. Re-running corrects amounts it wrote
- * earlier, so this is also the button to press after a rate or rule change.
+ * Runs the deductions generator for a month + period — SSS, Pag-IBIG,
+ * PhilHealth and the late penalty — and reports what it did underneath itself.
+ * Re-running corrects amounts it wrote earlier, so this is also the button to
+ * press after a rate or rule change, or after correcting attendance.
  */
 export default function GenerateStatutoryButton({ month, period, onGenerated }) {
   const [busy, setBusy] = useState(false);
@@ -35,7 +36,7 @@ export default function GenerateStatutoryButton({ month, period, onGenerated }) 
   return (
     <span style={{ display: "inline-flex", flexDirection: "column", gap: 5 }}>
       <Button variant="outline" disabled={busy} onClick={run}>
-        {busy ? "Generating…" : "Generate SSS/Pag-IBIG/PhilHealth"}
+        {busy ? "Generating…" : "Generate Deductions"}
       </Button>
       {notice && <span style={{ fontSize: 12, color: "#7A6A57" }}>{notice}</span>}
     </span>
