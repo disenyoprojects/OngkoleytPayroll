@@ -8,7 +8,7 @@ use App\Models\PayrollAdjustment;
 use App\Models\PayrollSetting;
 use App\Services\PayslipPeriod;
 use App\Services\PeriodEarnings;
-use App\Services\SssContributionCalculator;
+use App\Services\SssPeriodContribution;
 use Illuminate\Http\Request;
 
 class StatutoryDeductionController extends Controller {
@@ -18,7 +18,7 @@ class StatutoryDeductionController extends Controller {
 
     public function __construct(
         private PeriodEarnings $earnings,
-        private SssContributionCalculator $sss,
+        private SssPeriodContribution $contribution,
     ) {}
 
     /**
@@ -60,31 +60,16 @@ class StatutoryDeductionController extends Controller {
                 $counts[$outcome]['philhealth']++;
             }
 
-            // The SSS bracket is looked up on everything the employee earns in
-            // the period — wages less tardiness/undertime, plus allowances and
-            // bonuses. Deductions are not netted off: they are taken out of
-            // the pay, not out of the compensation the bracket is read from.
-            $netEarnings = $this->earnings->sum($employee, $window, $settings, 'total')
-                + $this->positiveAdjustments($employee, $window);
-            if ($netEarnings > 0.0) {
-                $sssAmount = -round($this->sss->employeeShareFor($netEarnings), 2);
+            // SSS: the first cutoff pays the bracket on its own earnings, the
+            // second the balance of the month's bracket. See SssPeriodContribution.
+            if ($this->earnings->sssBasis($employee, $window, $settings) > 0.0) {
+                $sssAmount = -$this->contribution->forPeriod($employee, $data['month'], $data['period'], $settings);
                 $outcome = $this->upsertAuto($employee, 'sss', $window, $sssAmount, 'SSS', $request);
                 $counts[$outcome]['sss']++;
             }
         }
 
         return response()->json($counts);
-    }
-
-    /**
-     * Allowances, bonuses and anything else added to the period's pay. Only
-     * positive rows count, so the statutory deductions this generator writes
-     * cannot feed back into the bracket they were looked up from.
-     */
-    private function positiveAdjustments(Employee $employee, array $window): float {
-        return round((float) PayrollAdjustment::where('employee_id', $employee->id)
-            ->whereDate('date', '>=', $window['from'])->whereDate('date', '<=', $window['to'])
-            ->where('amount', '>', 0)->sum('amount'), 2);
     }
 
     /**

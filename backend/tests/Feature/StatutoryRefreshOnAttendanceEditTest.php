@@ -6,7 +6,11 @@ use App\Models\AttendanceRecord;
 use App\Models\Branch;
 use App\Models\Employee;
 use App\Models\PayrollAdjustment;
+use App\Models\PayrollSetting;
 use App\Models\User;
+use App\Services\PayslipPeriod;
+use App\Services\PeriodEarnings;
+use App\Services\SssContributionCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -78,7 +82,15 @@ class StatutoryRefreshOnAttendanceEditTest extends TestCase {
         $this->assertSame(0, PayrollAdjustment::where('employee_id', $employee->id)->count());
     }
 
-    public function test_the_other_cutoff_is_left_alone(): void {
+    /**
+     * The second cutoff is the month's bracket less whatever the first took
+     * (see SssPeriodContribution), so correcting a day in the first half has
+     * to move the second half too. This test used to assert the opposite —
+     * that each cutoff stood alone — which is the behaviour the client
+     * corrected us on: the month's total contribution is what must come out,
+     * however the two halves fall.
+     */
+    public function test_correcting_the_first_cutoff_rebalances_the_second(): void {
         $admin = User::factory()->create();
         $employee = $this->employeeWithDays(13);
         foreach (range(16, 28) as $day) {
@@ -90,12 +102,27 @@ class StatutoryRefreshOnAttendanceEditTest extends TestCase {
         }
         $this->actingAs($admin)->postJson('/api/admin/payroll/period/statutory?month=2026-07&period=first')->assertOk();
         $this->actingAs($admin)->postJson('/api/admin/payroll/period/statutory?month=2026-07&period=second')->assertOk();
-        $secondSss = PayrollAdjustment::where('employee_id', $employee->id)->where('category', 'sss')
-            ->whereDate('date', '2026-07-31')->firstOrFail();
+
+        // 13 days x 600 each half. First: bracket(7,800) = 400. Month: bracket(15,600) = 775,
+        // less the 400 already taken = 375 for the second.
+        $sss = fn (string $date) => round((float) PayrollAdjustment::where('employee_id', $employee->id)
+            ->where('category', 'sss')->whereDate('date', $date)->firstOrFail()->amount, 2);
+        $this->assertSame(-400.00, $sss('2026-07-15'));
+        $this->assertSame(-375.00, $sss('2026-07-31'));
 
         AttendanceRecord::where('employee_id', $employee->id)->whereDate('work_date', '2026-07-13')->firstOrFail()
             ->update(['clock_out' => '12:00:00']);
 
-        $this->assertSame('-400.00', $secondSss->fresh()->amount);
+        // Shortening that day lowers both the first half and the month, so the
+        // first drops a bracket and the month's own bracket moves with it. What
+        // must hold either way is that the two halves add up to the month.
+        $this->assertNotSame(-400.00, $sss('2026-07-15'));
+
+        $monthly = app(SssContributionCalculator::class)->employeeShareFor(
+            app(PeriodEarnings::class)->sssBasis(
+                $employee->fresh(), PayslipPeriod::resolve('2026-07', 'whole'), PayrollSetting::current(),
+            )
+        );
+        $this->assertSame(-$monthly, $sss('2026-07-15') + $sss('2026-07-31'));
     }
 }

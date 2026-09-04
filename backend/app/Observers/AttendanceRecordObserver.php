@@ -9,7 +9,7 @@ use App\Models\PayrollAdjustment;
 use App\Models\PayrollSetting;
 use App\Services\PayslipPeriod;
 use App\Services\PeriodEarnings;
-use App\Services\SssContributionCalculator;
+use App\Services\SssPeriodContribution;
 
 /**
  * Keeps the auto-generated statutory deductions in step with attendance.
@@ -24,7 +24,7 @@ use App\Services\SssContributionCalculator;
 class AttendanceRecordObserver {
     public function __construct(
         private PeriodEarnings $earnings,
-        private SssContributionCalculator $sss,
+        private SssPeriodContribution $contribution,
     ) {}
 
     public function saved(AttendanceRecord $record): void {
@@ -42,8 +42,21 @@ class AttendanceRecordObserver {
         }
 
         $date = $record->work_date;
-        $window = PayslipPeriod::resolve($date->format('Y-m'), $date->day <= 15 ? 'first' : 'second');
+        $month = $date->format('Y-m');
         $settings = PayrollSetting::current();
+
+        $this->refreshPeriod($employee, $month, $date->day <= 15 ? 'first' : 'second', $settings);
+
+        // The second cutoff's SSS is the month's contribution less whatever the
+        // first took, so a change in the first half moves it too. Refresh it as
+        // well or the two halves stop adding up to the month.
+        if ($date->day <= 15) {
+            $this->refreshPeriod($employee, $month, 'second', $settings);
+        }
+    }
+
+    private function refreshPeriod(Employee $employee, string $month, string $period, PayrollSetting $settings): void {
+        $window = PayslipPeriod::resolve($month, $period);
 
         $rows = PayrollAdjustment::where('employee_id', $employee->id)
             ->whereIn('category', ['sss', 'philhealth'])
@@ -52,13 +65,11 @@ class AttendanceRecordObserver {
             ->whereDate('date', '<=', $window['to'])
             ->get();
 
-        if ($rows->isEmpty()) {
-            return;
-        }
-
         foreach ($rows as $row) {
+            // Both figures come from the same services the generator uses, so
+            // an edit here and a re-run there land on the same number.
             $amount = $row->category === 'sss'
-                ? -round($this->sss->employeeShareFor($this->earnings->sum($employee, $window, $settings, 'total')), 2)
+                ? -$this->contribution->forPeriod($employee, $month, $period, $settings)
                 : -round($this->earnings->sum($employee, $window, $settings, 'base_wage') * StatutoryDeductionController::PHILHEALTH_RATE, 2);
 
             if (round((float) $row->amount, 2) !== $amount) {
