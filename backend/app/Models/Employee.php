@@ -24,6 +24,15 @@ class Employee extends Model {
         return $this->belongsTo(Branch::class);
     }
 
+    /**
+     * Whether this one has been separated. Appended where a list mixes active
+     * and separated staff — the payslip picker — so the screen can mark them
+     * rather than showing a leaver as though they were still on the roster.
+     */
+    protected function separated(): \Illuminate\Database\Eloquent\Casts\Attribute {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(get: fn () => $this->trashed());
+    }
+
     public function attendanceRecords() {
         return $this->hasMany(AttendanceRecord::class);
     }

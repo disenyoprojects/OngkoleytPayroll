@@ -11,13 +11,25 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class EmployeeController extends Controller {
+    /**
+     * Active staff by default — the roster.
+     *
+     * ?include_separated=1 adds the separated ones, for the payslip picker.
+     * The payroll register and the summary workbook are both built withTrashed
+     * because somebody separated mid-period still worked and was paid in it, so
+     * they appear on the sheet; without this the one screen that could open
+     * their payslip was the one screen that could not list them.
+     */
     public function index(Request $request) {
         $branchIds = $this->branchFilter($request);
+        $includeSeparated = $request->boolean('include_separated');
 
         return response()->json(
             Employee::with(['branch', 'dayShifts'])
+                ->when($includeSeparated, fn ($q) => $q->withTrashed())
                 ->when($branchIds !== null, fn ($q) => $q->whereIn('branch_id', $branchIds))
                 ->orderBy('short_name')->get()
+                ->map(fn (Employee $employee) => $employee->append('separated'))
         );
     }
 
