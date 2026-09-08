@@ -111,6 +111,44 @@ class PayrollSummaryExportTest extends TestCase {
         $this->assertEqualsWithDelta(205.00, $row['R'], 0.001);  // Net Pay
     }
 
+    /**
+     * The deduction band has to foot: Penalty Lates + CA etc = Total Auth. Ded.
+     * It did not, because the total summed a third thing — every other
+     * authorised deduction, a uniform or a loan — that had no column, so a row
+     * could show a blank CA beside a 2,075 total and nothing explained it.
+     * "CA etc" carries that remainder now, which is what the header promised.
+     */
+    public function test_the_deduction_band_adds_up_to_its_own_total(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create([
+            'daily_basic_rate' => 505, 'full_name' => 'Ruby Rose Anudon',
+        ]);
+        AttendanceRecord::factory()->for($employee)->create([
+            'work_date' => '2026-08-03', 'shift_start' => '08:00:00', 'shift_end' => '17:00:00',
+            'clock_in' => '08:00:00', 'clock_out' => '17:00:00', 'status' => 'approved',
+        ]);
+
+        foreach ([
+            ['penalty_late', 'Penalty Late', -150.00],
+            ['cash_advance', 'Cash Advance', -250.00],
+            ['deduction', 'Uniform', -500.00],       // neither a late nor a CA
+            ['deduction', 'Breakage', -75.00],
+        ] as [$category, $label, $amount]) {
+            PayrollAdjustment::create([
+                'employee_id' => $employee->id, 'date' => '2026-08-10', 'label' => $label,
+                'category' => $category, 'amount' => $amount, 'paid' => false,
+                'created_by' => $admin->id,
+            ]);
+        }
+
+        $row = $this->row($this->workbookFor($admin), 'Payroll Summary', 6);
+
+        $this->assertEqualsWithDelta(150.00, $row['H'], 0.001);  // Penalty Lates
+        $this->assertEqualsWithDelta(825.00, $row['I'], 0.001);  // CA 250 + uniform 500 + breakage 75
+        $this->assertEqualsWithDelta(975.00, $row['J'], 0.001);  // Total Auth. Ded.
+        $this->assertEqualsWithDelta($row['J'], $row['H'] + $row['I'], 0.001, 'the band must foot');
+    }
+
     public function test_a_generic_type_still_lands_in_its_own_column_when_the_label_says_so(): void {
         $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create([

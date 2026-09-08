@@ -191,7 +191,12 @@ class PayrollSummaryWorkbook {
             'F' => $t['rh'],
             'G' => $t['undertime'],
             'H' => $t['penalty_late'],
-            'I' => $t['cash_advance'],
+            // "etc" is the rest of the authorised deductions, not only cash
+            // advances. Total Auth. Ded. has always summed three things while
+            // only two had columns, so a uniform or a loan sat inside the total
+            // with nothing on the sheet to account for it and the band did not
+            // foot. Penalty Lates + CA etc now equals the total on every row.
+            'I' => round($t['cash_advance'] + $t['other_authorised'], 2),
             'J' => $t['auth_deductions'],
             'K' => $t['sss'],
             'L' => $t['philhealth'],
