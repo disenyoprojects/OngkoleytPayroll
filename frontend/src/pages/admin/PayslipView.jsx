@@ -49,11 +49,7 @@ export default function PayslipView() {
   const [editAmount, setEditAmount] = useState("");
 
   useEffect(() => {
-    // Separated staff included: somebody who left mid-period still worked and
-    // was paid in it, so they are on the payroll register and the summary
-    // workbook. Without them here, the one screen that can open their payslip
-    // is the one screen that cannot list them.
-    apiClient.get("/api/admin/employees?include_separated=1").then((res) => setStaff(res.data));
+    apiClient.get("/api/admin/employees").then((res) => setStaff(res.data));
   }, []);
 
   useEffect(() => {
@@ -113,9 +109,7 @@ export default function PayslipView() {
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
         <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} style={{ ...inputStyle, width: "auto" }}>
           <option value="">Select staff…</option>
-          {staff.map((s) => (
-            <option key={s.id} value={s.id}>{s.full_name}{s.separated ? " (separated)" : ""}</option>
-          ))}
+          {staff.map((s) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
         </select>
         <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ ...inputStyle, width: "auto" }} />
         <select value={period} onChange={(e) => setPeriod(e.target.value)} style={{ ...inputStyle, width: "auto" }}>
