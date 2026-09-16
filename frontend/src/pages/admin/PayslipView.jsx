@@ -281,11 +281,12 @@ function periodText(from, to) {
   return `${MONTHS[m1 - 1]} ${d1} to ${MONTHS[m2 - 1]} ${d2}, ${y1}`;
 }
 
-const COMPANY = { name: "WANG CHOCOLATE INC.", address: "Upper Ground Floor, Olympian, Upper Mabini,  Baguio City 2600" };
-
-// On-screen render of the printed WANG CHOCOLATE payslip (same data as the PDF).
+// On-screen render of the printed payslip (same data as the PDF, heading
+// included — it comes from the employee's branch, so Kanto Cravings staff are
+// headed with their own business and address rather than Ongkoleyt's).
 function PayslipDocument({ slip }) {
   const s = slip.slip;
+  const company = slip.company;
   const rows = Math.max(s.earnings.length, s.deductions.length);
   const line = "1px solid #3a3a3a";
   const money = { textAlign: "right", fontVariantNumeric: "tabular-nums" };
@@ -294,8 +295,8 @@ function PayslipDocument({ slip }) {
 
   return (
     <div style={{ maxWidth: 780, border: line, background: "white", color: "#1c1c1c", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "#6b3410", color: "white", textAlign: "center", fontSize: 19, fontWeight: 800, letterSpacing: ".5px", padding: "9px 0" }}>{COMPANY.name}</div>
-      <div style={{ background: "#dfe8cf", color: "#222", textAlign: "center", fontSize: 12, fontStyle: "italic", fontWeight: 600, padding: "6px 0", borderBottom: line }}>{COMPANY.address}</div>
+      <div style={{ background: "#6b3410", color: "white", textAlign: "center", fontSize: 19, fontWeight: 800, letterSpacing: ".5px", padding: "9px 0" }}>{company.name}</div>
+      <div style={{ background: "#dfe8cf", color: "#222", textAlign: "center", fontSize: 12, fontStyle: "italic", fontWeight: 600, padding: "6px 0", borderBottom: line }}>{company.address}</div>
       <div style={{ textAlign: "center", fontSize: 16, fontWeight: 800, letterSpacing: "1px", padding: "10px 0 4px" }}>PAY SLIP</div>
 
       <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 18px 10px", flexWrap: "wrap", gap: 8, fontSize: 13 }}>

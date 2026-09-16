@@ -2,11 +2,9 @@
 <html>
 <head>
 <meta charset="utf-8">
-@php
-    // Legal entity shown on the payslip (change here if the company name changes).
-    $companyName = 'WANG CHOCOLATE INC.';
-    $companyAddress = 'Upper Ground Floor, Olympian, Upper Mabini, Baguio City 2600';
-@endphp
+{{-- The heading is per slip, not per file: a bulk print spans branches, and
+     the Kanto Cravings staff are headed with their own business. It is read
+     inside the loop below. --}}
 <style>
     @page { margin: 22mm 20mm; }
     body { font-family: DejaVu Sans, sans-serif; color: #1c1c1c; font-size: 11px; }
@@ -47,8 +45,8 @@
         $rowCount = max(count($earnings), count($deductions));
     @endphp
     <div class="sheet">
-        <div class="band-name">{{ $companyName }}</div>
-        <div class="band-addr">{{ $companyAddress }}</div>
+        <div class="band-name">{{ $payslip['company']['name'] }}</div>
+        <div class="band-addr">{{ $payslip['company']['address'] }}</div>
         <div class="title">PAY SLIP</div>
 
         <table class="meta">

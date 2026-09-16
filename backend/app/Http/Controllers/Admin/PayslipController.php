@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceRecord;
+use App\Models\Branch;
 use App\Models\Employee;
 use App\Models\PayrollAdjustment;
 use App\Models\PayrollSetting;
@@ -208,6 +209,11 @@ class PayslipController extends Controller {
                 'branch' => $employee->branch?->name,
                 'daily_rate' => $rate,
             ],
+            // The name and address the slip is headed with. It comes from the
+            // employee's branch, because Kanto Cravings staff do not work for
+            // the company the Ongkoleyt branches trade as, and travels with the
+            // payslip so the screen and both PDFs cannot drift apart.
+            'company' => $employee->branch?->payslipHeading() ?? Branch::defaultHeading(),
             'period' => $window,
             'lines' => $lines,
             'adjustments' => $adjustments,

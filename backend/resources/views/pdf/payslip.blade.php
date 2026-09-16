@@ -3,9 +3,11 @@
 <head>
 <meta charset="utf-8">
 @php
-    // Legal entity shown on the payslip (change here if the company name changes).
-    $companyName = 'WANG CHOCOLATE INC.';
-    $companyAddress = 'Upper Ground Floor, Olympian, Upper Mabini, Baguio City 2600';
+    // The trading name and address of the business the employee's branch
+    // belongs to — Kanto Cravings staff are not headed as Ongkoleyt. Set per
+    // branch; a branch that says nothing falls back to the default.
+    $companyName = $payslip['company']['name'];
+    $companyAddress = $payslip['company']['address'];
 
     $from = \Carbon\Carbon::parse($payslip['period']['from']);
     $to = \Carbon\Carbon::parse($payslip['period']['to']);
