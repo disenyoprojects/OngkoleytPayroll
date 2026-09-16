@@ -281,12 +281,21 @@ function periodText(from, to) {
   return `${MONTHS[m1 - 1]} ${d1} to ${MONTHS[m2 - 1]} ${d2}, ${y1}`;
 }
 
+// What to head a payslip with when the API has not said. The frontend and the
+// backend deploy separately, so for a few minutes after a release this screen
+// can be newer than the payload it is rendering — it must degrade to the old
+// heading rather than crash on a key that is not there yet.
+const DEFAULT_COMPANY = {
+  name: "WANG CHOCOLATE INC.",
+  address: "Upper Ground Floor, Olympian, Upper Mabini, Baguio City 2600",
+};
+
 // On-screen render of the printed payslip (same data as the PDF, heading
 // included — it comes from the employee's branch, so Kanto Cravings staff are
 // headed with their own business and address rather than Ongkoleyt's).
 function PayslipDocument({ slip }) {
   const s = slip.slip;
-  const company = slip.company;
+  const company = slip.company ?? DEFAULT_COMPANY;
   const rows = Math.max(s.earnings.length, s.deductions.length);
   const line = "1px solid #3a3a3a";
   const money = { textAlign: "right", fontVariantNumeric: "tabular-nums" };
