@@ -37,6 +37,10 @@ class AuditPeriod extends Command {
     private const IMPLAUSIBLE_OT_HOURS = 8.0;
     private const IMPLAUSIBLE_SPAN_HOURS = 16.0;
 
+    /** What sits in the clock columns of a day nobody actually worked. */
+    private const DEFAULT_STAMP_IN = '08:00';
+    private const DEFAULT_STAMP_OUT = '17:00';
+
     private array $findings = [];
 
     public function handle(AttendancePayCalculator $calculator): int {
@@ -134,12 +138,18 @@ class AuditPeriod extends Command {
             return;
         }
 
-        // 2. Clock times present but the day pays nothing. Christopher's
-        //    2026-09-10: 08:00-17:00 encoded, PHP 0.00 paid, because the day
-        //    carries a no-pay absence type. One of the two is wrong.
-        if ($record->clock_in && $record->clock_out && (float) $pay['total'] == 0.0) {
+        // 2. Clock times present but the day pays nothing.
+        //
+        //    Tagging a day absent, on leave or a rest day leaves the default
+        //    08:00-17:00 sitting in the clock columns, so "has clock times"
+        //    alone flagged 44 untouched days across the September cutoff and
+        //    buried the real findings. Only a day clocked to something OTHER
+        //    than the default is worth asking about: that is someone who
+        //    actually punched in and is being paid nothing for it.
+        $isDefaultStamp = $in === self::DEFAULT_STAMP_IN && $out === self::DEFAULT_STAMP_OUT;
+        if ($record->clock_in && $record->clock_out && (float) $pay['total'] == 0.0 && ! $isDefaultStamp) {
             $this->flag($employee, $date, sprintf(
-                'worked %s-%s but pays 0.00 — tagged "%s"',
+                'clocked %s-%s but pays 0.00 — tagged "%s"',
                 $in, $out, $record->absence_type ?: 'no absence type',
             ));
         }
