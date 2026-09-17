@@ -20,8 +20,8 @@ use Illuminate\Console\Command;
  * This prints, per day: the shift the day was judged against, both clock
  * pairs, the hours split into regular, overtime and night, and what each
  * earned. The two things that most often explain a surprising total are the
- * shift span — a day scheduled ten hours pays nine after the break, not eight
- * — and an OT pair running past 22:00.
+ * shift span — which decides when overtime begins, though not what the day
+ * itself pays — and an OT pair running past 22:00.
  *
  * Reads only.
  */
@@ -56,8 +56,8 @@ class ExplainPayslip extends Command {
 
         $this->newLine();
         $this->line("<comment>{$employee->full_name}</comment> ({$employee->employee_code}) — {$window['label']}");
-        $this->line(sprintf('daily rate %s, so %s an hour; a day is worth its scheduled hours less the %sh break',
-            number_format($rate, 2), number_format($hourly, 4), rtrim(rtrim((string) $settings->unpaid_break_hours, '0'), '.')));
+        $this->line(sprintf('daily rate %s, so %s an hour; a full day pays the rate flat, and overtime starts at the shift end',
+            number_format($rate, 2), number_format($hourly, 4)));
         $this->newLine();
 
         $records = AttendanceRecord::where('employee_id', $employee->id)
@@ -90,10 +90,10 @@ class ExplainPayslip extends Command {
             $shiftTo = substr((string) $record->shift_end, 0, 5);
             $scheduled = $this->spanHours($shiftFrom, $shiftTo);
 
-            // A day scheduled longer than the usual nine hours pays more base
-            // wage, which is the commonest reason a period beats days x rate.
+            // A day scheduled longer or shorter than the usual nine hours no
+            // longer changes the basic, but it moves where overtime starts.
             if (abs($scheduled - 9.0) > 0.001) {
-                $oddShifts[] = [$record->work_date->format('Y-m-d'), $shiftFrom, $shiftTo, $scheduled, $pay['regular_hours']];
+                $oddShifts[] = [$record->work_date->format('Y-m-d'), $shiftFrom, $shiftTo, $scheduled];
             }
 
             $regHours += (float) $pay['regular_hours'];
@@ -126,10 +126,13 @@ class ExplainPayslip extends Command {
 
         if ($oddShifts) {
             $this->newLine();
-            $this->warn('  Not the usual 9h shift, so not ' . number_format($rate, 2) . ' for the day:');
-            foreach ($oddShifts as [$date, $from, $to, $scheduled, $regular]) {
-                $this->line(sprintf('    %s  %s-%s  %.2fh sched', $date, $from, $to, $scheduled));
-                $this->line(sprintf('      = %.2f paid hours = %s', $regular, number_format($regular * $hourly, 2)));
+            // The daily rate is fixed, so a long or short shift no longer moves
+            // the basic — but it still decides when overtime starts and when a
+            // late arrival or early finish is charged, which is worth seeing.
+            $this->warn('  Not the usual 9h shift — the day is still ' . number_format($rate, 2)
+                . ', but overtime starts at the scheduled end:');
+            foreach ($oddShifts as [$date, $from, $to, $scheduled]) {
+                $this->line(sprintf('    %s  %s-%s  %.2fh sched, OT after %s', $date, $from, $to, $scheduled, $to));
             }
         }
 

@@ -184,10 +184,11 @@ class AttendancePayCalculatorTest extends TestCase {
     }
 
     public function test_handles_a_shift_that_crosses_midnight(): void {
-        // Night shift 22:00-06:00. Clock 22:00-02:00 = 4h in-shift; less the 1h
-        // unpaid break = 3h regular, no OT (before shift_end).
+        // Night shift 22:00-06:00, clocked out at 02:00 — four hours early. The
+        // daily rate buys 8 hours however the shift is scheduled, and the four
+        // hours missed are charged back as undertime, leaving 4h stood.
         $result = (new AttendancePayCalculator())->compute('22:00', '02:00', $this->settings(), null, '22:00', '06:00');
 
-        $this->assertSame(3.0, $result['total_hours']);
+        $this->assertSame(4.0, $result['total_hours']);
     }
 }

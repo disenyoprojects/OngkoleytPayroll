@@ -7,6 +7,13 @@ use App\Models\PayrollSetting;
 class AttendancePayCalculator {
     private const DEFAULT_SHIFT_START = '08:00';
     private const DEFAULT_SHIFT_END = '17:00';
+
+    /**
+     * What the daily rate buys. The hourly rate is the daily rate over eight,
+     * so eight paid hours is the daily rate exactly — however long the shift
+     * happens to be scheduled for.
+     */
+    private const PAID_HOURS_PER_DAY = 8.0;
     public const NO_PAY_ABSENCES = ['absent', 'awol', 'travel', 'leave', 'sick_leave', 'rest_day'];
 
     /**
@@ -137,34 +144,46 @@ class AttendancePayCalculator {
             $shiftEndMin += 24 * 60;
         }
 
-        // Break: actual window if both given, else the flat setting. The full
-        // standard break always comes out of the day, whether or not it was
-        // taken — a day is worth its scheduled hours and coming back early
-        // does not earn extra. A longer break is charged back as Overbreak.
+        // Break: actual window if both given, else the flat setting. The break
+        // no longer comes out of the day — the daily rate is flat, and Kath's
+        // "1 to 8 or 12 to 7 straight with no break" staff are owed the same
+        // day's pay as the nine-hour shifts, which are nine only to fit a break
+        // around eight. Only a break run LONG is charged back, as Overbreak.
         $standardBreakHours = (float) ($settings->unpaid_break_hours ?? 0);
         if (! empty($day['break_out']) && ! empty($day['break_in'])) {
             $actualBreakHours = max(0, ($this->minutesOf($day['break_in']) - $this->minutesOf($day['break_out'])) / 60.0);
         } else {
             $actualBreakHours = $standardBreakHours;
         }
-        $paidBreakHours = $standardBreakHours;
         $overbreakHours = max(0.0, $actualBreakHours - $standardBreakHours);
 
-        // Regular hours are the SCHEDULED shift, not the hours actually stood:
-        // the day is paid as if worked in full and the time missed at either
-        // end is charged back under Tardiness and Undertime, so the payslip
-        // itemises the loss instead of silently shrinking the basic wage. Net
-        // pay is identical either way.
-        $scheduledMin = (float) max(0, $shiftEndMin - $shiftStartMin);
-        $regularHours = max(0.0, $scheduledMin / 60.0 - $paidBreakHours);
+        // The daily rate is FIXED. A day's duty is worth the daily rate whatever
+        // the shift is scheduled for — ten hours or eight — and only work past
+        // the scheduled end earns overtime. The client's words: "basic daily
+        // rate po is 505. pag 10 hours po ang duty 505 basic rate plus overtime
+        // pay plus Night differential kung meron po."
+        //
+        // It used to be the scheduled span less the break, so a ten-hour day
+        // paid nine hours (568.13) and an eight-hour day paid seven (441.88).
+        // That put three payslips out by exactly one hour in September 2026 and
+        // is why Basic Wage did not read as days x rate.
+        //
+        // Hours actually stood are still not what is paid: the day is paid in
+        // full and time missed at either end is charged back as Tardiness and
+        // Undertime, so the payslip itemises the loss instead of quietly
+        // shrinking the basic wage.
+        $regularHours = self::PAID_HOURS_PER_DAY;
 
-        $lateMin = (float) min(max(0, $start - $shiftStartMin), $scheduledMin);
-        $earlyMin = (float) min(max(0, $shiftEndMin - max($end, $shiftStartMin)), $scheduledMin - $lateMin);
+        // Charged-back time is capped at the hours actually paid, so a long
+        // scheduled shift cannot bill back more than the day was worth.
+        $chargeableMin = $regularHours * 60.0;
+        $lateMin = (float) min(max(0, $start - $shiftStartMin), $chargeableMin);
+        $earlyMin = (float) min(max(0, $shiftEndMin - max($end, $shiftStartMin)), $chargeableMin - $lateMin);
 
         // Half day is an agreed short day, not undertime: pay half the
         // scheduled hours and don't charge the rest back.
         if ($absenceType === 'half_day') {
-            $regularHours = min($regularHours, ($scheduledMin / 60.0 - $paidBreakHours) / 2.0);
+            $regularHours = self::PAID_HOURS_PER_DAY / 2.0;
             $earlyMin = 0.0;
         }
 

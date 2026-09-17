@@ -53,8 +53,19 @@ class ExplainPayslipTest extends TestCase {
         $this->explain()
             ->expectsOutputToContain('Not the usual 9h shift')
             ->expectsOutputToContain('10.00h sched')
-            ->expectsOutputToContain('9.00 paid hours = 568.13')
             ->assertSuccessful();
+    }
+
+    /** The daily rate is fixed, so a ten-hour day still pays it. */
+    public function test_a_longer_shift_still_pays_the_daily_rate(): void {
+        $employee = $this->employee();
+        $this->day($employee, '2026-09-02', [
+            'shift_start' => '08:00:00', 'shift_end' => '18:00:00', 'clock_in' => '08:00:00',
+        ]);
+
+        // Eight paid hours, not the nine the scheduled span would once have
+        // bought — the extra scheduled hour moves overtime's start, not the pay.
+        $this->explain()->expectsOutputToContain('regular      8.00 h')->assertSuccessful();
     }
 
     /** A period of ordinary days has nothing to flag. */
