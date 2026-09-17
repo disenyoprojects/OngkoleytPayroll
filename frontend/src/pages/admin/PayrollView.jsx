@@ -249,10 +249,6 @@ function SemiMonthly({ month, setMonth, period, setPeriod, data, isAdmin = true,
           <>
             <Button variant="outline" onClick={() => openAuthedPdf(`/api/admin/payroll/period/pdf?month=${month}&period=${period}`)}>🖨 Print Summary</Button>
             <Button variant="outline" onClick={() => downloadAuthedFile(`/api/admin/payroll/period/export?month=${month}&period=${period}`, `payroll-summary-${month}-${period}.xlsx`)}>⬇ Summary (Excel)</Button>
-            {/* The summary gives totals; this gives the arithmetic behind them,
-                with the OT In/OT Out pair that no screen here shows. It is what
-                gets sent when a payslip is queried and has to be checked. */}
-            <Button variant="outline" onClick={() => downloadAuthedFile(`/api/admin/payroll/period/computation?month=${month}&period=${period}`, `pay-computation-${month}-${period}.xlsx`)}>⬇ Computation (Excel)</Button>
             <Button variant="outline" onClick={() => openAuthedPdf(`/api/admin/payroll/period/payslips-pdf?month=${month}&period=${period}`)}>🖨 Print All Payslips</Button>
           </>
         )}
