@@ -278,6 +278,12 @@ class AttendancePayCalculator {
             'total' => $total,
             'premium_label' => $premiumLabel,
             'premium_multiplier' => $regularMult,
+            // The peso rate each overtime hour was paid at. Carried out so a
+            // sheet can show the multiplication instead of asserting a figure:
+            // ordinary days are hourly x OT multiplier, premium days 130% of
+            // the premium hourly rate, and the difference is not guessable from
+            // the total alone.
+            'ot_rate' => $otRate,
             'holiday_forfeited' => $holidayForfeited,
         ];
     }
@@ -289,7 +295,7 @@ class AttendancePayCalculator {
             'base_wage' => 0.0, 'base_ot' => 0.0,
             'late' => false, 'late_minutes' => 0, 'tardiness' => 0.0,
             'undertime_minutes' => 0, 'overbreak_hours' => 0.0, 'undertime' => 0.0, 'total' => 0.0,
-            'premium_label' => $label, 'premium_multiplier' => $mult,
+            'premium_label' => $label, 'premium_multiplier' => $mult, 'ot_rate' => 0.0,
             'holiday_forfeited' => $holidayForfeited,
         ];
     }
