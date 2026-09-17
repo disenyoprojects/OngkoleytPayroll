@@ -39,16 +39,33 @@ class ExplainDeductions extends Command {
             return self::FAILURE;
         }
 
-        $employee = Employee::withTrashed()
-            ->where('employee_code', $needle)
-            ->orWhere('full_name', 'like', "%{$needle}%")
-            ->orWhere('short_name', 'like', "%{$needle}%")
-            ->first();
+        // An exact code wins outright; a name is a search and can be ambiguous.
+        // There are two Navarros on this roster, and taking the first match
+        // quietly reported on the wrong one — a separated employee at that.
+        $employee = Employee::withTrashed()->where('employee_code', $needle)->first();
 
         if (! $employee) {
-            $this->error("No employee matched \"{$needle}\".");
+            $matches = Employee::withTrashed()
+                ->where(fn ($q) => $q->where('full_name', 'like', "%{$needle}%")
+                    ->orWhere('short_name', 'like', "%{$needle}%"))
+                ->orderBy('full_name')->get();
 
-            return self::FAILURE;
+            if ($matches->isEmpty()) {
+                $this->error("No employee matched \"{$needle}\".");
+
+                return self::FAILURE;
+            }
+            if ($matches->count() > 1) {
+                $this->error("\"{$needle}\" matched {$matches->count()} employees — use the code:");
+                foreach ($matches as $match) {
+                    $this->line(sprintf('    %-12s %s%s', $match->employee_code, $match->full_name,
+                        $match->trashed() ? '  (separated)' : ''));
+                }
+
+                return self::FAILURE;
+            }
+
+            $employee = $matches->first();
         }
 
         $window = PayslipPeriod::resolve($month, $period);

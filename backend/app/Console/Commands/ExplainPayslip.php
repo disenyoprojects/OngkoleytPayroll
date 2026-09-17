@@ -41,16 +41,8 @@ class ExplainPayslip extends Command {
             return self::FAILURE;
         }
 
-        $needle = $this->argument('employee');
-        $employee = Employee::withTrashed()
-            ->where('employee_code', $needle)
-            ->orWhere('full_name', 'like', "%{$needle}%")
-            ->orWhere('short_name', 'like', "%{$needle}%")
-            ->first();
-
-        if (! $employee) {
-            $this->error("No employee matched \"{$needle}\".");
-
+        $employee = $this->resolveEmployee($this->argument('employee'));
+        if (! $employee instanceof Employee) {
             return self::FAILURE;
         }
 
@@ -142,6 +134,44 @@ class ExplainPayslip extends Command {
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The one employee meant, or null having said why not.
+     *
+     * An exact employee code wins outright — it is unique, so "EMP-0016" can
+     * never be ambiguous. A name is a search, and there are two Navarros on
+     * this roster: taking the first match quietly reported on the wrong person,
+     * and a separated one at that, since the search includes them.
+     */
+    private function resolveEmployee(string $needle): ?Employee {
+        $exact = Employee::withTrashed()->where('employee_code', $needle)->first();
+        if ($exact) {
+            return $exact;
+        }
+
+        $matches = Employee::withTrashed()
+            ->where(fn ($q) => $q->where('full_name', 'like', "%{$needle}%")
+                ->orWhere('short_name', 'like', "%{$needle}%"))
+            ->orderBy('full_name')->get();
+
+        if ($matches->isEmpty()) {
+            $this->error("No employee matched \"{$needle}\".");
+
+            return null;
+        }
+
+        if ($matches->count() > 1) {
+            $this->error("\"{$needle}\" matched {$matches->count()} employees — use the code:");
+            foreach ($matches as $match) {
+                $this->line(sprintf('    %-12s %s%s', $match->employee_code, $match->full_name,
+                    $match->trashed() ? '  (separated)' : ''));
+            }
+
+            return null;
+        }
+
+        return $matches->first();
     }
 
     /** Hours between two H:i times, rolling past midnight the way the calculator does. */

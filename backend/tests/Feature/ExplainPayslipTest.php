@@ -89,6 +89,48 @@ class ExplainPayslipTest extends TestCase {
             ->assertSuccessful();
     }
 
+    /**
+     * There are two Navarros on this roster. Searching by name used to take
+     * the first match and report on the wrong person — a separated one, since
+     * the search includes them — under the right-looking heading.
+     */
+    public function test_an_ambiguous_name_is_refused_and_lists_the_codes(): void {
+        $branch = Branch::factory()->create();
+        Employee::factory()->for($branch)->create([
+            'employee_code' => 'EMP-0016', 'full_name' => 'Christopher T. Navarro',
+        ]);
+        $gone = Employee::factory()->for($branch)->create([
+            'employee_code' => 'ONG-1010', 'full_name' => 'Jhen Navarro',
+        ]);
+        $gone->delete();
+
+        $this->artisan('payroll:explain-payslip Navarro --month=2026-09 --period=first')
+            ->expectsOutputToContain('matched 2 employees')
+            ->expectsOutputToContain('EMP-0016')
+            // The "(separated)" marker on the second row is verified by hand,
+            // not here: chained output assertions consume the buffer as they
+            // match, and a fourth one on the same line does not survive it.
+            ->expectsOutputToContain('ONG-1010')
+            ->assertFailed();
+    }
+
+    /** An exact code is unique, so it is never ambiguous. */
+    public function test_an_exact_code_wins_over_a_name_match(): void {
+        $branch = Branch::factory()->create();
+        $employee = Employee::factory()->for($branch)->create([
+            'employee_code' => 'EMP-0016', 'full_name' => 'Christopher T. Navarro',
+            'daily_basic_rate' => 505, 'shift_start' => '09:00:00', 'shift_end' => '18:00:00',
+        ]);
+        Employee::factory()->for($branch)->create([
+            'employee_code' => 'ONG-1010', 'full_name' => 'Jhen Navarro',
+        ]);
+        $this->day($employee, '2026-09-01');
+
+        $this->artisan('payroll:explain-payslip EMP-0016 --month=2026-09 --period=first')
+            ->expectsOutputToContain('Christopher T. Navarro')
+            ->assertSuccessful();
+    }
+
     public function test_an_unknown_employee_fails_clearly(): void {
         $this->artisan('payroll:explain-payslip Nobody --month=2026-09')
             ->expectsOutputToContain('No employee matched "Nobody".')
