@@ -26,6 +26,19 @@ class AttendancePayCalculator {
      */
     public const HOLIDAY_FORFEITING_ABSENCES = ['absent', 'awol', 'rest_day'];
 
+    /**
+     * A day that is only a few hours — staff called in on their rest day to
+     * unload a delivery truck. The clock pair is the whole of the work: it is
+     * paid hour for hour at the straight hourly rate, with no full-day basic
+     * to charge tardiness against and no overtime rate.
+     *
+     * COMPANY POLICY, NOT DOLE. Management asked for these hours at the plain
+     * rate and, on 2026-09-30, that the 130% rest-day premium never apply to
+     * them — so the rest-day flag is ignored on such a day. Art. 93 puts work
+     * on a rest day at 130%. A declared holiday still pays its own multiplier.
+     */
+    public const HOURS_ONLY = 'hours_only';
+
     public function computeForRecord(\App\Models\AttendanceRecord $record, PayrollSetting $settings): ?array {
         $employee = $record->employee;
         $rate = $employee?->daily_basic_rate === null ? null : (float) $employee->daily_basic_rate;
@@ -109,6 +122,12 @@ class AttendancePayCalculator {
         $isRestDay = (bool) ($day['is_rest_day'] ?? false);
         $absenceType = $day['absence_type'] ?? null;
 
+        // Hours-only days never carry the rest-day premium (see HOURS_ONLY).
+        $hoursOnly = $absenceType === self::HOURS_ONLY;
+        if ($hoursOnly) {
+            $isRestDay = false;
+        }
+
         // Company policy (see holidayForfeitedFor): the regular-holiday premium
         // is dropped, so the day rates as an ordinary one. Any rest-day premium
         // survives — that is a separate benefit under Art. 93 and is not what
@@ -125,6 +144,9 @@ class AttendancePayCalculator {
             $premiumLabel = $premiumLabel === 'Ordinary'
                 ? 'Holiday Premium Forfeited'
                 : $premiumLabel . ' + Holiday Premium Forfeited';
+        }
+        if ($hoursOnly) {
+            $premiumLabel = $premiumLabel === 'Ordinary' ? 'Hours Only' : $premiumLabel . ' + Hours Only';
         }
 
         // No-pay absence statuses short-circuit to a zeroed result.
@@ -203,6 +225,18 @@ class AttendancePayCalculator {
             $otPairMin = (float) ($otEnd - $otStart);
         }
 
+        // Hours only (see HOURS_ONLY): the clock pair is paid as it stands,
+        // less a break only if one was actually stamped. There is no schedule
+        // to be late against and nothing on the day is overtime — the
+        // controller refuses an OT pair on such a day, so none is dropped here
+        // that somebody meant to be paid.
+        if ($hoursOnly) {
+            $stampedBreakMin = ! empty($day['break_out']) && ! empty($day['break_in']) ? $actualBreakHours * 60.0 : 0.0;
+            $regularHours = max(0.0, ($end - $start - $stampedBreakMin) / 60.0);
+            $overbreakHours = 0.0;
+            $lateMin = $earlyMin = $otMin = $otPairMin = 0.0;
+        }
+
         // A few minutes past the shift end is not overtime. The minimum is
         // judged on the day's overtime as a whole and the day is dropped
         // outright when it falls short — three minutes on each of ten days
@@ -220,7 +254,7 @@ class AttendancePayCalculator {
 
         // Night differential is the 22:00–06:00 window only, over both the main
         // span and the overtime pair — OT ending at 23:00 earns one hour of it.
-        $nightDiffHours = $this->nightHours(max($start, $shiftStartMin), $end);
+        $nightDiffHours = $this->nightHours($hoursOnly ? $start : max($start, $shiftStartMin), $end);
         if ($otPairMin > 0) {
             $nightDiffHours += $this->nightHours($otStart, $otEnd);
         }

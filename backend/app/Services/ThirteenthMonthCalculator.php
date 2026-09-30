@@ -47,7 +47,13 @@ class ThirteenthMonthCalculator {
                     // 13th-month base = days worked (excluding holidays) × the
                     // daily basic rate — a flat day count, not hour-prorated.
                     if (in_array('BASIC', $included, true)) {
-                        $basicPay += $dailyRate * ($record->absence_type === 'half_day' ? 0.5 : 1.0);
+                        $basicPay += $dailyRate * match ($record->absence_type) {
+                            'half_day' => 0.5,
+                            // An hours-only day is the one exception to the
+                            // flat count: it was never a day, only hours.
+                            AttendancePayCalculator::HOURS_ONLY => (float) $pay['regular_hours'] / 8.0,
+                            default => 1.0,
+                        };
                     }
                     if (in_array('OVERTIME', $included, true)) {
                         $otPay += (float) $pay['base_ot'];

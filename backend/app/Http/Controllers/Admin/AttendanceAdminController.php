@@ -27,11 +27,13 @@ class AttendanceAdminController extends Controller {
             'shift_end' => ['nullable', 'date_format:H:i'],
             'holiday_type' => ['nullable', 'in:special,regular'],
             'is_rest_day' => ['nullable', 'boolean'],
-            'absence_type' => ['nullable', 'in:leave,sick_leave,half_day,absent,awol,travel,rest_day'],
+            'absence_type' => ['nullable', 'in:leave,sick_leave,half_day,absent,awol,travel,rest_day,hours_only'],
             'break_out' => ['nullable', 'date_format:H:i'],
             'break_in' => ['nullable', 'date_format:H:i'],
-            'ot_in' => ['nullable', 'date_format:H:i'],
-            'ot_out' => ['nullable', 'date_format:H:i'],
+            // An hours-only day is paid off its clock pair alone, so an OT
+            // pair on it would go unpaid without anyone being told.
+            'ot_in' => ['nullable', 'date_format:H:i', 'prohibited_if:absence_type,hours_only'],
+            'ot_out' => ['nullable', 'date_format:H:i', 'prohibited_if:absence_type,hours_only'],
         ]);
 
         if (AttendanceRecord::where('employee_id', $employee->id)->whereDate('work_date', $data['work_date'])->exists()) {
@@ -88,11 +90,13 @@ class AttendanceAdminController extends Controller {
             'shift_end' => ['nullable', 'date_format:H:i'],
             'holiday_type' => ['nullable', 'in:special,regular'],
             'is_rest_day' => ['nullable', 'boolean'],
-            'absence_type' => ['nullable', 'in:leave,sick_leave,half_day,absent,awol,travel,rest_day'],
+            'absence_type' => ['nullable', 'in:leave,sick_leave,half_day,absent,awol,travel,rest_day,hours_only'],
             'break_out' => ['nullable', 'date_format:H:i'],
             'break_in' => ['nullable', 'date_format:H:i'],
-            'ot_in' => ['nullable', 'date_format:H:i'],
-            'ot_out' => ['nullable', 'date_format:H:i'],
+            // An hours-only day is paid off its clock pair alone, so an OT
+            // pair on it would go unpaid without anyone being told.
+            'ot_in' => ['nullable', 'date_format:H:i', 'prohibited_if:absence_type,hours_only'],
+            'ot_out' => ['nullable', 'date_format:H:i', 'prohibited_if:absence_type,hours_only'],
         ]);
 
         $before = sprintf('%s → %s', $record->clock_in ?? '—', $record->clock_out ?? '—');

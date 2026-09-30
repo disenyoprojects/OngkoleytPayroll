@@ -17,6 +17,8 @@ export default function ManualAttendanceModal({ defaultDate, onCancel, onSaved }
   const [breakIn, setBreakIn] = useState("");
   const [otIn, setOtIn] = useState("");
   const [otOut, setOtOut] = useState("");
+  // A rest-day call-in for a delivery: only these hours, at the normal hourly rate.
+  const [hoursOnly, setHoursOnly] = useState(false);
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [error, setError] = useState("");
@@ -33,7 +35,8 @@ export default function ManualAttendanceModal({ defaultDate, onCancel, onSaved }
       await apiClient.post(`/api/admin/employees/${employeeId}/attendance/manual`, {
         work_date: workDate, clock_in: clockIn, clock_out: clockOut, reason, details,
         break_out: breakOut || null, break_in: breakIn || null,
-        ot_in: otIn || null, ot_out: otOut || null,
+        ot_in: hoursOnly ? null : otIn || null, ot_out: hoursOnly ? null : otOut || null,
+        absence_type: hoursOnly ? "hours_only" : null,
       });
       onSaved();
     } catch (err) {
@@ -64,13 +67,22 @@ export default function ManualAttendanceModal({ defaultDate, onCancel, onSaved }
           <input type="date" value={workDate} max={today()} onChange={(e) => setWorkDate(e.target.value)} style={inputStyle} />
         </div>
       </div>
+      <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, marginBottom: 16 }}>
+        <input type="checkbox" checked={hoursOnly} onChange={(e) => setHoursOnly(e.target.checked)} style={{ marginTop: 2 }} />
+        <span>
+          Hours only — not a full day
+          <div style={{ fontSize: 12, color: "#7A6A57" }}>
+            e.g. called in on a rest day for a delivery. Pays just the hours between Time In and Time Out at the normal hourly rate — no overtime rate, no tardiness.
+          </div>
+        </span>
+      </label>
       <div style={rowStyle}>
         <div>
-          <label style={labelStyle}>Clock In</label>
+          <label style={labelStyle}>{hoursOnly ? "Time In" : "Clock In"}</label>
           <input type="time" value={clockIn} onChange={(e) => setClockIn(e.target.value)} style={inputStyle} />
         </div>
         <div>
-          <label style={labelStyle}>Clock Out</label>
+          <label style={labelStyle}>{hoursOnly ? "Time Out" : "Clock Out"}</label>
           <input type="time" value={clockOut} onChange={(e) => setClockOut(e.target.value)} style={inputStyle} />
         </div>
       </div>
@@ -84,16 +96,18 @@ export default function ManualAttendanceModal({ defaultDate, onCancel, onSaved }
           <input type="time" value={breakIn} onChange={(e) => setBreakIn(e.target.value)} style={inputStyle} />
         </div>
       </div>
-      <div style={rowStyle}>
-        <div>
-          <label style={labelStyle}>OT In (optional)</label>
-          <input type="time" value={otIn} onChange={(e) => setOtIn(e.target.value)} style={inputStyle} />
+      {!hoursOnly && (
+        <div style={rowStyle}>
+          <div>
+            <label style={labelStyle}>OT In (optional)</label>
+            <input type="time" value={otIn} onChange={(e) => setOtIn(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>OT Out (optional)</label>
+            <input type="time" value={otOut} onChange={(e) => setOtOut(e.target.value)} style={inputStyle} />
+          </div>
         </div>
-        <div>
-          <label style={labelStyle}>OT Out (optional)</label>
-          <input type="time" value={otOut} onChange={(e) => setOtOut(e.target.value)} style={inputStyle} />
-        </div>
-      </div>
+      )}
       <div style={{ marginBottom: 16 }}>
         <label style={labelStyle}>Reason *</label>
         <select value={reason} onChange={(e) => setReason(e.target.value)} style={inputStyle}>

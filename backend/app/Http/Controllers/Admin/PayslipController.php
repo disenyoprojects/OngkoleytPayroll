@@ -74,6 +74,9 @@ class PayslipController extends Controller {
             $daysWorked += match (true) {
                 in_array($record->absence_type, AttendancePayCalculator::NO_PAY_ABSENCES, true) => 0.0,
                 $record->absence_type === 'half_day' => 0.5,
+                // A few hours are that fraction of a day, so Basic Wage still
+                // reads as days x rate.
+                $record->absence_type === AttendancePayCalculator::HOURS_ONLY => (float) $pay['regular_hours'] / 8.0,
                 default => 1.0,
             };
 

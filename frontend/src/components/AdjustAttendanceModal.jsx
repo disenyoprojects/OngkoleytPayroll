@@ -22,14 +22,17 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
   const [otIn, setOtIn] = useState((row.record.ot_in || "").slice(0, 5));
   const [otOut, setOtOut] = useState((row.record.ot_out || "").slice(0, 5));
 
+  // Hours only: the clock pair is the whole of the work, paid per hour.
+  const hoursOnly = absenceType === "hours_only";
+
   async function save() {
     await apiClient.patch(`/api/admin/attendance/${row.record.id}/adjust`, {
       clock_in: clockIn, clock_out: clockOut, reason, details,
       break_out: breakOut || null, break_in: breakIn || null,
-      ot_in: otIn || null, ot_out: otOut || null,
+      ot_in: hoursOnly ? null : otIn || null, ot_out: hoursOnly ? null : otOut || null,
       shift_start: shiftStart, shift_end: shiftEnd,
       holiday_type: holidayType || null,
-      is_rest_day: isRestDay,
+      is_rest_day: hoursOnly ? false : isRestDay,
       absence_type: absenceType || null,
     });
     onSaved();
@@ -43,11 +46,11 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
       </div>
       <div style={rowStyle}>
         <div>
-          <label style={labelStyle}>Clock In</label>
+          <label style={labelStyle}>{hoursOnly ? "Time In" : "Clock In"}</label>
           <input type="time" value={clockIn} onChange={(e) => setClockIn(e.target.value)} style={inputStyle} />
         </div>
         <div>
-          <label style={labelStyle}>Clock Out</label>
+          <label style={labelStyle}>{hoursOnly ? "Time Out" : "Clock Out"}</label>
           <input type="time" value={clockOut} onChange={(e) => setClockOut(e.target.value)} style={inputStyle} />
         </div>
       </div>
@@ -61,6 +64,8 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
           <input type="time" value={breakIn} onChange={(e) => setBreakIn(e.target.value)} style={inputStyle} />
         </div>
       </div>
+      {/* No overtime and no schedule on an hours-only day, so neither pair is offered. */}
+      {!hoursOnly && <>
       <div style={rowStyle}>
         <div>
           <label style={labelStyle}>OT In</label>
@@ -81,6 +86,7 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
           <input type="time" value={shiftEnd} onChange={(e) => setShiftEnd(e.target.value)} style={inputStyle} />
         </div>
       </div>
+      </>}
       <div style={rowStyle}>
         <div>
           <label style={labelStyle}>Holiday</label>
@@ -95,6 +101,7 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
           <select value={absenceType} onChange={(e) => setAbsenceType(e.target.value)} style={inputStyle}>
             <option value="">Worked</option>
             <option value="half_day">Half day</option>
+            <option value="hours_only">Hours only (normal rate)</option>
             <option value="leave">Leave</option>
             <option value="sick_leave">Sick leave</option>
             <option value="absent">Absent</option>
@@ -104,10 +111,15 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
           </select>
         </div>
       </div>
-      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, marginBottom: 16 }}>
+      {hoursOnly && (
+        <div style={{ fontSize: 12, color: "#7A6A57", marginBottom: 16 }}>
+          Pays just the hours between Time In and Time Out at the normal hourly rate — no full day, no overtime rate, no tardiness, and no rest-day premium.
+        </div>
+      )}
+      {!hoursOnly && <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, marginBottom: 16 }}>
         <input type="checkbox" checked={isRestDay} onChange={(e) => setIsRestDay(e.target.checked)} />
         Rest day (worked)
-      </label>
+      </label>}
       <div style={{ marginBottom: 16 }}>
         <label style={labelStyle}>Reason for Adjustment *</label>
         <select value={reason} onChange={(e) => setReason(e.target.value)} style={inputStyle}>
