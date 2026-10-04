@@ -64,7 +64,11 @@ export default function AttendanceView() {
             {data.rows.length === 0 && (
               <tr><td style={{ ...tdStyle, textAlign: "center", color: "#7A6A57" }} colSpan={7}>{isToday ? "No one has clocked in today." : "No one clocked in on this date."}</td></tr>
             )}
-            {data.rows.map((row) => (
+            {/* Alphabetical by the name shown, so a person is found by name
+                rather than by when they happened to clock in. */}
+            {[...data.rows]
+              .sort((a, b) => (a.employee?.short_name ?? "").localeCompare(b.employee?.short_name ?? "", undefined, { sensitivity: "base" }))
+              .map((row) => (
               <tr key={row.record.id}>
                 <td style={{ ...tdStyle, fontWeight: 600 }}>{row.employee?.short_name ?? "—"}</td>
                 <td style={tdStyle}>{row.employee?.role ?? "—"}</td>
