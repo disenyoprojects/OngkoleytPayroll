@@ -52,7 +52,7 @@ class PayslipController extends Controller {
             ->get();
 
         $lines = [];
-        $basic = $ot = $nightDiff = $tardiness = $undertime = $daysWorked = 0.0;
+        $basic = $ot = $nightDiff = $tardiness = $undertime = $overbreak = $daysWorked = 0.0;
         // Split the day's regular pay into ordinary wage + holiday/rest premiums
         // so the payslip can itemise Basic Wage, Special Holiday (SH), etc.
         $baseWage = $sh = $rh = $restPremium = 0.0;
@@ -67,6 +67,7 @@ class PayslipController extends Controller {
             $nightDiff += (float) $pay['night_diff'];
             $tardiness += (float) $pay['tardiness'];
             $undertime += (float) $pay['undertime'];
+            $overbreak += (float) $pay['overbreak'];
 
             // Days worked counts days actually stood, not attendance rows: an
             // unworked rest day, a leave or an absence still carries a record
@@ -103,7 +104,15 @@ class PayslipController extends Controller {
                 'tardiness' => $pay['tardiness'],
                 'undertime_minutes' => $pay['undertime_minutes'],
                 'undertime' => $pay['undertime'],
+                'overbreak_minutes' => $pay['overbreak_minutes'],
+                'overbreak' => $pay['overbreak'],
                 'day_pay' => $pay['total'],
+                // What the edit form needs, so a day can be corrected from the
+                // payslip itself rather than by going back to Attendance.
+                'record' => $record->only([
+                    'id', 'clock_in', 'clock_out', 'shift_start', 'shift_end', 'holiday_type',
+                    'is_rest_day', 'absence_type', 'break_out', 'break_in', 'ot_in', 'ot_out',
+                ]),
             ];
         }
 
@@ -159,6 +168,8 @@ class PayslipController extends Controller {
         $penaltyLate = $byCategory('penalty_late');
         $cashAdvance = $byCategory('cash_advance');
         $otherAuthorised = $byCategory('deduction');
+        // Overbreak typed in by hand, for a long break the clock never saw.
+        $overbreakEntered = $byCategory('overbreak');
         $totalSalary = round($gross - $tardiness - $undertime + $adjustmentsTotal, 2);
         $netToRelease = round($totalSalary - $paidTotal, 2);
 
@@ -181,7 +192,11 @@ class PayslipController extends Controller {
 
         $deductions = [
             ['label' => 'Tardiness', 'amount' => round($tardiness, 2)],
-            ['label' => 'Undertime/Overbreak', 'amount' => round($undertime, 2)],
+            // Overbreak is its own line; with Undertime it makes up the
+            // computed undertime total. Any overbreak typed in as an
+            // adjustment is added to the same line rather than listed apart.
+            ['label' => 'Undertime', 'amount' => round($undertime - $overbreak, 2)],
+            ['label' => 'Overbreak', 'amount' => round($overbreak + $overbreakEntered, 2)],
         ];
         // The late penalty is not itemised to the employee: it prints under the
         // one "Authorized Deduction" line together with any other authorised
@@ -189,6 +204,9 @@ class PayslipController extends Controller {
         // behind. The summary workbook still breaks it out into its own column.
         $authorised = 0.0;
         foreach ($adjustments->where('amount', '<', 0) as $a) {
+            if ($a['category'] === 'overbreak') {
+                continue; // already on the Overbreak line
+            }
             if (in_array($bucket($a), ['penalty_late', 'deduction'], true)) {
                 $authorised += abs((float) $a['amount']);
                 continue;
@@ -239,6 +257,11 @@ class PayslipController extends Controller {
                 'gross' => $gross,
                 'tardiness' => round($tardiness, 2),
                 'undertime' => round($undertime, 2),
+                'overbreak' => round($overbreak, 2), // already inside 'undertime'
+                // Hand-entered overbreak. It is in 'adjustments', not in
+                // 'undertime', so the summary sheet adds it to its Undertime
+                // column itself.
+                'overbreak_entered' => $overbreakEntered,
                 'base_wage' => round($baseWage, 2),
                 'sh' => round($sh, 2),
                 'rh' => round($rh, 2),

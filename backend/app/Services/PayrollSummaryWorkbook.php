@@ -189,7 +189,9 @@ class PayrollSummaryWorkbook {
             'D' => $t['tardiness'],
             'E' => $t['sh'],
             'F' => $t['rh'],
-            'G' => $t['undertime'],
+            // Overbreak typed in as an adjustment is undertime too, and the
+            // row would not foot if it sat in no deduction column at all.
+            'G' => round($t['undertime'] + ($t['overbreak_entered'] ?? 0), 2),
             'H' => $t['penalty_late'],
             // "etc" is the rest of the authorised deductions, not only cash
             // advances. Total Auth. Ded. has always summed three things while

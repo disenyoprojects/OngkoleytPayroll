@@ -123,6 +123,7 @@ class ExplainDeductions extends Command {
             $row->category === 'deduction' && $isLateLabel => 'H  Penalty Lates (by label)',
             $row->category === 'deduction' => 'I  CA etc (other authorised)',
             $row->category === 'cash_advance' => 'I  CA etc (cash advance)',
+            $row->category === 'overbreak' => 'G  Undertime (overbreak)',
             $row->category === 'sss' => 'K  SSS',
             $row->category === 'philhealth' => 'L  PhilHealth',
             $row->category === 'pagibig' => 'M  Pag-IBIG',

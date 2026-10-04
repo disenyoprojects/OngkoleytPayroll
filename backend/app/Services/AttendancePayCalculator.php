@@ -280,6 +280,9 @@ class AttendancePayCalculator {
         $undertimeMinutes = (int) round($earlyMin);
         $tardiness = round($lateMin / 60.0 * $chargeRate, 2);
         $undertime = round(($earlyMin / 60.0 + $overbreakHours) * $chargeRate, 2);
+        // The overbreak share of that, so the payslip can itemise it on its own
+        // line. 'undertime' stays the combined figure every total is built on.
+        $overbreak = min($undertime, round($overbreakHours * $chargeRate, 2));
 
         $total = round($basic + $ot + $nightDiff - $tardiness - $undertime, 2);
         $workedHours = max(0.0, $regularHours - $lateMin / 60.0 - $earlyMin / 60.0 - $overbreakHours);
@@ -308,6 +311,8 @@ class AttendancePayCalculator {
             'tardiness' => $tardiness,
             'undertime_minutes' => $undertimeMinutes,
             'overbreak_hours' => round($overbreakHours, 4),
+            'overbreak_minutes' => (int) round($overbreakHours * 60),
+            'overbreak' => $overbreak,
             'undertime' => $undertime,
             'total' => $total,
             'premium_label' => $premiumLabel,
@@ -322,7 +327,8 @@ class AttendancePayCalculator {
             'basic' => 0.0, 'ot' => 0.0, 'night_diff' => 0.0,
             'base_wage' => 0.0, 'base_ot' => 0.0,
             'late' => false, 'late_minutes' => 0, 'tardiness' => 0.0,
-            'undertime_minutes' => 0, 'overbreak_hours' => 0.0, 'undertime' => 0.0, 'total' => 0.0,
+            'undertime_minutes' => 0, 'overbreak_hours' => 0.0, 'overbreak_minutes' => 0, 'overbreak' => 0.0,
+            'undertime' => 0.0, 'total' => 0.0,
             'premium_label' => $label, 'premium_multiplier' => $mult,
             'holiday_forfeited' => $holidayForfeited,
         ];

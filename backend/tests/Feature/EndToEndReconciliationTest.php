@@ -205,7 +205,9 @@ class EndToEndReconciliationTest extends TestCase {
         $this->assertEqualsWithDelta(7911.65, $slip['slip']['gross_earnings'], 0.005);
 
         $this->assertEqualsWithDelta(21.04, $deductions['Tardiness'], 0.005);
-        $this->assertEqualsWithDelta(126.26, $deductions['Undertime/Overbreak'], 0.005);
+        // 1h undertime and 1h overbreak, each on its own line.
+        $this->assertEqualsWithDelta(63.13, $deductions['Undertime'], 0.005);
+        $this->assertEqualsWithDelta(63.13, $deductions['Overbreak'], 0.005);
         $this->assertEqualsWithDelta(500.00, $deductions['Cash Advance'], 0.005, 'keeps its own line');
         $this->assertEqualsWithDelta(400.00, $deductions['SSS'], 0.005);
         $this->assertEqualsWithDelta(250.00, $deductions['PhilHealth'], 0.005);

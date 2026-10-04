@@ -35,6 +35,49 @@ class PayslipControllerTest extends TestCase {
         $this->assertSame('2026-07-15', $response->json('period.to'));
     }
 
+    public function test_each_line_carries_the_record_so_the_day_can_be_edited_from_the_payslip(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create();
+        $record = AttendanceRecord::factory()->for($employee)->create([
+            'work_date' => '2026-07-02', 'clock_in' => '09:55:00', 'clock_out' => '19:13:00',
+            'absence_type' => 'hours_only',
+        ]);
+
+        $line = $this->actingAs($admin)
+            ->getJson("/api/admin/employees/{$employee->id}/payslip?month=2026-07&period=first")
+            ->assertOk()->json('lines.0');
+
+        $this->assertSame($record->id, $line['record']['id']);
+        $this->assertSame('09:55:00', $line['record']['clock_in']);
+        $this->assertSame('hours_only', $line['record']['absence_type']);
+    }
+
+    public function test_an_overbreak_typed_in_joins_the_overbreak_line(): void {
+        $admin = User::factory()->create();
+        $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => 505]);
+        AttendanceRecord::factory()->for($employee)->create([
+            'work_date' => '2026-07-02', 'shift_start' => '08:00:00', 'shift_end' => '17:00:00',
+            'clock_in' => '08:00:00', 'clock_out' => '17:00:00',
+            'break_out' => '12:00:00', 'break_in' => '13:30:00', // 30 min over
+        ]);
+
+        // Typed positive; the category makes it a deduction.
+        $this->actingAs($admin)->postJson("/api/admin/employees/{$employee->id}/adjustments", [
+            'date' => '2026-07-03', 'category' => 'overbreak', 'amount' => 50,
+        ])->assertCreated()->assertJsonPath('label', 'Overbreak');
+
+        $slip = $this->actingAs($admin)
+            ->getJson("/api/admin/employees/{$employee->id}/payslip?month=2026-07&period=first")
+            ->assertOk()->json();
+        $deductions = collect($slip['slip']['deductions']);
+
+        // 31.56 computed + 50.00 typed, on one line and nowhere else.
+        $this->assertEqualsWithDelta(81.56, $deductions->firstWhere('label', 'Overbreak')['amount'], 0.005);
+        $this->assertCount(1, $deductions->where('label', 'Overbreak'));
+        $this->assertNull($deductions->firstWhere('label', 'Authorized Deduction'));
+        $this->assertEqualsWithDelta($slip['totals']['net_to_release'], $slip['slip']['net'], 0.005);
+    }
+
     public function test_payslip_resolves_a_separated_employee(): void {
         $admin = User::factory()->create();
         $employee = Employee::factory()->for(Branch::factory())->create(['daily_basic_rate' => null]);

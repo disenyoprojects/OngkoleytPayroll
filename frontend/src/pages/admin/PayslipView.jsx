@@ -4,6 +4,7 @@ import { formatPHP, formatTime12, formatLateLabel, phThisMonth as thisMonth } fr
 import { Button, inputStyle, tableWrap, tableStyle, thStyle, tdStyle } from "../../components/ui";
 import GenerateStatutoryButton from "../../components/GenerateStatutoryButton";
 import StatutoryWarning from "../../components/StatutoryWarning";
+import AdjustAttendanceModal from "../../components/AdjustAttendanceModal";
 
 const PERIODS = [["first", "1–15"], ["second", "16–end"], ["whole", "Whole month"]];
 const CATEGORIES = [
@@ -13,6 +14,7 @@ const CATEGORIES = [
   ["bonus", "Bonus"],
   ["deduction", "Authorized Deduction"],
   ["penalty_late", "Penalty Late"],
+  ["overbreak", "Overbreak"],
   ["cash_advance", "Cash Advance"],
   ["sss", "SSS"],
   ["pagibig", "Pag-IBIG"],
@@ -21,13 +23,13 @@ const CATEGORIES = [
 ];
 // Deduction categories that don't need a typed label — the name is the label.
 const DEFAULT_LABELS = {
-  deduction: "Authorized Deduction", penalty_late: "Penalty Late", cash_advance: "Cash Advance",
+  deduction: "Authorized Deduction", penalty_late: "Penalty Late", overbreak: "Overbreak", cash_advance: "Cash Advance",
   rice_allowance: "Rice Allowance", sss: "SSS", pagibig: "Pag-IBIG", philhealth: "PhilHealth",
 };
 // Categories that always subtract. "Already paid" means cash handed over, so it
 // cannot apply to these — ticking it on a deduction would hand back the very
 // amount being withheld. The checkbox is hidden for them and never sent.
-const DEDUCTION_CATEGORIES = ["deduction", "penalty_late", "cash_advance", "sss", "pagibig", "philhealth"];
+const DEDUCTION_CATEGORIES = ["deduction", "penalty_late", "overbreak", "cash_advance", "sss", "pagibig", "philhealth"];
 const isDeduction = (category) => DEDUCTION_CATEGORIES.includes(category);
 
 const BLANK_ADJ = { label: "", category: "cash_on_hand", amount: "", paid: true, date: "" };
@@ -47,6 +49,9 @@ export default function PayslipView() {
   const [adjError, setAdjError] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editAmount, setEditAmount] = useState("");
+  // The day being corrected from the breakdown table, in the shape the
+  // Attendance screen hands the same modal.
+  const [adjustRow, setAdjustRow] = useState(null);
 
   useEffect(() => {
     apiClient.get("/api/admin/employees").then((res) => setStaff(res.data));
@@ -56,6 +61,7 @@ export default function PayslipView() {
     if (!employeeId) { setSlip(null); return; }
     let cancelled = false;
     setSlip(null); // clear the previous employee's slip while the new one loads
+    setAdjustRow(null); // and any day open for editing, which belonged to it
     apiClient.get(`/api/admin/employees/${employeeId}/payslip?month=${month}&period=${period}`)
       .then((res) => { if (!cancelled) setSlip(res.data); });
     return () => { cancelled = true; };
@@ -121,7 +127,21 @@ export default function PayslipView() {
       {!slip && <div style={{ color: "#7A6A57", fontSize: 13 }}>Select a staff member to view their payslip.</div>}
 
       {slip && (
-        <div>
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+          {/* The day being corrected, docked on the left. Stretched to the
+              row's height so it can stay pinned while the payslip scrolls. */}
+          {adjustRow && (
+            <div style={{ flex: "0 0 340px", maxWidth: "100%", alignSelf: "stretch" }}>
+              <AdjustAttendanceModal
+                asPanel
+                key={adjustRow.record.id}
+                row={adjustRow}
+                onCancel={() => setAdjustRow(null)}
+                onSaved={() => { setAdjustRow(null); setReload((n) => n + 1); }}
+              />
+            </div>
+          )}
+        <div style={{ flex: "1 1 520px", minWidth: 0 }}>
           <div style={{ background: "white", border: "1px solid #E7DCC6", borderRadius: 10, padding: 16, marginBottom: 14 }}>
             <div style={{ fontWeight: 700, fontSize: 16 }}>{slip.employee.full_name}</div>
             <div style={{ fontSize: 13, color: "#7A6A57" }}>{slip.employee.role} · {slip.employee.branch ?? "—"}</div>
@@ -139,14 +159,15 @@ export default function PayslipView() {
                   <th style={thStyle}>Out</th>
                   <th style={{ ...thStyle, textAlign: "right" }}>Hours</th>
                   <th style={{ ...thStyle, textAlign: "right" }}>Day Pay</th>
+                  <th style={thStyle}></th>
                 </tr>
               </thead>
               <tbody>
                 {slip.lines.length === 0 && (
-                  <tr><td style={{ ...tdStyle, textAlign: "center", color: "#7A6A57" }} colSpan={6}>No worked days in this period.</td></tr>
+                  <tr><td style={{ ...tdStyle, textAlign: "center", color: "#7A6A57" }} colSpan={7}>No worked days in this period.</td></tr>
                 )}
                 {slip.lines.map((l) => (
-                  <tr key={l.date}>
+                  <tr key={l.date} style={adjustRow && adjustRow.record.id === l.record?.id ? { background: "#FBF1DA" } : undefined}>
                     <td style={tdStyle}>{l.date}</td>
                     <td style={tdStyle}>{l.shift_start ? String(l.shift_start).slice(0, 5) : "—"}–{l.shift_end ? String(l.shift_end).slice(0, 5) : "—"}</td>
                     <td style={tdStyle}>{l.clock_in ? formatTime12(l.clock_in) : "—"}</td>
@@ -160,8 +181,20 @@ export default function PayslipView() {
                       {l.late && (
                         <div style={{ fontSize: 11, color: "#C1521F" }}>{formatLateLabel(l.late_minutes)} · −{formatPHP(l.tardiness)}</div>
                       )}
-                      {l.undertime > 0 && (
-                        <div style={{ fontSize: 11, color: "#C1521F" }}>{l.undertime_minutes ? `${l.undertime_minutes} min early` : "overbreak"} · −{formatPHP(l.undertime)}</div>
+                      {/* Overbreak is charged separately from leaving early;
+                          an older backend sends no split, so all of it reads
+                          as undertime there. */}
+                      {l.undertime - (l.overbreak ?? 0) > 0.005 && (
+                        <div style={{ fontSize: 11, color: "#C1521F" }}>{l.undertime_minutes ? `${l.undertime_minutes} min early` : "undertime"} · −{formatPHP(l.undertime - (l.overbreak ?? 0))}</div>
+                      )}
+                      {l.overbreak > 0 && (
+                        <div style={{ fontSize: 11, color: "#C1521F" }}>{l.overbreak_minutes} min overbreak · −{formatPHP(l.overbreak)}</div>
+                      )}
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>
+                      {/* Absent until the backend that sends the record is deployed. */}
+                      {l.record && (
+                        <Button small variant="outline" onClick={() => setAdjustRow({ record: l.record, employee: slip.employee, date: l.date })}>Edit</Button>
                       )}
                     </td>
                   </tr>
@@ -267,6 +300,7 @@ export default function PayslipView() {
               the employee genuinely owes nothing. */}
           <StatutoryWarning missing={slip.statutory_missing} />
           <PayslipDocument slip={slip} />
+        </div>
         </div>
       )}
     </div>

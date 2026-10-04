@@ -11,14 +11,17 @@ use Illuminate\Validation\Rule;
 class PayrollAdjustmentController extends Controller {
     public const CATEGORIES = [
         'cash_on_hand', 'allowance', 'rice_allowance', 'bonus',
-        'deduction', 'penalty_late', 'cash_advance', 'sss', 'pagibig', 'philhealth', 'other',
+        'deduction', 'penalty_late', 'overbreak', 'cash_advance', 'sss', 'pagibig', 'philhealth', 'other',
     ];
 
     // Categories that always subtract, plus their default label if none is typed.
     // Penalty Late and Cash Advance are their own categories rather than
     // free-text labels so the payroll summary can column them separately.
+    // Overbreak is typed in when a long break was never stamped on the clock;
+    // it joins the computed overbreak on the payslip's Overbreak line.
     public const DEDUCTION_LABELS = [
-        'deduction' => 'Authorized Deduction', 'penalty_late' => 'Penalty Late', 'cash_advance' => 'Cash Advance',
+        'deduction' => 'Authorized Deduction', 'penalty_late' => 'Penalty Late', 'overbreak' => 'Overbreak',
+        'cash_advance' => 'Cash Advance',
         'sss' => 'SSS', 'pagibig' => 'Pag-IBIG', 'philhealth' => 'PhilHealth',
     ];
 

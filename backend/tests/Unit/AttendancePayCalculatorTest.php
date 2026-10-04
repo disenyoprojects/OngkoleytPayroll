@@ -137,6 +137,9 @@ class AttendancePayCalculatorTest extends TestCase {
 
         $this->assertEqualsWithDelta(0.5, $result['overbreak_hours'], 0.001);
         $this->assertEqualsWithDelta(round(0.5 * $hourlyRate, 2), $result['undertime'], 0.01);
+        // All of that undertime is overbreak, itemised on its own.
+        $this->assertEqualsWithDelta(round(0.5 * $hourlyRate, 2), $result['overbreak'], 0.01);
+        $this->assertSame(30, $result['overbreak_minutes']);
         $this->assertEqualsWithDelta(7.5, $result['total_hours'], 0.01);
     }
 

@@ -7,7 +7,19 @@ const rowStyle = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, mar
 
 const REASONS = ["Late Arrival", "Early Departure", "Forgot to Clock In/Out", "System Error", "Power / Internet Outage", "Client / Supplier Errand", "Other"];
 
-export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
+// Docked beside the page instead of over it, so the payslip stays in view
+// while a day is corrected and the new figures can be checked at once.
+function PanelShell({ children }) {
+  return (
+    <div style={{ background: "white", border: "1px solid #E7DCC6", borderRadius: 10, padding: 18, position: "sticky", top: 12, maxHeight: "calc(100vh - 24px)", overflow: "auto", boxSizing: "border-box" }}>
+      {children}
+    </div>
+  );
+}
+
+export default function AdjustAttendanceModal({ row, onCancel, onSaved, asPanel = false }) {
+  const Shell = asPanel ? PanelShell : ModalShell;
+  const [error, setError] = useState("");
   const [clockIn, setClockIn] = useState((row.record.clock_in || "08:00").slice(0, 5));
   const [clockOut, setClockOut] = useState((row.record.clock_out || "17:00").slice(0, 5));
   const [reason, setReason] = useState("");
@@ -26,23 +38,28 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
   const hoursOnly = absenceType === "hours_only";
 
   async function save() {
-    await apiClient.patch(`/api/admin/attendance/${row.record.id}/adjust`, {
-      clock_in: clockIn, clock_out: clockOut, reason, details,
-      break_out: breakOut || null, break_in: breakIn || null,
-      ot_in: hoursOnly ? null : otIn || null, ot_out: hoursOnly ? null : otOut || null,
-      shift_start: shiftStart, shift_end: shiftEnd,
-      holiday_type: holidayType || null,
-      is_rest_day: hoursOnly ? false : isRestDay,
-      absence_type: absenceType || null,
-    });
-    onSaved();
+    setError("");
+    try {
+      await apiClient.patch(`/api/admin/attendance/${row.record.id}/adjust`, {
+        clock_in: clockIn, clock_out: clockOut, reason, details,
+        break_out: breakOut || null, break_in: breakIn || null,
+        ot_in: hoursOnly ? null : otIn || null, ot_out: hoursOnly ? null : otOut || null,
+        shift_start: shiftStart, shift_end: shiftEnd,
+        holiday_type: holidayType || null,
+        is_rest_day: hoursOnly ? false : isRestDay,
+        absence_type: absenceType || null,
+      });
+      onSaved();
+    } catch (err) {
+      setError(err?.response?.data?.message || "Couldn't save this adjustment.");
+    }
   }
 
   return (
-    <ModalShell onClose={onCancel}>
+    <Shell onClose={onCancel}>
       <h3 style={{ margin: "0 0 2px" }}>Adjust Attendance</h3>
       <div style={{ fontSize: 12.5, color: "#7A6A57", marginBottom: 16 }}>
-        {row.employee.short_name} · original: {formatTime12(row.record.clock_in)} → {row.record.clock_out ? formatTime12(row.record.clock_out) : "still clocked in"}
+        {row.date && <>{row.date} · </>}{row.employee.short_name} · original: {formatTime12(row.record.clock_in)} → {row.record.clock_out ? formatTime12(row.record.clock_out) : "still clocked in"}
       </div>
       <div style={rowStyle}>
         <div>
@@ -131,10 +148,11 @@ export default function AdjustAttendanceModal({ row, onCancel, onSaved }) {
         <label style={labelStyle}>Additional Details</label>
         <textarea value={details} onChange={(e) => setDetails(e.target.value)} style={textareaStyle} />
       </div>
+      {error && <div style={{ color: "#C1521F", fontSize: 12.5, marginBottom: 14 }}>{error}</div>}
       <div style={{ display: "flex", gap: 8 }}>
         <Button variant="gold" disabled={!reason} onClick={save}>Save Adjustment</Button>
-        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button variant="ghost" onClick={onCancel}>{asPanel ? "Close" : "Cancel"}</Button>
       </div>
-    </ModalShell>
+    </Shell>
   );
 }
