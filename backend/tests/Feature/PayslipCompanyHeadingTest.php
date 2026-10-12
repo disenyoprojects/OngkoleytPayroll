@@ -109,7 +109,11 @@ class PayslipCompanyHeadingTest extends TestCase {
         $this->assertStringContainsString(self::KANTO_NAME, $html, 'the Kanto slip');
         $this->assertStringContainsString(self::KANTO_ADDRESS, $html);
         $this->assertStringContainsString(Branch::DEFAULT_COMPANY_NAME, $html, 'the Mabini slip');
-        $this->assertSame(1, substr_count($html, self::KANTO_NAME), 'only the Kanto slip is headed Kanto');
+        // Each slip prints twice, an employee's and an employer's copy, so the
+        // Kanto heading appears twice — on its own slip's copies only.
+        $this->assertSame(2, substr_count($html, self::KANTO_NAME), 'only the Kanto slip is headed Kanto');
+        $this->assertSame(2, substr_count($html, e("EMPLOYEE'S COPY")), 'one employee copy per slip');
+        $this->assertSame(2, substr_count($html, e("EMPLOYER'S COPY")), 'one employer copy per slip');
     }
 
     public function test_the_pdf_endpoint_still_renders(): void {

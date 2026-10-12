@@ -35,7 +35,9 @@ class PayslipController extends Controller {
         ]);
 
         $payslip = $this->buildPayslip($employee, $data['month'], $data['period']);
-        $pdf = Pdf::loadView('pdf.payslip', ['payslip' => $payslip]);
+        // A4 like the bulk print, so the employee's and employer's copies
+        // share a page the same way in both.
+        $pdf = Pdf::loadView('pdf.payslip', ['payslip' => $payslip])->setPaper('a4', 'portrait');
 
         return $pdf->stream("payslip-{$employee->employee_code}-{$data['month']}-{$data['period']}.pdf");
     }
